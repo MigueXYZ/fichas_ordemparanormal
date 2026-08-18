@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { personagemVazio } from '../src/engine/character.js';
-import { calcMaximos, calcDefesa, calcPericias, pontosRestantes, calcPePorRodada, grauMaximoPorNex } from '../src/engine/calc.js';
+import { calcMaximos, calcDefesa, calcDefesas, calcPericias, pontosRestantes, calcPePorRodada, grauMaximoPorNex } from '../src/engine/calc.js';
 
 let passou = 0;
 function teste(nome, fn) {
@@ -89,6 +89,39 @@ teste('grau máximo de treino limitado pelo NEX', () => {
   assert.equal(grauMaximoPorNex(5).id, 'treinado');
   assert.equal(grauMaximoPorNex(40).id, 'veterano');
   assert.equal(grauMaximoPorNex(75).id, 'expert');
+});
+
+// ---- defesas (bloqueio e esquiva) ----
+console.log('\nBloqueio e esquiva\n');
+
+teste('bloqueio só existe com treino em Fortitude', () => {
+  const p = personagemVazio();
+  assert.equal(calcDefesas(p).bloqueio.disponivel, false);
+  p.pericias.fortitude.grau = 'treinado';
+  const d = calcDefesas(p);
+  assert.equal(d.bloqueio.disponivel, true);
+  assert.equal(d.bloqueio.valor, 5);           // RD = bónus de Fortitude
+});
+
+teste('esquiva = Defesa + bónus de Reflexos, só com treino', () => {
+  const p = personagemVazio();
+  assert.equal(calcDefesas(p).esquiva.disponivel, false);
+  p.pericias.reflexos.grau = 'treinado';
+  p.atributos.agi = 3;
+  const d = calcDefesas(p);
+  assert.equal(d.defesa, 13);
+  assert.equal(d.esquiva.valor, 18);           // 13 + 5
+});
+
+teste('extras manuais somam a bloqueio e esquiva', () => {
+  const p = personagemVazio();
+  p.pericias.fortitude.grau = 'treinado';
+  p.pericias.reflexos.grau = 'treinado';
+  p.bloqueioExtra = 2;
+  p.esquivaExtra = 3;
+  const d = calcDefesas(p);
+  assert.equal(d.bloqueio.valor, 7);
+  assert.equal(d.esquiva.valor, 11 + 5 + 3);
 });
 
 console.log(`\n${passou} testes ok`);

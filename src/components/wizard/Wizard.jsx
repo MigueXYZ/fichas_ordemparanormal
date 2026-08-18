@@ -7,7 +7,7 @@ import { normalizarRecursos } from '../../engine/character.js';
 
 const PASSOS = ['Atributos', 'Origem', 'Classe', 'Toques Finais'];
 
-export default function Wizard({ personagem, setPersonagem, onFinalizar }) {
+export default function Wizard({ personagem, setPersonagem, onFinalizar, onRolar }) {
   const [passo, setPasso] = useState(0);
 
   const atualizar = (patch) => setPersonagem({ ...personagem, ...patch });
@@ -26,7 +26,7 @@ export default function Wizard({ personagem, setPersonagem, onFinalizar }) {
         ))}
       </div>
 
-      {passo === 0 && <StepAtributos personagem={personagem} atualizar={atualizar} />}
+      {passo === 0 && <StepAtributos personagem={personagem} atualizar={atualizar} onRolar={onRolar} />}
       {passo === 1 && <StepOrigem personagem={personagem} setPersonagem={setPersonagem} />}
       {passo === 2 && <StepClasse personagem={personagem} setPersonagem={setPersonagem} />}
       {passo === 3 && (

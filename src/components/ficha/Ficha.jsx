@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import RodaAtributos from '../RodaAtributos.jsx';
 import BarraRecurso from './BarraRecurso.jsx';
 import TabelaPericias from './TabelaPericias.jsx';
@@ -6,8 +6,10 @@ import { AbaCombate, AbaHabilidades, AbaRituais, AbaInventario, AbaDescricao } f
 import { CLASSES, trilhasDaClasse } from '../../data/classes.js';
 import { ORIGENS } from '../../data/origens.js';
 import { REGRAS_ATRIBUTOS } from '../../data/atributos.js';
-import { calcMaximos, calcDefesa, calcPePorRodada, NEX_TRACK } from '../../engine/calc.js';
+import { calcMaximos, calcDefesas, calcPePorRodada, NEX_TRACK } from '../../engine/calc.js';
 import { ajustarRecursos } from '../../engine/character.js';
+import { lerImagem } from '../../engine/armazenamento.js';
+import { rolarTeste } from '../../engine/dados.js';
 
 const ABAS = [
   { id: 'combate', nome: 'Combate' },
@@ -17,22 +19,35 @@ const ABAS = [
   { id: 'descricao', nome: 'Descrição' },
 ];
 
-export default function Ficha({ personagem, setPersonagem }) {
+export default function Ficha({ personagem, setPersonagem, onRolar }) {
   const [aba, setAba] = useState('combate');
-  const [rolagem, setRolagem] = useState(null);
+  const foto = useRef(null);
 
   const max = calcMaximos(personagem);
-  const defesa = calcDefesa(personagem);
+  const d = calcDefesas(personagem);
   const set = (patch) => setPersonagem({ ...personagem, ...patch });
-  // mudanças que alteram os máximos: acompanha os valores atuais
   const setComRecursos = (patch) => setPersonagem(ajustarRecursos(personagem, { ...personagem, ...patch }));
   const nomeOrigem = personagem.origemId === '__custom__'
     ? personagem.origemCustom?.nome || 'Personalizada'
     : ORIGENS.find((o) => o.id === personagem.origemId)?.nome || '';
 
+  async function escolherFoto(e) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    try {
+      set({ imagem: await lerImagem(f) });
+    } catch { /* imagem inválida */ }
+    e.target.value = '';
+  }
+
   return (
     <div className="container">
       <div className="cabecalho-ficha">
+        <label className="retrato" style={personagem.imagem ? { backgroundImage: `url(${personagem.imagem})` } : undefined}>
+          {!personagem.imagem && 'Foto do agente'}
+          <input type="file" accept="image/*" onChange={escolherFoto} />
+        </label>
+
         <div>
           <div className="campo-linha">
             <label>Personagem</label>
@@ -42,7 +57,12 @@ export default function Ficha({ personagem, setPersonagem }) {
             <label>Origem</label>
             <input type="text" value={nomeOrigem} readOnly />
           </div>
+          <div className="campo-linha">
+            <label>Patente</label>
+            <input type="text" value={personagem.patente} onChange={(e) => set({ patente: e.target.value })} />
+          </div>
         </div>
+
         <div>
           <div className="campo-linha">
             <label>Jogador</label>
@@ -51,6 +71,7 @@ export default function Ficha({ personagem, setPersonagem }) {
           <div className="campo-linha">
             <label>Classe</label>
             <select value={personagem.classeId || ''} onChange={(e) => set({ classeId: e.target.value, trilhaId: null })}>
+              <option value="">—</option>
               {CLASSES.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
             </select>
           </div>
@@ -60,9 +81,8 @@ export default function Ficha({ personagem, setPersonagem }) {
               value={personagem.trilhaId || ''}
               disabled={personagem.nex < 10}
               onChange={(e) => set({ trilhaId: e.target.value || null })}
-              title={personagem.nex < 10 ? 'A trilha é escolhida em NEX 10%' : ''}
             >
-              <option value="">{personagem.nex < 10 ? 'Escolhe a classe e chega a NEX 10%' : '—'}</option>
+              <option value="">{personagem.nex < 10 ? 'A partir de NEX 10%' : '—'}</option>
               {trilhasDaClasse(personagem.classeId).map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
             </select>
           </div>
@@ -70,11 +90,12 @@ export default function Ficha({ personagem, setPersonagem }) {
       </div>
 
       <div className="ficha">
-        {/* coluna esquerda */}
+        {/* ---------------- coluna esquerda ---------------- */}
         <div>
           <RodaAtributos
             atributos={personagem.atributos}
             mini
+            onRolar={(a, valor) => onRolar(rolarTeste({ nome: a.nome, dados: valor, bonus: 0, detalhe: a.sigla }))}
             onChange={(id, v) => {
               if (v < 0 || v > REGRAS_ATRIBUTOS.maximoAbsoluto) return;
               setComRecursos({ atributos: { ...personagem.atributos, [id]: v } });
@@ -90,7 +111,7 @@ export default function Ficha({ personagem, setPersonagem }) {
                 <select
                   value={personagem.nex}
                   onChange={(e) => setComRecursos({ nex: Number(e.target.value) })}
-                  style={{ background: 'transparent', border: 'none', padding: 0 }}
+                  style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none' }}
                 >
                   {NEX_TRACK.map((n) => <option key={n} value={n}>{n}%</option>)}
                 </select>
@@ -110,57 +131,59 @@ export default function Ficha({ personagem, setPersonagem }) {
           <BarraRecurso titulo="SANIDADE" classe="barra-sanidade" atual={personagem.sanAtual ?? max.san} max={max.san} onChange={(v) => set({ sanAtual: v })} />
           <BarraRecurso titulo="ESFORÇO" classe="barra-esforco" atual={personagem.peAtual ?? max.pe} max={max.pe} onChange={(v) => set({ peAtual: v })} />
 
-          <div className="defesa-bloco">
-            <div className="escudo">{defesa}</div>
-            <div className="defesa-info">
-              <b>DEFESA</b>
-              = 10 + AGI +
-              <input
-                type="number"
-                style={{ width: 46, margin: '0 4px' }}
-                value={personagem.defesaEquipamento}
-                onChange={(e) => set({ defesaEquipamento: Number(e.target.value) })}
-              />
-              equip. +
-              <input
-                type="number"
-                style={{ width: 46, margin: '0 4px' }}
-                value={personagem.defesaOutros}
-                onChange={(e) => set({ defesaOutros: Number(e.target.value) })}
-              />
-              outros
+          <div className="defesas">
+            <div className="defesa-caixa">
+              <div className="rotulo">Defesa</div>
+              <span className="num">{d.defesa}</span>
+              <div className="conta">
+                10 + AGI +
+                <input type="number" value={personagem.defesaEquipamento} onChange={(e) => set({ defesaEquipamento: Number(e.target.value) })} title="Equipamento" />
+                +
+                <input type="number" value={personagem.defesaOutros} onChange={(e) => set({ defesaOutros: Number(e.target.value) })} title="Outros" />
+              </div>
+            </div>
+
+            <div className={'defesa-caixa' + (d.bloqueio.disponivel ? '' : ' inativa')} title={d.bloqueio.disponivel ? d.bloqueio.formula : d.bloqueio.requisito}>
+              <div className="rotulo">Bloqueio</div>
+              <span className="num">{d.bloqueio.disponivel ? d.bloqueio.valor : '—'}</span>
+              <div className="conta">
+                RD = Fortitude {d.bloqueio.base >= 0 ? '+' : '−'}{Math.abs(d.bloqueio.base)}
+                <br />
+                extra <input type="number" value={personagem.bloqueioExtra || 0} onChange={(e) => set({ bloqueioExtra: Number(e.target.value) })} />
+              </div>
+            </div>
+
+            <div className={'defesa-caixa' + (d.esquiva.disponivel ? '' : ' inativa')} title={d.esquiva.disponivel ? d.esquiva.formula : d.esquiva.requisito}>
+              <div className="rotulo">Esquiva</div>
+              <span className="num">{d.esquiva.disponivel ? d.esquiva.valor : '—'}</span>
+              <div className="conta">
+                Defesa + Reflexos {d.esquiva.base >= 0 ? '+' : '−'}{Math.abs(d.esquiva.base)}
+                <br />
+                extra <input type="number" value={personagem.esquivaExtra || 0} onChange={(e) => set({ esquivaExtra: Number(e.target.value) })} />
+              </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 14, marginTop: 12 }}>
-            <div className="campo" style={{ flex: 1 }}>
-              <label>Bloqueio</label>
-              <input type="number" value={personagem.bloqueio} onChange={(e) => set({ bloqueio: Number(e.target.value) })} />
-            </div>
-            <div className="campo" style={{ flex: 1 }}>
-              <label>Esquiva</label>
-              <input type="number" value={personagem.esquiva} onChange={(e) => set({ esquiva: Number(e.target.value) })} />
-            </div>
+          <div style={{ marginTop: 16 }}>
+            <div className="campo-linha"><label>Proteção</label><input type="text" value={personagem.protecao} onChange={(e) => set({ protecao: e.target.value })} /></div>
+            <div className="campo-linha"><label>Resistências</label><input type="text" value={personagem.resistencias} onChange={(e) => set({ resistencias: e.target.value })} /></div>
+            <div className="campo-linha"><label>Proficiências</label><input type="text" value={personagem.proficiencias} onChange={(e) => set({ proficiencias: e.target.value })} /></div>
           </div>
-
-          <div className="campo-linha"><label>Proteção</label><input type="text" value={personagem.protecao} onChange={(e) => set({ protecao: e.target.value })} /></div>
-          <div className="campo-linha"><label>Resistências</label><input type="text" value={personagem.resistencias} onChange={(e) => set({ resistencias: e.target.value })} /></div>
-          <div className="campo-linha"><label>Proficiências</label><input type="text" value={personagem.proficiencias} onChange={(e) => set({ proficiencias: e.target.value })} /></div>
         </div>
 
-        {/* coluna do meio */}
+        {/* ---------------- coluna do meio ---------------- */}
         <div>
-          <TabelaPericias personagem={personagem} setPersonagem={setPersonagem} onRolagem={(r) => { setRolagem(r); setAba('combate'); }} />
+          <TabelaPericias personagem={personagem} setPersonagem={setPersonagem} onRolar={onRolar} />
         </div>
 
-        {/* coluna direita */}
+        {/* ---------------- coluna direita ---------------- */}
         <div>
           <div className="abas">
             {ABAS.map((a) => (
               <button key={a.id} className={aba === a.id ? 'ativa' : ''} onClick={() => setAba(a.id)}>{a.nome}</button>
             ))}
           </div>
-          {aba === 'combate' && <AbaCombate personagem={personagem} setPersonagem={setPersonagem} rolagem={rolagem} setRolagem={setRolagem} />}
+          {aba === 'combate' && <AbaCombate personagem={personagem} setPersonagem={setPersonagem} onRolar={onRolar} />}
           {aba === 'habilidades' && <AbaHabilidades personagem={personagem} setPersonagem={setPersonagem} />}
           {aba === 'rituais' && <AbaRituais personagem={personagem} setPersonagem={setPersonagem} />}
           {aba === 'inventario' && <AbaInventario personagem={personagem} setPersonagem={setPersonagem} />}

@@ -78,6 +78,38 @@ export function calcDefesa(personagem) {
   );
 }
 
+/**
+ * Bloqueio e Esquiva são ações especiais de defesa (Livro Base, cap. 4):
+ *  - Bloqueio: só se treinado em Fortitude. Dá RD igual ao bónus de Fortitude.
+ *  - Esquiva: só se treinado em Reflexos. Soma o bónus de Reflexos à Defesa.
+ * Ambos aceitam um extra manual para casos que as regras não cobrem.
+ */
+export function calcDefesas(personagem) {
+  const pericias = calcPericias(personagem);
+  const bonusDe = (id) => pericias.find((p) => p.id === id) || { treino: 0, bonus: 0 };
+  const fortitude = bonusDe('fortitude');
+  const reflexos = bonusDe('reflexos');
+  const defesa = calcDefesa(personagem);
+
+  return {
+    defesa,
+    bloqueio: {
+      disponivel: fortitude.treino > 0,
+      valor: fortitude.bonus + Number(personagem.bloqueioExtra || 0),
+      base: fortitude.bonus,
+      formula: 'RD = bónus de Fortitude',
+      requisito: 'Precisa de treino em Fortitude',
+    },
+    esquiva: {
+      disponivel: reflexos.treino > 0,
+      valor: defesa + reflexos.bonus + Number(personagem.esquivaExtra || 0),
+      base: reflexos.bonus,
+      formula: 'Defesa + bónus de Reflexos',
+      requisito: 'Precisa de treino em Reflexos',
+    },
+  };
+}
+
 // ---------- Perícias ----------
 
 /**

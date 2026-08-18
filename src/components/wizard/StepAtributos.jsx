@@ -2,8 +2,9 @@ import React from 'react';
 import RodaAtributos from '../RodaAtributos.jsx';
 import { REGRAS_ATRIBUTOS } from '../../data/atributos.js';
 import { pontosRestantes } from '../../engine/calc.js';
+import { rolarTeste } from '../../engine/dados.js';
 
-export default function StepAtributos({ personagem, atualizar }) {
+export default function StepAtributos({ personagem, atualizar, onRolar }) {
   const atributos = personagem.atributos;
   const restantes = pontosRestantes(atributos, REGRAS_ATRIBUTOS.pontosParaDistribuir);
 
@@ -24,7 +25,7 @@ export default function StepAtributos({ personagem, atualizar }) {
           Também podes reduzir um atributo para <span className="destaque">0</span> para receber 1 ponto
           adicional. O valor máximo inicial que podes ter em cada atributo é <span className="destaque">3</span>.
         </p>
-        <div className={'pontos-restantes' + (restantes < 0 ? ' erro' : '')}>
+        <div className={'pontos-restantes' + (restantes === 0 ? ' completo' : '')}>
           <strong>{restantes}</strong>
           <span>{restantes === 1 ? 'ponto por distribuir' : 'pontos por distribuir'}</span>
         </div>
@@ -35,6 +36,7 @@ export default function StepAtributos({ personagem, atualizar }) {
       <RodaAtributos
         atributos={atributos}
         onChange={setAtributo}
+        onRolar={(a, valor) => onRolar && onRolar(rolarTeste({ nome: a.nome, dados: valor, bonus: 0 }))}
         podeSubir={podeSubir}
         podeDescer={podeDescer}
       />

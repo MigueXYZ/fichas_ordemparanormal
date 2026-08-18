@@ -7,7 +7,9 @@ import { CLASSES_POR_ID, TRILHAS_POR_ID } from '../../data/classes.js';
 import { ORIGENS_POR_ID } from '../../data/origens.js';
 import { calcCargaMaxima } from '../../engine/calc.js';
 import { novoAtaque, novoItem, novaHabilidade, novoRitual } from '../../engine/character.js';
-import { rolarExpressao } from '../../engine/dados.js';
+import { rolarExpressao, rolarTeste } from '../../engine/dados.js';
+import { calcPericias } from '../../engine/calc.js';
+import IconeD20 from '../IconeD20.jsx';
 import Seletor from './Seletor.jsx';
 
 function Campo({ label, valor, onChange, tipo = 'text', opcoes }) {
@@ -38,15 +40,26 @@ function useLista(personagem, setPersonagem, chave) {
 
 // ---------------------------------------------------------------- COMBATE
 
-export function AbaCombate({ personagem, setPersonagem, rolagem, setRolagem }) {
+export function AbaCombate({ personagem, setPersonagem, onRolar }) {
   const { lista, adicionar, editar, remover } = useLista(personagem, setPersonagem, 'ataques');
   const [expr, setExpr] = useState('');
   const [aEscolher, setAEscolher] = useState(false);
   const armas = ITENS.filter((i) => i.tipo === 'arma' || (i.tipo === 'amaldicoado' && i.tipo2 === 'Arma'));
 
+  const pericias = calcPericias(personagem);
+
   function rolar() {
     const r = rolarExpressao(expr);
-    setRolagem(r ? { nome: r.expr, rolagens: r.rolagens, total: r.total, bonus: r.mod } : { nome: 'Expressão inválida', rolagens: [], total: 0, bonus: 0 });
+    if (r) onRolar(r);
+  }
+
+  function rolarAtaque(a) {
+    const p = pericias.find((x) => x.id === a.pericia);
+    onRolar(rolarTeste({
+      nome: a.nome || 'Ataque',
+      dados: p ? p.dados : 1,
+      bonus: (p ? p.bonus : 0) + (Number(a.bonus) || 0),
+    }));
   }
 
   return (
@@ -83,16 +96,6 @@ export function AbaCombate({ personagem, setPersonagem, rolagem, setRolagem }) {
         />
       )}
 
-      {rolagem && (
-        <div className="rolagem">
-          <div className="res">{rolagem.total}</div>
-          <div className="detalhe">
-            {rolagem.nome} — dados [{rolagem.rolagens.join(', ')}]
-            {rolagem.bonus ? ` ${rolagem.bonus > 0 ? '+' : ''}${rolagem.bonus}` : ''}
-          </div>
-        </div>
-      )}
-
       {lista.length === 0 ? (
         <div className="painel-vazio">Ainda não possuis ataques</div>
       ) : (
@@ -101,7 +104,17 @@ export function AbaCombate({ personagem, setPersonagem, rolagem, setRolagem }) {
             <div className="bloco" key={i}>
               <div className="topo">
                 <input type="text" placeholder="Nome do ataque" value={a.nome} onChange={(e) => editar(i, { nome: e.target.value })} />
-                <button className="btn sm danger" onClick={() => remover(i)}>Remover</button>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <button className="dado-btn" style={{ width: 22, height: 22 }} title="Rolar ataque" onClick={() => rolarAtaque(a)}>
+                    <IconeD20 />
+                  </button>
+                  {a.dano && (
+                    <button className="btn ghost sm" title={`Rolar dano (${a.dano})`} onClick={() => { const r = rolarExpressao(a.dano); if (r) onRolar({ ...r, nome: `${a.nome || 'Ataque'} — dano` }); }}>
+                      Dano
+                    </button>
+                  )}
+                  <button className="btn sm danger" onClick={() => remover(i)}>Remover</button>
+                </div>
               </div>
               <div className="grelha">
                 <Campo label="Perícia" valor={a.pericia} onChange={(v) => editar(i, { pericia: v })} opcoes={PERICIAS.map((p) => ({ value: p.id, label: p.nome }))} />
