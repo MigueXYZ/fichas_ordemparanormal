@@ -5,7 +5,7 @@ export const VERSAO_FICHA = 1;
 
 export function periciasVazias() {
   const o = {};
-  for (const p of PERICIAS) o[p.id] = { grau: 'destreinado', outros: 0 };
+  for (const p of PERICIAS) o[p.id] = { grau: 'destreinado', outros: 0, attr: null };
   return o;
 }
 

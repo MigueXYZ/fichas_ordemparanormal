@@ -1,5 +1,6 @@
 import { PERICIAS, GRAUS_TREINO } from '../data/pericias.js';
 import { CLASSES_POR_ID } from '../data/classes.js';
+import { PATENTES_POR_ID, CATEGORIAS, categoriaRomana, patentePorPrestigio } from '../data/patentes.js';
 
 // NEX: 5% é o nível inicial, sobe de 5 em 5 até 95% e termina em 99%.
 export const NEX_TRACK = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 99];
@@ -117,16 +118,23 @@ export function calcDefesas(personagem) {
  * bónus "outros", penalidade de carga e o bónus total.
  */
 export function calcPericias(personagem) {
-  const penalidadeCarga = personagem.penalidadeCarga ? Number(personagem.penalidadeCarga) : 0;
+  // a penalidade por sobrecarga é automática; `penalidadeCarga` soma-se a ela
+  const carga = calcCarga(personagem);
+  const penalidadeCarga = carga.penalidade + (Number(personagem.penalidadeCarga) || 0);
   return PERICIAS.map((p) => {
     const estado = personagem.pericias?.[p.id] || { grau: 'destreinado', outros: 0 };
     const treino = bonusGrau(estado.grau);
     const outros = Number(estado.outros || 0);
     const penalidade = p.carga ? penalidadeCarga : 0;
+    // há poderes que trocam o atributo-base de uma perícia; `attr` guarda a troca
+    const attr = estado.attr || p.attr;
     return {
       ...p,
+      attr,
+      attrPadrao: p.attr,
+      attrTrocado: attr !== p.attr,
       grau: estado.grau,
-      dados: Number(personagem.atributos[p.attr] || 0),
+      dados: Number(personagem.atributos[attr] || 0),
       treino,
       outros,
       penalidade,
@@ -159,7 +167,45 @@ export function orcamentoPericias(personagem) {
 
 // ---------- Carga ----------
 
+/**
+ * Capacidade de carga (Livro Base, cap. 3): 5 espaços por ponto de Força.
+ * Com Força 0 são apenas 2 espaços. Passar do limite deixa-te sobrecarregado
+ * (–5 em Defesa e em perícias com penalidade de carga, –3m de deslocamento) e
+ * não podes passar do dobro do limite.
+ */
 export function calcCargaMaxima(personagem) {
-  // Regra por confirmar com o livro.
-  return 5 + Number(personagem.atributos.for || 0) * 2;
+  const forca = Number(personagem.atributos.for || 0);
+  return forca <= 0 ? 2 : forca * 5;
+}
+
+export function calcCarga(personagem) {
+  const max = calcCargaMaxima(personagem);
+  const usados = (personagem.inventario || []).reduce((t, i) => t + (Number(i.espacos) || 0), 0);
+  return {
+    usados,
+    max,
+    limiteAbsoluto: max * 2,
+    sobrecarregado: usados > max,
+    excedido: usados > max * 2,
+    penalidade: usados > max ? 5 : 0,
+    deslocamento: usados > max ? -3 : 0,
+  };
+}
+
+// ---------- Patente ----------
+
+/** Quantos itens de cada categoria a patente permite e quantos já estão usados. */
+export function calcItensPorCategoria(personagem) {
+  const patente = PATENTES_POR_ID[personagem.patenteId] || patentePorPrestigio(personagem.pontosPrestigio);
+  const usados = { 0: 0, I: 0, II: 0, III: 0, IV: 0 };
+  for (const item of personagem.inventario || []) {
+    const cat = categoriaRomana(item.categoria);
+    if (cat) usados[cat] = (usados[cat] || 0) + 1;
+  }
+  const linhas = CATEGORIAS.map((cat) => ({
+    categoria: cat,
+    limite: cat === '0' ? Infinity : patente.itens[cat] ?? 0,
+    usados: usados[cat] || 0,
+  }));
+  return { patente, linhas, excedeu: linhas.some((l) => l.usados > l.limite) };
 }

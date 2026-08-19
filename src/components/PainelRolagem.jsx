@@ -1,7 +1,17 @@
 import React, { useEffect } from 'react';
 import IconeD20 from './IconeD20.jsx';
 
-function Conta({ r }) {
+function Dados({ r }) {
+  if (r.tipo === 'dano') {
+    return (
+      <span className="conta">
+        {r.expressao} [{r.rolagens.join(', ')}]
+        {r.extras?.map((e) => ` + ${e.expr} [${e.rolagens.join(', ')}]`).join('')}
+        {r.bonus ? ` ${r.bonus > 0 ? '+' : '−'} ${Math.abs(r.bonus)}` : ''}
+        {r.critico ? ` · dados ×${r.multiplicador}` : ''}
+      </span>
+    );
+  }
   if (r.tipo === 'expressao') {
     return (
       <span className="conta">
@@ -9,6 +19,7 @@ function Conta({ r }) {
       </span>
     );
   }
+  // teste de perícia / atributo / ataque
   return (
     <span className="conta">
       {r.dados}d20 [
@@ -18,7 +29,7 @@ function Conta({ r }) {
           <span className={v === r.escolhido ? 'melhor' : ''}>{v}</span>
         </React.Fragment>
       ))}
-      ]{r.piorDeDois ? ' pior' : ''}
+      ] → {r.piorDeDois ? 'pior' : 'maior'} <span className="melhor">{r.escolhido}</span>
       {r.bonus ? ` ${r.bonus > 0 ? '+' : '−'} ${Math.abs(r.bonus)}` : ''}
     </span>
   );
@@ -26,10 +37,9 @@ function Conta({ r }) {
 
 /** Cartões de resultado, canto inferior direito. */
 export default function PainelRolagem({ rolagens, aoFechar, aoLimpar }) {
-  // cada rolagem desaparece sozinha ao fim de 20 segundos
   useEffect(() => {
     if (!rolagens.length) return undefined;
-    const t = setTimeout(() => aoFechar(rolagens[rolagens.length - 1].id), 20000);
+    const t = setTimeout(() => aoFechar(rolagens[rolagens.length - 1].id), 25000);
     return () => clearTimeout(t);
   }, [rolagens, aoFechar]);
 
@@ -37,12 +47,16 @@ export default function PainelRolagem({ rolagens, aoFechar, aoLimpar }) {
 
   return (
     <div className="rolagens">
-      {rolagens.slice(-4).map((r) => (
+      {rolagens.slice(-3).map((r) => (
         <div key={r.id} className={'rolagem-cartao' + (r.critico ? ' critico' : '') + (r.falhaCritica ? ' falha-critica' : '')}>
           <IconeD20 className="icone" />
           <div>
-            <div className="nome">{r.nome}{r.critico ? ' · crítico' : ''}</div>
-            <Conta r={r} />
+            <div className="nome">
+              {r.nome}
+              {r.critico && r.tipo !== 'dano' ? ' · crítico' : ''}
+              {r.falhaCritica ? ' · falha crítica' : ''}
+            </div>
+            <Dados r={r} />
           </div>
           <span className="igual">=</span>
           <span className="total">{r.total}</span>

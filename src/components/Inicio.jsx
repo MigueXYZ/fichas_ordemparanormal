@@ -1,9 +1,12 @@
 import React, { useRef, useState } from 'react';
 import { CLASSES_POR_ID } from '../data/classes.js';
 import { ORIGENS_POR_ID } from '../data/origens.js';
-import { listarAgentes, apagarAgente, duplicarAgente, importarJson } from '../engine/armazenamento.js';
+import { listarAgentes, apagarAgente, duplicarAgente, importarJson, guardarAgente } from '../engine/armazenamento.js';
+import Geradores from './Geradores.jsx';
+import { ELEMENTOS } from '../data/rituais.js';
 
 function descrever(a) {
+  if (a.tipo === 'ameaca') return [`VD ${a.vd}`, `Defesa ${a.defesa}`, `${a.pv} PV`].join(' · ');
   const classe = CLASSES_POR_ID[a.classeId]?.nome;
   const origem = a.origemId === '__custom__' ? a.origemCustom?.nome : ORIGENS_POR_ID[a.origemId]?.nome;
   return [origem, classe, `NEX ${a.nex}%`].filter(Boolean).join(' · ');
@@ -12,6 +15,7 @@ function descrever(a) {
 export default function Inicio({ aoCriar, aoAbrir }) {
   const [lista, setLista] = useState(listarAgentes);
   const [erro, setErro] = useState(null);
+  const [gerador, setGerador] = useState(false);
   const ficheiro = useRef(null);
 
   function recarregar() {
@@ -35,11 +39,36 @@ export default function Inicio({ aoCriar, aoAbrir }) {
 
   return (
     <div className="inicio">
+      <div className="roda-sigilos" aria-hidden="true" />
+      <div className="assinatura">Claudio</div>
       <h1 className="marca">Ordem<em>Paranormal</em></h1>
       <div className="sub">Ordo Realitas · Ficha de Agente</div>
-      <div className="sigilo">✶ ❖ ✷ ❖ ✶</div>
+      <div className="elementos">
+        {ELEMENTOS.filter((e) => e.id !== 'variavel').map((e) => (
+          <span
+            key={e.id}
+            title={e.nome}
+            style={{ color: e.cor, '--sigilo': `url(/img/sigilo-${e.id}.png)` }}
+          />
+        ))}
+      </div>
 
       {erro && <div className="aviso"><strong>Erro:</strong> {erro}</div>}
+
+      <div className="barra-acoes" style={{ marginTop: 30 }}>
+        <button className="btn" onClick={aoCriar}>Criar agente</button>
+        <button className="btn ghost" onClick={() => setGerador(true)}>Geradores</button>
+        <button className="btn ghost" onClick={() => ficheiro.current?.click()}>Importar .json</button>
+        <input ref={ficheiro} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={importar} />
+      </div>
+
+      {gerador && (
+        <Geradores
+          aoFechar={() => { setGerador(false); recarregar(); }}
+          aoGuardar={(p) => { const g = guardarAgente(p); recarregar(); return g; }}
+          aoAbrir={(p) => aoAbrir(p)}
+        />
+      )}
 
       <div className="agentes">
         <button className="agente-cartao novo" onClick={aoCriar}>+ Novo agente</button>
@@ -50,7 +79,11 @@ export default function Inicio({ aoCriar, aoAbrir }) {
               {!a.imagem && (a.nome?.[0]?.toUpperCase() || '?')}
             </div>
             <div className="info">
-              <div className="nome">{a.nome || 'Sem nome'}</div>
+              <div className="nome">
+                {a.nome || 'Sem nome'}
+                {a.tipo === 'ameaca' && <span className="pill" style={{ marginLeft: 8 }}>Ameaça</span>}
+                {a.tipo === 'npc' && <span className="pill" style={{ marginLeft: 8 }}>NPC</span>}
+              </div>
               <div className="det">{descrever(a)}</div>
               <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
                 <button
@@ -80,10 +113,7 @@ export default function Inicio({ aoCriar, aoAbrir }) {
         </p>
       )}
 
-      <div className="barra-acoes">
-        <button className="btn ghost" onClick={() => ficheiro.current?.click()}>Importar ficha (.json)</button>
-        <input ref={ficheiro} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={importar} />
-      </div>
+
     </div>
   );
 }

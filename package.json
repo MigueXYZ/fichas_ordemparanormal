@@ -1,5 +1,5 @@
 {
-  "name": "op-ficha",
+  "name": "claudio",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node tests/calc.test.js"
+    "test": "node tests/calc.test.js",
+    "verificar-roda": "node tests/roda.visual.mjs"
   },
   "dependencies": {
     "pdf-lib": "^1.17.1",
@@ -17,5 +18,6 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.5",
     "vite": "^8.2.1"
-  }
+  },
+  "description": "Claudio — criador de fichas de Ordem Paranormal RPG"
 }

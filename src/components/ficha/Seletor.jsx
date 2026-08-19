@@ -37,7 +37,7 @@ export default function Seletor({ titulo, itens, filtros = [], render, onEscolhe
       </div>
       <div className="seletor-lista">
         {lista.slice(0, 200).map((i) => (
-          <button key={i.id} type="button" className="seletor-item" onClick={() => onEscolher(i)}>
+          <button key={i.chave || i.id} type="button" className="seletor-item" onClick={() => onEscolher(i)}>
             {render(i)}
           </button>
         ))}

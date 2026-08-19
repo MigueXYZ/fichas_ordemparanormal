@@ -90,8 +90,33 @@ export function importarJson(ficheiro) {
   });
 }
 
-/** Lê uma imagem escolhida pelo utilizador e devolve um data URL redimensionado. */
+/** Tamanho máximo para guardar um GIF/animação tal como está (o localStorage é pequeno). */
+export const LIMITE_ANIMACAO = 1.6 * 1024 * 1024;
+
+/**
+ * Lê uma imagem escolhida pelo utilizador e devolve um data URL.
+ * GIFs (e outras animações) são guardados tal como estão, para não perderem o
+ * movimento; o resto é redimensionado para não encher o armazenamento.
+ */
 export function lerImagem(ficheiro, lado = 320) {
+  const animado = /gif|webp|apng/i.test(ficheiro.type);
+  if (animado) {
+    if (ficheiro.size > LIMITE_ANIMACAO) {
+      return Promise.reject(new Error(
+        `A animação tem ${(ficheiro.size / 1024 / 1024).toFixed(1)} MB. O máximo é ${(LIMITE_ANIMACAO / 1024 / 1024).toFixed(1)} MB — corta ou reduz o GIF.`
+      ));
+    }
+    return new Promise((resolve, reject) => {
+      const leitor = new FileReader();
+      leitor.onload = () => resolve(leitor.result);
+      leitor.onerror = () => reject(new Error('Não foi possível ler a imagem.'));
+      leitor.readAsDataURL(ficheiro);
+    });
+  }
+  return redimensionar(ficheiro, lado);
+}
+
+function redimensionar(ficheiro, lado = 320) {
   return new Promise((resolve, reject) => {
     const leitor = new FileReader();
     leitor.onload = () => {

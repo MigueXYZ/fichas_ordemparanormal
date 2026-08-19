@@ -54,13 +54,22 @@ body {
   margin: 0;
   color: var(--txt);
   font-family: var(--corpo);
-  font-size: 15px;
-  line-height: 1.55;
+  font-size: 17px;
+  line-height: 1.62;
   background:
     radial-gradient(ellipse 120% 80% at 50% -10%, rgba(140, 12, 20, .22), transparent 60%),
     radial-gradient(ellipse 90% 60% at 50% 110%, rgba(90, 8, 14, .18), transparent 60%),
     var(--bg);
   background-attachment: fixed;
+}
+
+/* sigilos do Outro Lado, muito ténues, por trás de tudo */
+body::before {
+  content: '';
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background: url('/img/sigilos.webp') repeat;
+  background-size: 520px;
+  opacity: .05;
 }
 
 /* granulado sobre tudo, para não ficar "liso" */
@@ -97,7 +106,7 @@ h1, h2, h3, h4 { font-family: var(--display); font-weight: 400; letter-spacing: 
 .btn {
   background: linear-gradient(180deg, var(--sangue), var(--sangue-escuro));
   color: #fff; border: 1px solid #7d1119; border-radius: var(--raio);
-  padding: 8px 18px; font-weight: 400; font-size: 14px; letter-spacing: .06em;
+  padding: 8px 18px; font-weight: 400; font-size: 15px; letter-spacing: .06em;
   text-transform: uppercase; font-family: var(--corpo);
   transition: box-shadow .15s, filter .15s;
 }
@@ -105,7 +114,7 @@ h1, h2, h3, h4 { font-family: var(--display); font-weight: 400; letter-spacing: 
 .btn:disabled { opacity: .35; cursor: not-allowed; }
 .btn.ghost { background: transparent; border-color: var(--linha-forte); color: var(--txt); }
 .btn.ghost:hover:not(:disabled) { border-color: var(--sangue); color: var(--sangue-claro); box-shadow: none; filter: none; }
-.btn.sm { padding: 4px 11px; font-size: 12.5px; }
+.btn.sm { padding: 5px 12px; font-size: 14px; }
 .btn.danger { background: transparent; border-color: #5a2126; color: #e0616c; }
 .btn.danger:hover:not(:disabled) { background: rgba(192,21,33,.14); box-shadow: none; }
 
@@ -141,36 +150,24 @@ h1, h2, h3, h4 { font-family: var(--display); font-weight: 400; letter-spacing: 
 .pontos-restantes strong { font-size: 30px; color: var(--sangue-claro); font-family: var(--numeros); }
 .pontos-restantes.completo strong { color: var(--ok); }
 
-/* roda com a arte da ficha oficial */
+/* roda: a arte e os números vivem no mesmo SVG (ver RodaAtributos.jsx) */
 .roda {
-  position: relative; width: 460px; max-width: 100%; aspect-ratio: 900 / 904; margin: 0 auto;
-  background: url('/img/roda-atributos.png') center/contain no-repeat;
-  container-type: inline-size;
+  display: block; width: 460px; max-width: 100%; height: auto; margin: 0 auto;
+  overflow: visible;
+  filter: drop-shadow(0 0 34px rgba(192, 21, 33, .22));
 }
-.roda::before {
-  content: ''; position: absolute; inset: -6%;
-  background: radial-gradient(circle at 50% 50%, rgba(192,21,33,.20), transparent 62%);
-  pointer-events: none;
+.roda .atr-valor {
+  fill: var(--txt); font-family: var(--numeros); font-weight: 700; font-size: 104px;
+  cursor: pointer; transition: fill .15s;
 }
-.atr-no { position: absolute; transform: translate(-50%, -50%); width: 24%; aspect-ratio: 1; }
-.atr-valor {
-  position: absolute; left: 50%; top: 26%; transform: translate(-50%, -50%);
-  background: none; border: none; padding: 0 6px; color: var(--txt);
-  font-family: var(--numeros); font-weight: 700; font-size: 11cqw; line-height: 1;
-  transition: color .15s, text-shadow .15s;
-}
-.atr-valor:hover { color: var(--sangue-claro); text-shadow: 0 0 16px rgba(232,50,63,.7); }
-.atr-controlos {
-  position: absolute; left: 50%; top: 116%; transform: translateX(-50%);
-  display: flex; gap: 5px;
-}
-.atr-controlos button {
-  width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--linha-forte);
-  background: var(--bg-3); color: var(--txt-dim); font-size: 13px; line-height: 1;
-  display: grid; place-items: center;
-}
-.atr-controlos button:hover:not(:disabled) { border-color: var(--sangue); color: var(--sangue-claro); }
-.atr-controlos button:disabled { opacity: .25; cursor: not-allowed; }
+.roda .atr-valor:hover { fill: var(--sangue-claro); }
+.roda .atr-botao { cursor: pointer; }
+.roda .atr-botao circle { fill: #1a1214; stroke: var(--linha-forte); stroke-width: 3; transition: stroke .15s, fill .15s; }
+.roda .atr-botao text { fill: var(--txt-dim); font-family: var(--numeros); font-size: 34px; pointer-events: none; }
+.roda .atr-botao:hover circle { stroke: var(--sangue); fill: #2a1418; }
+.roda .atr-botao:hover text { fill: var(--sangue-claro); }
+.roda .atr-botao.inativo { cursor: not-allowed; opacity: .25; }
+.roda .atr-botao.inativo:hover circle { stroke: var(--linha-forte); fill: #1a1214; }
 
 /* ---------------------------------------------------------- cards */
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 18px; margin-top: 20px; }
@@ -182,7 +179,7 @@ h1, h2, h3, h4 { font-family: var(--display); font-weight: 400; letter-spacing: 
 .card.selecionado { border-color: var(--sangue); box-shadow: 0 0 0 1px rgba(192,21,33,.35), 0 0 26px rgba(192,21,33,.18) inset; }
 .card h3 { margin: 0 0 8px; font-size: 26px; color: var(--txt); }
 .card .barra { height: 1px; background: linear-gradient(90deg, var(--sangue), transparent); margin-bottom: 14px; }
-.card .corpo { color: var(--txt-dim); font-size: 14px; flex: 1; max-height: 250px; overflow-y: auto; padding-right: 8px; }
+.card .corpo { color: var(--txt-dim); font-size: 15.5px; flex: 1; max-height: 250px; overflow-y: auto; padding-right: 8px; }
 .card .corpo b { color: var(--txt); }
 .card .acao { margin-top: 16px; display: flex; justify-content: center; }
 
@@ -195,14 +192,14 @@ h1, h2, h3, h4 { font-family: var(--display); font-weight: 400; letter-spacing: 
 /* ---------------------------------------------------------- formulários */
 .campo { display: flex; flex-direction: column; gap: 5px; margin-bottom: 16px; }
 .campo label, .campo-linha label {
-  font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+  font-size: 12.5px; letter-spacing: .14em; text-transform: uppercase;
   color: var(--sangue-claro); font-family: var(--corpo); font-weight: 400;
 }
 .campo .dica { font-size: 12px; color: var(--txt-dim); letter-spacing: 0; text-transform: none; font-family: var(--corpo); font-weight: 400; }
 
 input[type="text"], input[type="number"], input[type="search"], textarea, select {
   background: var(--bg-4); border: 1px solid var(--linha-forte); border-radius: var(--raio);
-  color: var(--txt); padding: 8px 10px; font-size: 14px; width: 100%;
+  color: var(--txt); padding: 8px 10px; font-size: 16px; width: 100%;
 }
 select option { background: #1a1214; color: var(--txt); }
 input::placeholder, textarea::placeholder { color: var(--txt-fraco); }
@@ -245,10 +242,9 @@ textarea { resize: vertical; min-height: 92px; }
 }
 .campo-linha input:focus, .campo-linha select:focus { border-bottom-color: var(--sangue); box-shadow: none; }
 
-.roda-mini { width: 310px; margin: 0 auto 34px; }
-.roda-mini .atr-controlos { opacity: 0; transition: opacity .15s; }
-.roda-mini .atr-no:hover .atr-controlos, .roda-mini .atr-controlos:focus-within { opacity: 1; }
-.roda-mini .atr-controlos button { width: 19px; height: 19px; font-size: 12px; }
+.roda-mini { width: 320px; margin: 0 auto 18px; }
+.roda-mini .atr-controlos { opacity: 0; transition: opacity .2s; }
+.roda-mini:hover .atr-controlos { opacity: 1; }
 
 .nex-linha { display: flex; align-items: flex-end; gap: 14px; justify-content: center; margin: 14px 0 20px; flex-wrap: wrap; }
 .nex-bloco { text-align: center; }
@@ -290,15 +286,15 @@ textarea { resize: vertical; min-height: 92px; }
   padding: 10px 8px; text-align: center;
 }
 .defesa-caixa .rotulo {
-  font-size: 10px; letter-spacing: .14em; color: var(--sangue-claro); text-transform: uppercase;
+  font-size: 11px; letter-spacing: .14em; color: var(--sangue-claro); text-transform: uppercase;
   font-family: var(--corpo);
 }
 .defesa-caixa .num {
-  font-family: var(--numeros); font-weight: 700; font-size: 30px; line-height: 1.15; color: var(--txt);
+  font-family: var(--numeros); font-weight: 700; font-size: 32px; line-height: 1.15; color: var(--txt);
   background: none; border: none; padding: 0; display: block; width: 100%;
 }
 .defesa-caixa button.num:hover { color: var(--sangue-claro); text-shadow: 0 0 14px rgba(232,50,63,.6); }
-.defesa-caixa .conta { font-size: 10.5px; color: var(--txt-fraco); line-height: 1.7; display: flex; flex-wrap: wrap; gap: 3px; align-items: center; justify-content: center; }
+.defesa-caixa .conta { font-size: 11.5px; color: var(--txt-fraco); line-height: 1.7; display: flex; flex-wrap: wrap; gap: 3px; align-items: center; justify-content: center; }
 .defesa-caixa .conta input {
   width: 42px; padding: 1px 3px; font-size: 11px; text-align: center;
   background: var(--bg-4); border: 1px solid var(--linha); border-radius: 2px;
@@ -310,27 +306,36 @@ textarea { resize: vertical; min-height: 92px; }
   text-align: center; font-size: 14px; letter-spacing: .3em; color: var(--txt-dim);
   margin-bottom: 10px; font-family: var(--display); text-transform: uppercase;
 }
-.tabela-pericias { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.tabela-pericias { width: 100%; border-collapse: collapse; font-size: 16px; }
 .tabela-pericias th {
-  font-size: 9px; letter-spacing: .12em; color: var(--sangue-claro); text-transform: uppercase;
-  font-weight: 400; padding-bottom: 6px; text-align: center; font-family: var(--corpo);
+  font-size: 11.5px; letter-spacing: .12em; color: var(--sangue-claro); text-transform: uppercase;
+  font-weight: 400; padding-bottom: 7px; text-align: center; font-family: var(--corpo);
 }
 .tabela-pericias th:first-child { text-align: left; }
 .tabela-pericias td { padding: 2px 3px; border-bottom: 1px solid rgba(58,34,38,.55); }
 .tabela-pericias tr:hover td { background: rgba(192,21,33,.06); }
 .tabela-pericias .nome-pericia { display: flex; align-items: center; gap: 7px; white-space: nowrap; }
-.tabela-pericias .marca { color: var(--txt-fraco); font-size: 11px; }
+.tabela-pericias .marca { color: var(--txt-fraco); font-size: 12px; }
+.tabela-pericias .nome-pericia { color: var(--txt); }
 .tabela-pericias tr.treinada .nome-pericia { color: var(--sangue-claro); }
-.tabela-pericias tr.bloqueada .nome-pericia { color: var(--txt-fraco); }
-.tabela-pericias .attr, .tabela-pericias .bonus { text-align: center; color: var(--txt-dim); font-size: 12.5px; font-family: var(--numeros); }
+
+.tabela-pericias .attr, .tabela-pericias .bonus { text-align: center; color: var(--txt-dim); font-size: 15px; font-family: var(--numeros); white-space: nowrap; }
+.tabela-pericias td:first-child { width: 100%; }
+.tabela-pericias select { width: 58px; }
+.tabela-pericias .attr select {
+  width: 62px; color: var(--txt-dim); text-align: center; font-family: var(--numeros);
+  border-bottom-color: transparent;
+}
+.tabela-pericias .attr select:hover { border-bottom-color: var(--linha-forte); }
+.tabela-pericias .attr select.trocado { color: var(--warn); border-bottom-color: var(--warn); }
 .tabela-pericias tr.treinada .bonus { color: var(--txt); }
 .tabela-pericias select, .tabela-pericias input {
-  padding: 1px 4px; font-size: 12px; background: transparent; border: none;
+  padding: 1px 4px; font-size: 14.5px; background: transparent; border: none;
   border-bottom: 1px solid var(--linha); text-align: center; box-shadow: none; border-radius: 0;
 }
 .tabela-pericias input { width: 44px; }
 .tabela-pericias select:focus, .tabela-pericias input:focus { box-shadow: none; border-bottom-color: var(--sangue); }
-.rodape-pericias { font-size: 10px; color: var(--txt-fraco); margin-top: 8px; }
+.rodape-pericias { font-size: 11.5px; color: var(--txt-fraco); margin-top: 8px; }
 
 /* botão de dado */
 .dado-btn {
@@ -344,7 +349,7 @@ textarea { resize: vertical; min-height: 92px; }
 /* ---------------------------------------------------------- abas */
 .abas { display: flex; gap: 16px; border-bottom: 1px solid var(--linha); margin-bottom: 18px; flex-wrap: wrap; }
 .abas button {
-  background: none; border: none; color: var(--txt-dim); font-size: 14px;
+  background: none; border: none; color: var(--txt-dim); font-size: 16px;
   font-family: var(--display); letter-spacing: .08em; padding: 4px 2px 10px;
   border-bottom: 2px solid transparent; margin-bottom: -1px; text-transform: uppercase;
 }
@@ -361,7 +366,7 @@ textarea { resize: vertical; min-height: 92px; }
 .bloco .grelha .campo { margin-bottom: 0; }
 
 .pill {
-  display: inline-block; font-size: 10.5px; padding: 2px 9px; border-radius: 999px;
+  display: inline-block; font-size: 11.5px; padding: 2px 9px; border-radius: 999px;
   border: 1px solid var(--linha-forte); color: var(--txt-dim); letter-spacing: .08em;
   text-transform: uppercase; font-family: var(--corpo); white-space: nowrap;
 }
@@ -386,8 +391,8 @@ textarea { resize: vertical; min-height: 92px; }
 }
 .seletor-item:hover { border-color: var(--sangue); background: var(--bg-4); }
 .seletor-item b { font-size: 15px; font-family: var(--display); font-weight: 400; }
-.seletor-item .meta { font-size: 11px; color: var(--sangue-claro); letter-spacing: .04em; }
-.seletor-item .corte { font-size: 12px; color: var(--txt-dim); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.seletor-item .meta { font-size: 12px; color: var(--sangue-claro); letter-spacing: .04em; }
+.seletor-item .corte { font-size: 13px; color: var(--txt-dim); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
 /* ---------------------------------------------------------- painel de rolagem */
 .rolagens {
@@ -406,11 +411,11 @@ textarea { resize: vertical; min-height: 92px; }
 .rolagem-cartao.falha-critica { border-color: #7a1016; }
 .rolagem-cartao .icone { width: 34px; height: 34px; color: var(--sangue); }
 .rolagem-cartao.critico .icone { color: var(--ok); }
-.rolagem-cartao .nome { font-family: var(--display); font-size: 18px; letter-spacing: .04em; line-height: 1.2; }
-.rolagem-cartao .conta { font-size: 11.5px; color: var(--txt-dim); font-family: var(--corpo); }
+.rolagem-cartao .nome { font-family: var(--display); font-size: 19px; letter-spacing: .04em; line-height: 1.2; }
+.rolagem-cartao .conta { font-size: 12.5px; color: var(--txt-dim); font-family: var(--corpo); }
 .rolagem-cartao .conta .melhor { color: var(--txt); font-weight: 700; }
 .rolagem-cartao .igual { color: var(--txt-fraco); font-size: 18px; }
-.rolagem-cartao .total { font-family: var(--numeros); font-weight: 700; font-size: 30px; line-height: 1; color: var(--txt); }
+.rolagem-cartao .total { font-family: var(--numeros); font-weight: 700; font-size: 33px; line-height: 1; color: var(--txt); }
 .rolagem-cartao.critico .total { color: var(--ok); text-shadow: 0 0 18px rgba(74,222,128,.55); }
 .rolagem-cartao .fechar {
   background: none; border: none; color: var(--txt-fraco); font-size: 16px; line-height: 1; padding: 2px 4px;
@@ -425,7 +430,16 @@ textarea { resize: vertical; min-height: 92px; }
 }
 .inicio .marca em { color: var(--sangue); font-style: normal; display: block; }
 .inicio .sub { color: var(--txt-dim); letter-spacing: .3em; text-transform: uppercase; font-size: 12px; margin: 16px 0 10px; }
-.inicio .sigilo { font-family: 'Sigilos', serif; color: var(--sangue-escuro); font-size: 26px; letter-spacing: .3em; }
+.elementos { display: flex; gap: 26px; justify-content: center; margin: 18px 0 4px; }
+.elementos span {
+  width: 40px; height: 40px; display: block;
+  -webkit-mask: var(--sigilo) center/contain no-repeat;
+  mask: var(--sigilo) center/contain no-repeat;
+  background: currentColor; opacity: .75;
+  transition: opacity .2s, transform .2s, filter .2s;
+}
+.elementos span:hover { opacity: 1; transform: scale(1.12); filter: drop-shadow(0 0 10px currentColor); }
+@media (max-width: 600px) { .elementos { gap: 16px; } .elementos span { width: 32px; height: 32px; } }
 
 .agentes { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; margin-top: 30px; text-align: left; }
 .agente-cartao {
@@ -444,3 +458,193 @@ textarea { resize: vertical; min-height: 92px; }
 .agente-cartao.novo { justify-content: center; border-style: dashed; color: var(--sangue-claro); font-family: var(--display); font-size: 20px; min-height: 78px; }
 
 .barra-acoes { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 26px; }
+
+/* ---------------------------------------------------------- janela modal */
+.modal-fundo {
+  position: fixed; inset: 0; z-index: 80; background: rgba(4,2,3,.82);
+  display: grid; place-items: center; padding: 24px; backdrop-filter: blur(2px);
+}
+.modal {
+  width: min(880px, 100%); max-height: 88vh; display: flex; flex-direction: column;
+  background: linear-gradient(180deg, var(--bg-2), var(--bg));
+  border: 1px solid var(--linha-forte); border-radius: var(--raio);
+  box-shadow: 0 24px 70px rgba(0,0,0,.8);
+}
+.modal-topo {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px; border-bottom: 1px solid var(--linha);
+}
+.modal-topo h3 { margin: 0; font-size: 22px; }
+.modal-topo .fechar, .modal .fechar {
+  background: none; border: none; color: var(--txt-dim); font-size: 18px; line-height: 1; padding: 2px 6px;
+}
+.modal-topo .fechar:hover { color: var(--sangue-claro); }
+.modal-corpo { padding: 18px 20px; overflow-y: auto; }
+.modal-acoes {
+  display: flex; justify-content: flex-end; gap: 10px;
+  padding: 14px 20px; border-top: 1px solid var(--linha);
+}
+.grelha-editor { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; }
+.resumo-mods { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+
+/* ---------------------------------------------------------- armas */
+.bloco.arma .topo { align-items: flex-start; }
+.arma-stats { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 5px; font-family: var(--numeros); font-size: 15px; color: var(--txt-dim); }
+.arma-stats span { border-bottom: 1px dotted var(--linha-forte); }
+.resultado-ataque {
+  margin-top: 10px; padding: 7px 11px; border-radius: var(--raio);
+  background: var(--sangue-veu); border-left: 2px solid var(--sangue);
+  font-size: 13px; color: var(--txt-dim); font-family: var(--numeros);
+}
+.resultado-ataque b { color: var(--txt); font-size: 16px; }
+.resultado-ataque.critico { border-left-color: var(--ok); background: rgba(74,222,128,.10); }
+.resultado-ataque.critico b { color: var(--ok); }
+.descricao-item { font-size: 12.5px; color: var(--txt-dim); margin-top: 8px; }
+
+/* ---------------------------------------------------------- patente / carga */
+.painel-patente { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px; }
+.painel-patente input.mau { color: #ff8a92; border-color: var(--sangue); }
+.slots { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.slot {
+  border: 1px solid var(--linha); border-radius: var(--raio); background: var(--bg-2);
+  padding: 8px 6px; text-align: center;
+}
+.slot .cat { font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--txt-fraco); }
+.slot .valor { font-family: var(--numeros); font-weight: 700; font-size: 18px; }
+.slot.excedido { border-color: var(--sangue); }
+.slot.excedido .valor { color: var(--sangue-claro); }
+
+/* ---------------------------------------------------------- fundo vivo */
+/* batimento cardíaco: cada pulso é disparado pelo relógio do som (engine/som.js),
+   por isso a imagem e o "lub-dub" acontecem ao mesmo tempo */
+.pulso {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 100%, rgba(176, 14, 26, .38), transparent 70%),
+    radial-gradient(ellipse 90% 60% at 50% 0%, rgba(140, 12, 20, .30), transparent 68%);
+  opacity: .16;
+}
+.pulso.bate-forte { animation: bater-forte .6s ease-out; }
+.pulso.bate-fraca { animation: bater-fraca .5s ease-out; }
+@keyframes bater-forte {
+  0%   { opacity: .16; transform: scale(1); }
+  14%  { opacity: .44; transform: scale(1.022); }
+  100% { opacity: .16; transform: scale(1); }
+}
+@keyframes bater-fraca {
+  0%   { opacity: .16; transform: scale(1); }
+  16%  { opacity: .32; transform: scale(1.012); }
+  100% { opacity: .16; transform: scale(1); }
+}
+
+/* brasas a subir */
+.brasas { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.brasas span {
+  position: absolute; bottom: -12px; border-radius: 50%;
+  background: radial-gradient(circle, #ff7b3d 0%, #c01521 55%, transparent 72%);
+  box-shadow: 0 0 6px rgba(232, 90, 40, .55);
+  animation-name: subir; animation-timing-function: linear; animation-iteration-count: infinite;
+}
+@keyframes subir {
+  0%   { transform: translate3d(0, 0, 0) scale(.7); opacity: 0; }
+  12%  { opacity: 1; }
+  80%  { opacity: .5; }
+  100% { transform: translate3d(var(--desvio, 0), -102vh, 0) scale(1.15); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulso.bate-forte, .pulso.bate-fraca { animation: none; }
+  .brasas { display: none; }
+}
+
+/* botão do coração: pisca ao ritmo do fundo */
+.btn.a-bater { color: var(--sangue-claro); border-color: var(--sangue-escuro); }
+
+/* ---------------------------------------------------------- Aniquilação */
+/* a criatura do capítulo 7 (Livro Base, p. 184) a espreitar da margem */
+/* o Enraizado (Livro Base, p. 214) — figura inteira: limitamos pela altura da
+   janela e deixamos a largura seguir, para nunca aparecer cortado */
+.criatura {
+  position: fixed; left: 12px; bottom: 0; z-index: 0; pointer-events: none;
+  height: min(78vh, 640px); width: auto; max-width: 26vw; object-fit: contain;
+  opacity: .30; filter: saturate(.85) contrast(1.1) brightness(1.25) drop-shadow(0 0 24px rgba(192,21,33,.25));
+  -webkit-mask-image: linear-gradient(180deg, #000 72%, transparent 99%);
+  mask-image: linear-gradient(180deg, #000 72%, transparent 99%);
+}
+@media (max-width: 1500px) { .criatura { opacity: .22; height: min(62vh, 460px); } }
+@media (max-width: 1150px) { .criatura { display: none; } }
+
+.miniatura-arma {
+  width: 62px; height: 62px; flex: 0 0 auto; border-radius: var(--raio);
+  border: 1px solid var(--linha-forte); background: var(--bg-4) center/cover no-repeat;
+  display: grid; place-items: center; color: var(--txt-fraco); font-size: 18px;
+}
+
+/* ---------------------------------------------------------- geradores */
+.previa {
+  margin-top: 18px; border: 1px solid var(--linha-forte); border-radius: var(--raio);
+  background: linear-gradient(180deg, var(--bg-3), var(--bg-2)); padding: 16px;
+}
+.previa-nome { font-family: var(--display); font-size: 24px; }
+.previa-linha { color: var(--txt-dim); font-size: 13.5px; margin-top: 4px; }
+.previa-attrs { display: flex; gap: 16px; margin: 12px 0; flex-wrap: wrap; }
+.previa-attrs span { font-size: 11px; letter-spacing: .1em; color: var(--txt-fraco); }
+.previa-attrs b { font-family: var(--numeros); font-size: 24px; color: var(--txt); margin-right: 5px; }
+
+/* ---------------------------------------------------------- histórico */
+.resumo-historico { display: flex; gap: 22px; flex-wrap: wrap; margin-bottom: 12px; color: var(--txt-dim); font-size: 13px; }
+.resumo-historico b { font-family: var(--numeros); font-size: 21px; color: var(--txt); margin-right: 5px; }
+.tabela-historico { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.tabela-historico td { padding: 6px 8px; border-bottom: 1px solid rgba(58,34,38,.5); vertical-align: middle; }
+.tabela-historico .h-hora { color: var(--txt-fraco); font-family: var(--numeros); white-space: nowrap; font-size: 12px; }
+.tabela-historico .h-icone { width: 22px; color: var(--txt-fraco); }
+.tabela-historico .h-icone svg { width: 17px; height: 17px; }
+.tabela-historico .h-nome { font-family: var(--display); white-space: nowrap; }
+.tabela-historico .h-conta { color: var(--txt-dim); font-family: var(--numeros); font-size: 12.5px; }
+.tabela-historico .h-total { text-align: right; font-family: var(--numeros); font-weight: 700; font-size: 19px; white-space: nowrap; }
+.tabela-historico tr.critico .h-total, .tabela-historico tr.critico .h-icone { color: var(--ok); }
+.tabela-historico tr.falha .h-total, .tabela-historico tr.falha .h-icone { color: var(--sangue-claro); }
+
+/* ---------------------------------------------------------- ameaça */
+.ameaca { max-width: 900px; margin: 0 auto; border: 1px solid var(--linha-forte); border-radius: var(--raio); background: var(--bg-2); padding: 22px; }
+.ameaca-topo { display: flex; gap: 16px; align-items: center; }
+.ameaca-nome { font-family: var(--display); font-size: 27px; background: none; border: none; border-bottom: 1px solid var(--linha); padding: 2px; }
+.ameaca-vd { text-align: center; flex: 0 0 auto; }
+.ameaca-vd span { display: block; font-size: 10px; letter-spacing: .16em; color: var(--sangue-claro); }
+.ameaca-vd input { width: 82px; text-align: center; font-family: var(--numeros); font-size: 22px; font-weight: 700; }
+.ameaca-descritores { color: var(--txt-dim); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; margin: 8px 0 18px; }
+.ameaca-grelha { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.ameaca-bloco { border: 1px solid var(--linha); border-radius: var(--raio); padding: 12px 14px; background: var(--bg); }
+.ameaca-bloco.largo { margin-top: 14px; }
+.ameaca-bloco h4 { margin: 0 0 8px; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--sangue-claro); }
+.linha-stat { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--txt-dim); padding: 2px 0; }
+.linha-stat span { flex: 1; }
+.linha-stat b { font-family: var(--numeros); color: var(--txt); font-size: 15px; }
+.ameaca-pv { display: flex; align-items: baseline; gap: 8px; }
+.ameaca-pv input { width: 88px; font-family: var(--numeros); font-size: 22px; font-weight: 700; text-align: center; }
+.ameaca-pv span { color: var(--txt-dim); font-family: var(--numeros); }
+.ameaca-pericias { display: flex; gap: 8px; flex-wrap: wrap; }
+.pill.clicavel { cursor: pointer; }
+.pill.clicavel:hover { border-color: var(--sangue); color: var(--sangue-claro); }
+
+/* nome da ferramenta */
+.assinatura {
+  font-family: var(--display); font-size: 13px; letter-spacing: .42em;
+  text-transform: uppercase; color: var(--txt-fraco); margin-bottom: 12px;
+}
+.topbar h1 .marca-sub {
+  font-family: var(--corpo); font-size: 13px; letter-spacing: .12em;
+  color: var(--txt-fraco); text-transform: none;
+}
+
+/* a roda de sigilos por trás da marca, a rodar devagar */
+.roda-sigilos {
+  position: absolute; left: 50%; top: 150px; transform: translate(-50%, -50%);
+  width: 420px; height: 420px; pointer-events: none; z-index: -1;
+  background: url('/img/roda-sigilos.png') center/contain no-repeat;
+  opacity: .07; animation: girar 240s linear infinite;
+}
+@keyframes girar { to { transform: translate(-50%, -50%) rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .roda-sigilos { animation: none; } }
+@media (max-width: 700px) { .roda-sigilos { width: 300px; height: 300px; } }
+.inicio { position: relative; }

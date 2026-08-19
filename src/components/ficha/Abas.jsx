@@ -5,9 +5,12 @@ import { ITENS, TIPOS_ITEM } from '../../data/itens.js';
 import { PODERES } from '../../data/poderes.js';
 import { CLASSES_POR_ID, TRILHAS_POR_ID } from '../../data/classes.js';
 import { ORIGENS_POR_ID } from '../../data/origens.js';
-import { calcCargaMaxima } from '../../engine/calc.js';
+import { calcCarga, calcItensPorCategoria } from '../../engine/calc.js';
+import { PATENTES, PATENTES_POR_ID, CATEGORIAS, categoriaRomana } from '../../data/patentes.js';
 import { novoAtaque, novoItem, novaHabilidade, novoRitual } from '../../engine/character.js';
-import { rolarExpressao, rolarTeste } from '../../engine/dados.js';
+import { rolarExpressao, rolarAtaque, rolarDano } from '../../engine/dados.js';
+import { estatisticasArma, interpretarCritico } from '../../engine/armas.js';
+import EditorArma from './EditorArma.jsx';
 import { calcPericias } from '../../engine/calc.js';
 import IconeD20 from '../IconeD20.jsx';
 import Seletor from './Seletor.jsx';
@@ -44,33 +47,52 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
   const { lista, adicionar, editar, remover } = useLista(personagem, setPersonagem, 'ataques');
   const [expr, setExpr] = useState('');
   const [aEscolher, setAEscolher] = useState(false);
-  const armas = ITENS.filter((i) => i.tipo === 'arma' || (i.tipo === 'amaldicoado' && i.tipo2 === 'Arma'));
-
-  const pericias = calcPericias(personagem);
+  const [aEditar, setAEditar] = useState(null);   // { indice, arma } | 'nova'
+  const [acertos, setAcertos] = useState({});     // último ataque por índice
+  const armas = ITENS.filter((i) => i.tipo === 'arma' || (i.tipo === 'amaldicoado' && i.subtipo === 'Arma'));
 
   function rolar() {
     const r = rolarExpressao(expr);
     if (r) onRolar(r);
   }
 
-  function rolarAtaque(a) {
-    const p = pericias.find((x) => x.id === a.pericia);
-    onRolar(rolarTeste({
-      nome: a.nome || 'Ataque',
-      dados: p ? p.dados : 1,
-      bonus: (p ? p.bonus : 0) + (Number(a.bonus) || 0),
-    }));
+  function atacar(a, i) {
+    const e = estatisticasArma(personagem, a);
+    const r = rolarAtaque({ nome: a.nome || 'Ataque', dados: e.dados, bonus: e.bonusAtaque, margem: e.margem });
+    setAcertos({ ...acertos, [i]: r });
+    onRolar(r);
+    // o dano da arma sai logo a seguir, já a contar com as modificações e o crítico
+    const d = rolarDano({
+      nome: `${a.nome || 'Ataque'} — dano`,
+      dano: e.dano, bonus: e.bonusDano, extras: e.extras,
+      critico: r.critico, multiplicador: e.multiplicador,
+    });
+    if (d) setTimeout(() => onRolar(d), 320);
+  }
+
+  function danificar(a, i) {
+    const e = estatisticasArma(personagem, a);
+    const critico = Boolean(acertos[i]?.critico);
+    const r = rolarDano({
+      nome: `${a.nome || 'Ataque'} — dano`,
+      dano: e.dano, bonus: e.bonusDano, extras: e.extras,
+      critico, multiplicador: e.multiplicador,
+    });
+    if (r) onRolar(r);
+    else onRolar({ id: String(Math.random()), tipo: 'dano', nome: 'Dano inválido', rolagens: [], bonus: 0, total: 0 });
   }
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', marginBottom: 16, flexWrap: 'wrap' }}>
-        <div className="campo" style={{ flex: 1, minWidth: 180, marginBottom: 0 }}>
-          <input type="text" placeholder="Rolar dados (ex.: 2d20+3)" value={expr} onChange={(e) => setExpr(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && rolar()} />
-        </div>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
+        <input
+          type="text" placeholder="Rolar dados (ex.: 2d20+3)" value={expr}
+          onChange={(e) => setExpr(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && rolar()}
+          style={{ flex: 1, minWidth: 170 }}
+        />
         <button className="btn ghost" onClick={rolar}>Rolar</button>
         <button className="btn ghost" onClick={() => setAEscolher(true)}>Do catálogo</button>
-        <button className="btn" onClick={() => adicionar(novoAtaque())}>Novo Ataque</button>
+        <button className="btn" onClick={() => setAEditar('nova')}>Nova arma</button>
       </div>
 
       {aEscolher && (
@@ -78,17 +100,22 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
           titulo={`Armas (${armas.length})`}
           itens={armas}
           filtros={[{ id: 'grupo', label: 'Todos os grupos', valorDe: (i) => i.grupo, opcoes: [...new Set(armas.map((a) => a.grupo).filter(Boolean))].map((g) => ({ valor: g, label: g })) }]}
+          aoProcurar={(i, t) => i.nome.toLowerCase().includes(t) || (i.descricao || '').toLowerCase().includes(t)}
           render={(a) => (
             <>
               <b>{a.nome}</b>
-              <span className="meta">{[a.dano, a.critico, a.tipoDano, a.alcance].filter(Boolean).join(' · ')}</span>
-              <span className="meta">{a.grupo}</span>
+              <span className="meta">{[a.dano, a.critico, a.tipoDano, a.alcance, a.grupo].filter(Boolean).join(' · ')}</span>
             </>
           )}
           onEscolher={(a) => {
+            const c = interpretarCritico(a.critico);
+            const corpoACorpo = !a.alcance || /corpo/i.test(a.grupo || '');
             adicionar({
-              nome: a.nome, pericia: a.pericia || 'luta', bonus: '', dano: a.dano || '',
-              critico: a.critico || '', tipo: a.tipoDano || '', alcance: a.alcance || '', espacos: a.espacos ?? '',
+              nome: a.nome, pericia: a.pericia || (corpoACorpo ? 'luta' : 'pontaria'), bonus: 0,
+              dano: a.dano || '', margem: c.margem, multiplicador: c.multiplicador,
+              tipo: a.tipoDano || '', alcance: a.alcance || '', espacos: a.espacos ?? '',
+              categoria: a.categoria ?? '', atributoDano: corpoACorpo ? 'for' : '',
+              danoExtra: [], modificacoes: [], notas: a.descricao || '',
             });
             setAEscolher(false);
           }}
@@ -96,37 +123,73 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
         />
       )}
 
+      {aEditar !== null && (
+        <EditorArma
+          arma={aEditar === 'nova' ? null : aEditar.arma}
+          aoFechar={() => setAEditar(null)}
+          aoGuardar={(nova) => {
+            if (aEditar === 'nova') adicionar(nova);
+            else editar(aEditar.indice, nova);
+            setAEditar(null);
+          }}
+        />
+      )}
+
       {lista.length === 0 ? (
         <div className="painel-vazio">Ainda não possuis ataques</div>
       ) : (
         <div className="lista-blocos">
-          {lista.map((a, i) => (
-            <div className="bloco" key={i}>
-              <div className="topo">
-                <input type="text" placeholder="Nome do ataque" value={a.nome} onChange={(e) => editar(i, { nome: e.target.value })} />
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <button className="dado-btn" style={{ width: 22, height: 22 }} title="Rolar ataque" onClick={() => rolarAtaque(a)}>
-                    <IconeD20 />
-                  </button>
-                  {a.dano && (
-                    <button className="btn ghost sm" title={`Rolar dano (${a.dano})`} onClick={() => { const r = rolarExpressao(a.dano); if (r) onRolar({ ...r, nome: `${a.nome || 'Ataque'} — dano` }); }}>
-                      Dano
+          {lista.map((a, i) => {
+            const e = estatisticasArma(personagem, a);
+            const acerto = acertos[i];
+            return (
+              <div className="bloco arma" key={i}>
+                <div className="topo">
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                    {a.imagem && <div className="miniatura-arma" style={{ backgroundImage: `url(${a.imagem})` }} />}
+                    <div>
+                    <b>{a.nome || 'Sem nome'}</b>
+                    <div className="arma-stats">
+                      <span>{e.dados}d20 {e.bonusAtaque >= 0 ? '+' : '−'}{Math.abs(e.bonusAtaque)}</span>
+                      <span>{e.dano}{e.bonusDano ? (e.bonusDano > 0 ? ` + ${e.bonusDano}` : ` − ${Math.abs(e.bonusDano)}`) : ''}</span>
+                      <span>{e.margem === 20 ? '20' : `${e.margem}–20`} / ×{e.multiplicador}</span>
+                      {a.tipo && <span>{a.tipo}</span>}
+                      {e.alcance && <span>{e.alcance}</span>}
+                      {e.extras.map((x) => <span key={x}>+{x}</span>)}
+                    </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    <button className="btn sm" onClick={() => atacar(a, i)}>Atacar</button>
+                    <button
+                      className={'btn sm' + (acerto?.critico ? '' : ' ghost')}
+                      disabled={!acerto}
+                      title={acerto ? (acerto.critico ? `Crítico: dados ×${e.multiplicador}` : 'Rolar dano normal') : 'Faz primeiro o teste de ataque'}
+                      onClick={() => danificar(a, i)}
+                    >
+                      {acerto?.critico ? `Dano ×${e.multiplicador}` : 'Só dano'}
                     </button>
-                  )}
-                  <button className="btn sm danger" onClick={() => remover(i)}>Remover</button>
+                    <button className="btn ghost sm" onClick={() => setAEditar({ indice: i, arma: a })}>Editar</button>
+                    <button className="btn danger sm" onClick={() => remover(i)}>Remover</button>
+                  </div>
                 </div>
+
+                {acerto && (
+                  <div className={'resultado-ataque' + (acerto.critico ? ' critico' : '')}>
+                    Ataque: <b>{acerto.total}</b> ({acerto.dados}d20 [{acerto.rolagens.join(', ')}] → maior {acerto.escolhido}
+                    {acerto.bonus ? ` ${acerto.bonus > 0 ? '+' : '−'} ${Math.abs(acerto.bonus)}` : ''})
+                    {acerto.critico ? ' · ACERTO CRÍTICO' : ''}
+                  </div>
+                )}
+
+                {(a.modificacoes || []).length > 0 && (
+                  <div className="resumo-mods">
+                    {e.mods.lista.map((m) => <span key={m.id} className="pill" title={m.texto}>{m.nome}</span>)}
+                  </div>
+                )}
               </div>
-              <div className="grelha">
-                <Campo label="Perícia" valor={a.pericia} onChange={(v) => editar(i, { pericia: v })} opcoes={PERICIAS.map((p) => ({ value: p.id, label: p.nome }))} />
-                <Campo label="Bónus" valor={a.bonus} onChange={(v) => editar(i, { bonus: v })} />
-                <Campo label="Dano" valor={a.dano} onChange={(v) => editar(i, { dano: v })} />
-                <Campo label="Crítico" valor={a.critico} onChange={(v) => editar(i, { critico: v })} />
-                <Campo label="Tipo" valor={a.tipo} onChange={(v) => editar(i, { tipo: v })} />
-                <Campo label="Alcance" valor={a.alcance} onChange={(v) => editar(i, { alcance: v })} />
-                <Campo label="Espaços" valor={a.espacos} onChange={(v) => editar(i, { espacos: v })} />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -296,28 +359,61 @@ export function AbaRituais({ personagem, setPersonagem }) {
 export function AbaInventario({ personagem, setPersonagem }) {
   const { lista, adicionar, editar, remover } = useLista(personagem, setPersonagem, 'inventario');
   const [aEscolher, setAEscolher] = useState(false);
-  const cargaMax = calcCargaMaxima(personagem);
-  const cargaAtual = lista.reduce((s, i) => s + (Number(i.espacos) || 0), 0);
+  const carga = calcCarga(personagem);
+  const cats = calcItensPorCategoria(personagem);
+  const set = (patch) => setPersonagem({ ...personagem, ...patch });
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 14 }}>
-        <div className="campo" style={{ maxWidth: 120, marginBottom: 0 }}>
-          <label>Carga</label>
-          <input type="text" readOnly value={`${cargaAtual} / ${cargaMax}`} />
-        </div>
-        <div className="campo" style={{ maxWidth: 140, marginBottom: 0 }}>
-          <label>Limite de crédito</label>
-          <input type="text" value={personagem.creditoLimite} onChange={(e) => setPersonagem({ ...personagem, creditoLimite: e.target.value })} />
-        </div>
-        <div className="campo" style={{ maxWidth: 130, marginBottom: 0 }}>
+      <div className="painel-patente">
+        <div className="campo" style={{ maxWidth: 190, marginBottom: 0 }}>
           <label>Patente</label>
-          <input type="text" value={personagem.patente} onChange={(e) => setPersonagem({ ...personagem, patente: e.target.value })} />
+          <select
+            value={personagem.patenteId || cats.patente.id}
+            onChange={(e) => set({ patenteId: e.target.value, patente: PATENTES_POR_ID[e.target.value]?.nome || '' })}
+          >
+            {PATENTES.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+          </select>
+        </div>
+        <div className="campo" style={{ maxWidth: 120, marginBottom: 0 }}>
+          <label>Prestígio</label>
+          <input type="number" value={personagem.pontosPrestigio || 0} onChange={(e) => set({ pontosPrestigio: Number(e.target.value) })} />
         </div>
         <div className="campo" style={{ maxWidth: 130, marginBottom: 0 }}>
-          <label>Prestígio</label>
-          <input type="text" value={personagem.pontosPrestigio} onChange={(e) => setPersonagem({ ...personagem, pontosPrestigio: e.target.value })} />
+          <label>Crédito</label>
+          <input type="text" readOnly value={cats.patente.credito} />
         </div>
+        <div className="campo" style={{ maxWidth: 150, marginBottom: 0 }}>
+          <label>Carga</label>
+          <input
+            type="text" readOnly
+            className={carga.sobrecarregado ? 'mau' : ''}
+            value={`${carga.usados} / ${carga.max}`}
+            title={`5 espaços por ponto de Força · máximo absoluto ${carga.limiteAbsoluto}`}
+          />
+        </div>
+      </div>
+
+      <div className="slots">
+        {cats.linhas.map((l) => (
+          <div key={l.categoria} className={'slot' + (l.usados > l.limite ? ' excedido' : '')}>
+            <div className="cat">Categoria {l.categoria}</div>
+            <div className="valor">{l.usados} / {l.limite === Infinity ? '∞' : l.limite}</div>
+          </div>
+        ))}
+      </div>
+
+      {carga.sobrecarregado && (
+        <div className="aviso">
+          <strong>Sobrecarregado:</strong> −5 na Defesa e nas perícias com penalidade de carga, deslocamento −3m.
+          {carga.excedido && ' Passaste o dobro do limite: não consegues carregar isto.'}
+        </div>
+      )}
+      {cats.excedeu && (
+        <div className="aviso"><strong>Acima da patente:</strong> tens mais itens do que a Ordem te libera nesta missão.</div>
+      )}
+
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', margin: '14px 0' }}>
         <button className="btn ghost" onClick={() => setAEscolher(true)}>Do catálogo</button>
         <button className="btn" onClick={() => adicionar(novoItem())}>Novo Item</button>
       </div>
@@ -326,24 +422,37 @@ export function AbaInventario({ personagem, setPersonagem }) {
         <Seletor
           titulo={`Itens (${ITENS.length})`}
           itens={ITENS}
-          filtros={[{ id: 'tipo', label: 'Todos os tipos', valorDe: (i) => i.tipo, opcoes: TIPOS_ITEM.map((t) => ({ valor: t.id, label: t.nome })) }]}
+          filtros={[
+            { id: 'tipo', label: 'Todos os tipos', valorDe: (i) => i.tipo, opcoes: TIPOS_ITEM.map((t) => ({ valor: t.id, label: t.nome })) },
+            { id: 'categoria', label: 'Todas as categorias', valorDe: (i) => categoriaRomana(i.categoria), opcoes: CATEGORIAS.map((c) => ({ valor: c, label: `Categoria ${c}` })) },
+          ]}
           aoProcurar={(i, t) => i.nome.toLowerCase().includes(t) || (i.descricao || '').toLowerCase().includes(t)}
           render={(i) => (
             <>
               <b>{i.nome}</b>
-              <span className="meta">{[TIPOS_ITEM.find((t) => t.id === i.tipo)?.nome, i.categoria != null ? `Cat. ${i.categoria}` : null, i.espacos != null ? `${i.espacos} esp.` : null, i.dano, i.defesa ? `Defesa +${i.defesa}` : null].filter(Boolean).join(' · ')}</span>
+              <span className="meta">
+                {[
+                  TIPOS_ITEM.find((t) => t.id === i.tipo)?.nome,
+                  categoriaRomana(i.categoria) ? `Cat. ${categoriaRomana(i.categoria)}` : null,
+                  i.espacos != null ? `${i.espacos} esp.` : null,
+                  i.dano, i.defesa ? `Defesa +${i.defesa}` : null, i.elemento,
+                ].filter(Boolean).join(' · ')}
+              </span>
               <span className="corte">{i.descricao}</span>
             </>
           )}
           onEscolher={(i) => {
-            adicionar({ nome: i.nome, categoria: i.categoria ?? '', espacos: i.espacos ?? '', descricao: i.descricao || '' });
+            adicionar({
+              nome: i.nome,
+              categoria: categoriaRomana(i.categoria) ?? '',
+              espacos: i.espacos ?? 1,
+              descricao: i.descricao || '',
+            });
             setAEscolher(false);
           }}
           onFechar={() => setAEscolher(false)}
         />
       )}
-
-      {cargaAtual > cargaMax && <div className="aviso"><strong>Sobrecarregado:</strong> passaste o limite de espaços.</div>}
 
       {lista.length === 0 ? (
         <div className="painel-vazio">Inventário vazio</div>
@@ -356,10 +465,11 @@ export function AbaInventario({ personagem, setPersonagem }) {
                 <button className="btn sm danger" onClick={() => remover(i)}>Remover</button>
               </div>
               <div className="grelha">
-                <Campo label="Categoria" valor={it.categoria} onChange={(v) => editar(i, { categoria: v })} />
+                <Campo label="Categoria" valor={it.categoria} onChange={(v) => editar(i, { categoria: v })}
+                  opcoes={[{ value: '', label: '—' }, ...CATEGORIAS.map((c) => ({ value: c, label: c }))]} />
                 <Campo label="Espaços" valor={it.espacos} onChange={(v) => editar(i, { espacos: v })} />
               </div>
-              {it.descricao && <div style={{ fontSize: 12, color: 'var(--txt-dim)', marginTop: 8 }}>{it.descricao}</div>}
+              {it.descricao && <div className="descricao-item">{it.descricao}</div>}
             </div>
           ))}
         </div>

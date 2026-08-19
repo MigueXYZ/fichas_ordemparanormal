@@ -1,14 +1,12 @@
 import React from 'react';
 import { GRAUS_TREINO } from '../../data/pericias.js';
 import { ATRIBUTOS } from '../../data/atributos.js';
-import { calcPericias, grauMaximoPorNex } from '../../engine/calc.js';
+import { calcPericias } from '../../engine/calc.js';
 import { rolarTeste } from '../../engine/dados.js';
 import IconeD20 from '../IconeD20.jsx';
 
 export default function TabelaPericias({ personagem, setPersonagem, onRolar }) {
   const linhas = calcPericias(personagem);
-  const grauMax = grauMaximoPorNex(personagem.nex);
-  const grausPermitidos = GRAUS_TREINO.filter((g) => g.bonus <= grauMax.bonus);
 
   function setPericia(id, patch) {
     setPersonagem({
@@ -46,12 +44,31 @@ export default function TabelaPericias({ personagem, setPersonagem, onRolar }) {
                   <span className="marca">{(l.treinada ? '*' : '') + (l.carga ? '+' : '')}</span>
                 </div>
               </td>
-              <td className="attr">( {ATRIBUTOS.find((a) => a.id === l.attr)?.sigla} )</td>
+              <td className="attr">
+                <select
+                  className={l.attrTrocado ? 'trocado' : ''}
+                  value={l.attr}
+                  title={l.attrTrocado
+                    ? `Atributo trocado (o normal é ${ATRIBUTOS.find((a) => a.id === l.attrPadrao)?.sigla})`
+                    : 'Atributo usado nesta perícia'}
+                  onChange={(e) => setPericia(l.id, { attr: e.target.value === l.attrPadrao ? null : e.target.value })}
+                >
+                  {ATRIBUTOS.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.sigla}{a.id === l.attrPadrao ? '' : ' *'}
+                    </option>
+                  ))}
+                </select>
+              </td>
               <td className="bonus">{l.bonus >= 0 ? `+${l.bonus}` : l.bonus}</td>
               <td>
-                <select value={l.grau} onChange={(e) => setPericia(l.id, { grau: e.target.value })}>
-                  {grausPermitidos.map((g) => (
-                    <option key={g.id} value={g.id}>{g.bonus}</option>
+                <select
+                  value={l.grau}
+                  title={GRAUS_TREINO.find((g) => g.id === l.grau)?.nome}
+                  onChange={(e) => setPericia(l.id, { grau: e.target.value })}
+                >
+                  {GRAUS_TREINO.map((g) => (
+                    <option key={g.id} value={g.id} title={g.nome}>{g.bonus === 0 ? '0' : `+${g.bonus}`}</option>
                   ))}
                 </select>
               </td>

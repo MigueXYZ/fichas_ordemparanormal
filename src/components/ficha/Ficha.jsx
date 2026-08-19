@@ -21,7 +21,7 @@ const ABAS = [
 
 export default function Ficha({ personagem, setPersonagem, onRolar }) {
   const [aba, setAba] = useState('combate');
-  const foto = useRef(null);
+  const [erroFoto, setErroFoto] = useState(null);
 
   const max = calcMaximos(personagem);
   const d = calcDefesas(personagem);
@@ -34,19 +34,30 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
   async function escolherFoto(e) {
     const f = e.target.files?.[0];
     if (!f) return;
+    setErroFoto(null);
     try {
       set({ imagem: await lerImagem(f) });
-    } catch { /* imagem inválida */ }
+    } catch (err) {
+      setErroFoto(err.message);
+    }
     e.target.value = '';
   }
 
   return (
     <div className="container">
       <div className="cabecalho-ficha">
-        <label className="retrato" style={personagem.imagem ? { backgroundImage: `url(${personagem.imagem})` } : undefined}>
-          {!personagem.imagem && 'Foto do agente'}
-          <input type="file" accept="image/*" onChange={escolherFoto} />
-        </label>
+        <div>
+          <label className="retrato" style={personagem.imagem ? { backgroundImage: `url(${personagem.imagem})` } : undefined}>
+            {!personagem.imagem && 'Foto ou GIF'}
+            <input type="file" accept="image/*,image/gif" onChange={escolherFoto} />
+          </label>
+          {personagem.imagem && (
+            <button className="btn ghost sm" style={{ marginTop: 6, width: '100%' }} onClick={() => set({ imagem: null })}>
+              Tirar foto
+            </button>
+          )}
+          {erroFoto && <div className="aviso" style={{ maxWidth: 200, fontSize: 11 }}>{erroFoto}</div>}
+        </div>
 
         <div>
           <div className="campo-linha">
