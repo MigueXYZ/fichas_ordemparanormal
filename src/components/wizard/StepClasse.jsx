@@ -1,7 +1,7 @@
 import React from 'react';
 import { CLASSES } from '../../data/classes.js';
 import { PERICIAS, PERICIAS_POR_ID } from '../../data/pericias.js';
-import { calcMaximos, orcamentoPericias } from '../../engine/calc.js';
+import { calcMaximos, orcamentoPericias, nexEfetivo } from '../../engine/calc.js';
 import { aplicarConcessoes } from '../../engine/concessoes.js';
 
 export default function StepClasse({ personagem, setPersonagem }) {
@@ -10,6 +10,8 @@ export default function StepClasse({ personagem, setPersonagem }) {
   const classe = CLASSES.find((c) => c.id === personagem.classeId);
   const orc = orcamentoPericias(personagem);
 
+  const nexUtil = nexEfetivo(personagem);
+  const trilhas = classe?.trilhas || [];
   const escolhasFeitas = personagem.periciasEscolhaClasse || {};
   const livresEscolhidas = personagem.periciasLivresClasse || [];
 
@@ -93,6 +95,44 @@ export default function StepClasse({ personagem, setPersonagem }) {
           </div>
         ))}
       </div>
+
+      {classe && trilhas.length > 0 && (
+        <div className="card" style={{ marginTop: 22 }}>
+          <h3 style={{ fontSize: 18 }}>Trilha de {classe.nome}</h3>
+          <div className="barra" />
+          <p style={{ color: 'var(--txt-dim)', fontSize: 13, marginTop: 0 }}>
+            {nexUtil >= 10
+              ? 'A trilha escolhe-se a partir de NEX 10% e traz poderes em 10%, 40%, 65% e 99%.'
+              : `Ainda não dá: a trilha abre em ${personagem.regras?.nivelSeparado ? 'nível 2' : 'NEX 10%'}. Podes deixar para depois — mudas na ficha a qualquer momento.`}
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <button
+              type="button"
+              className={'btn sm' + (personagem.trilhaId ? ' ghost' : '')}
+              onClick={() => setPersonagem({ ...personagem, trilhaId: null })}
+            >
+              Sem trilha
+            </button>
+            {trilhas.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className={'btn sm' + (personagem.trilhaId === t.id ? '' : ' ghost')}
+                disabled={nexUtil < 10}
+                title={t.descricao || t.nome}
+                onClick={() => setPersonagem({ ...personagem, trilhaId: t.id })}
+              >
+                {t.nome}
+              </button>
+            ))}
+          </div>
+          {personagem.trilhaId && (
+            <p style={{ color: 'var(--txt-dim)', fontSize: 13 }}>
+              {trilhas.find((t) => t.id === personagem.trilhaId)?.descricao || ''}
+            </p>
+          )}
+        </div>
+      )}
 
       {classe && (
         <div className="card" style={{ marginTop: 22 }}>

@@ -118,6 +118,12 @@ h1, h2, h3, h4 { font-family: var(--display); font-weight: 400; letter-spacing: 
 .btn.sm { padding: 5px 12px; font-size: 14px; }
 .btn.danger { background: transparent; border-color: #5a2126; color: #e0616c; }
 .btn.danger:hover:not(:disabled) { background: rgba(192,21,33,.14); box-shadow: none; }
+.btn.a-transmitir { border-color: var(--ok); color: var(--ok); }
+.btn.a-transmitir:hover:not(:disabled) { border-color: var(--ok); color: var(--ok); box-shadow: 0 0 12px rgba(74,222,128,.35); }
+
+.linha-link { display: flex; gap: 8px; align-items: center; }
+.linha-link input { font-size: 13px; font-family: var(--numeros); }
+.dica code { color: var(--sangue-claro); }
 
 /* NEX à mão, disponível em todos os passos da criação */
 .barra-nex {
@@ -695,6 +701,47 @@ body.bate-forte .barra-recurso .preenchido::before {
 .resultado-ataque.critico b { color: var(--ok); }
 .descricao-item { font-size: 12.5px; color: var(--txt-dim); margin-top: 8px; }
 
+/* equipar / guardar armas */
+.toggle-equipar {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: transparent; border: 1px solid var(--linha-forte); border-radius: 999px;
+  color: var(--txt-fraco); font-family: var(--corpo); font-size: 12px;
+  letter-spacing: .1em; text-transform: uppercase; padding: 5px 12px 5px 8px;
+  transition: color .15s, border-color .15s;
+}
+.toggle-equipar .bolinha {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--txt-fraco); box-shadow: none; transition: background .15s, box-shadow .15s;
+}
+.toggle-equipar.equipado { color: var(--ok); border-color: rgba(74,222,128,.45); }
+.toggle-equipar.equipado .bolinha { background: var(--ok); box-shadow: 0 0 8px rgba(74,222,128,.7); }
+.toggle-equipar:hover { color: var(--txt); }
+.bloco.arma.guardada { opacity: .62; }
+.bloco.arma.guardada:hover { opacity: 1; }
+
+/* lista de armas dentro do inventário */
+.armas-carregadas {
+  border: 1px solid var(--linha); border-radius: var(--raio); background: var(--bg-2);
+  padding: 12px 14px; margin-bottom: 14px;
+}
+.rotulo-lista {
+  font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--sangue-claro); font-family: var(--corpo); margin-bottom: 8px;
+}
+.armas-carregadas ul { list-style: none; margin: 0; padding: 0; }
+.armas-carregadas li {
+  display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--txt-dim);
+  padding: 3px 0; border-bottom: 1px dotted rgba(255,255,255,.06);
+}
+.armas-carregadas .ponto {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--txt-fraco); flex: 0 0 auto;
+}
+.armas-carregadas .ponto.equipado { background: var(--ok); box-shadow: 0 0 7px rgba(74,222,128,.6); }
+.armas-carregadas .nome { flex: 1; color: var(--txt); }
+.armas-carregadas .estado { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+.armas-carregadas .esp { font-family: var(--numeros); color: var(--txt); }
+.armas-carregadas .dica { margin-top: 6px; }
+
 /* ---------------------------------------------------------- patente / carga */
 .painel-patente { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px; }
 .painel-patente input.mau { color: #ff8a92; border-color: var(--sangue); }
@@ -760,30 +807,24 @@ body.bate-forte .barra-recurso .preenchido::before {
    janela e deixamos a largura seguir, para nunca aparecer cortado */
 .criatura {
   position: fixed; right: 0; bottom: 0; z-index: -1; pointer-events: none;
-  height: min(84vh, 760px); width: auto; max-width: 30vw; object-fit: cover; object-position: center bottom;
-  opacity: .34; filter: saturate(.9) contrast(1.05) brightness(1.05);
-  /* é uma ilustração inteira, por isso desfaz-se nas bordas em vez de ficar um retângulo */
-  -webkit-mask-image:
-    linear-gradient(90deg, transparent 0%, #000 34%),
-    linear-gradient(180deg, transparent 0%, #000 22%, #000 74%, transparent 99%);
-  mask-image:
-    linear-gradient(90deg, transparent 0%, #000 34%),
-    linear-gradient(180deg, transparent 0%, #000 22%, #000 74%, transparent 99%);
-  -webkit-mask-composite: source-in; mask-composite: intersect;
+  height: min(88vh, 820px); width: auto; max-width: 34vw; object-fit: contain; object-position: right bottom;
+  opacity: .35; filter: saturate(.95) contrast(1.02);
+  /* o esbatimento das bordas está gravado no alfa do próprio ficheiro
+     (public/img/diabo.webp), por isso não há retângulo nenhum à vista */
 }
-@media (max-width: 1500px) { .criatura { opacity: .24; height: min(70vh, 560px); } }
+@media (max-width: 1500px) { .criatura { opacity: .3; height: min(70vh, 600px); } }
 @media (max-width: 1150px) { .criatura { display: none; } }
 
 /* ------------------------------------------------- espaço do token */
 .espaco-token {
-  position: fixed; left: 26px; bottom: 26px; z-index: 3;
-  width: 210px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  position: fixed; left: 26px; bottom: 96px; z-index: 3;
+  width: 232px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
 }
 
 /* sem token: só o contorno do modelo, esbatido */
 .espaco-token .modelo {
   display: block; position: relative; cursor: pointer;
-  width: 190px; height: min(52vh, 470px);
+  width: 220px; height: min(62vh, 560px);
   opacity: .16; transition: opacity .3s ease;
 }
 .espaco-token .modelo:hover { opacity: .4; }
@@ -793,6 +834,7 @@ body.bate-forte .barra-recurso .preenchido::before {
   background: var(--txt);
   -webkit-mask: url('/img/token-modelo.png') bottom center / contain no-repeat;
   mask: url('/img/token-modelo.png') bottom center / contain no-repeat;
+  transform: scaleX(-1);   /* o modelo passa a olhar para a ficha */
 }
 .espaco-token .dica-token {
   position: absolute; left: 0; right: 0; bottom: -18px; text-align: center;
@@ -826,20 +868,10 @@ body.bate-forte .barra-recurso .preenchido::before {
   font-size: 11px; color: var(--sangue-claro); text-align: center;
 }
 
-/* com o token à vista, o conteúdo afasta-se da margem esquerda.
-   É `padding` e não `margin` para a caixa continuar centrada e nunca sair do ecrã. */
-@media (min-width: 1500px) {
-  /* a caixa alarga para compensar o que o token ocupa */
-  .app.com-token-lateral .container { padding-left: 250px; max-width: 1500px; }
-}
-/* em ecrãs médios o espaço é mais estreito, para não roubar tanto à ficha */
-@media (min-width: 1250px) and (max-width: 1499px) {
-  .app.com-token-lateral .container { padding-left: 168px; }
-  .espaco-token { left: 14px; width: 146px; }
-  .espaco-token .modelo { width: 132px; height: min(44vh, 380px); }
-  .espaco-token .token-img { max-width: 146px; height: min(46vh, 400px); }
-}
-@media (max-width: 1249px) { .espaco-token { display: none; } }
+/* O token vive na margem que já existe — a ficha continua centrada, sem empurrões.
+   Por isso só aparece quando a margem dá mesmo para ele. */
+.espaco-token { display: none; }
+@media (min-width: 1700px) { .espaco-token { display: flex; } }
 @media (prefers-reduced-motion: reduce) { .pedestal .holofote { animation: none; } }
 
 .miniatura-arma {

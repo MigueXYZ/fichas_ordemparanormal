@@ -48,3 +48,35 @@ export function estatisticasArma(personagem, arma) {
     mods,
   };
 }
+
+/**
+ * Constrói o ataque a partir de um item do catálogo. Serve tanto ao separador
+ * de Combate como ao Inventário — uma arma escolhida em qualquer um dos dois
+ * acaba na mesma lista, por isso conta sempre para a carga.
+ */
+export function armaDoItem(item) {
+  const c = interpretarCritico(item.critico);
+  const corpoACorpo = !item.alcance || /corpo/i.test(item.grupo || '');
+  return {
+    nome: item.nome,
+    pericia: item.pericia || (corpoACorpo ? 'luta' : 'pontaria'),
+    bonus: 0,
+    dano: item.dano || '',
+    margem: c.margem,
+    multiplicador: c.multiplicador,
+    tipo: item.tipoDano || '',
+    alcance: item.alcance || '',
+    espacos: item.espacos ?? 1,
+    categoria: item.categoria ?? '',
+    atributoDano: corpoACorpo ? 'for' : '',
+    equipado: true,
+    danoExtra: [],
+    modificacoes: [],
+    notas: item.descricao || '',
+  };
+}
+
+/** Uma arma é do catálogo de armas, ou um item amaldiçoado que é arma. */
+export function ehArma(item) {
+  return item?.tipo === 'arma' || (item?.tipo === 'amaldicoado' && /arma/i.test(item?.subtipo || ''));
+}

@@ -153,7 +153,7 @@ teste('extras manuais somam a bloqueio e esquiva', () => {
 
 
 // ---- carga e patente ----
-import { calcCarga, calcItensPorCategoria } from '../src/engine/calc.js';
+import { calcCarga, calcCargaMaxima, calcItensPorCategoria } from '../src/engine/calc.js';
 import { interpretarCritico, somarDados, estatisticasArma } from '../src/engine/armas.js';
 import { rolarDano, rolarAtaqueCompleto } from '../src/engine/dados.js';
 
@@ -325,6 +325,27 @@ teste('alterações por exposição: NEX 35% soma o atributo escolhido ao PE', (
   assert.equal(calcMaximos(p).pe, antes + 3);
   // sem escolher o atributo, não há bónus nenhum
   assert.equal(calcMaximos({ ...p, exposicao: {} }).pe, antes);
+});
+
+teste('as armas contam para a carga', () => {
+  const p = personagemVazio();
+  p.atributos.for = 2;                       // limite 10
+  p.inventario = [{ espacos: 3 }];
+  p.ataques = [{ nome: 'Machado', espacos: 1 }, { nome: 'Espingarda', espacos: 2, equipado: false }];
+  const c = calcCarga(p);
+  assert.equal(c.dosItens, 3);
+  assert.equal(c.dasArmas, 3);               // guardada ou na mão, pesa na mesma
+  assert.equal(c.usados, 6);
+  assert.equal(c.max, 10);
+});
+
+teste('a Mochila Militar aumenta o limite de carga em 2', () => {
+  const p = personagemVazio();
+  p.atributos.for = 1;                       // limite 5
+  assert.equal(calcCargaMaxima(p), 5);
+  p.inventario = [{ nome: 'Mochila Militar', espacos: 0, cargaBonus: 2 }];
+  assert.equal(calcCargaMaxima(p), 7);
+  assert.equal(calcCarga(p).usados, 0);      // e ela própria não ocupa nada
 });
 
 console.log(`\n${passou} testes ok`);

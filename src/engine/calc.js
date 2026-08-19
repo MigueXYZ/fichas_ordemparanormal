@@ -265,17 +265,35 @@ export function orcamentoPericias(personagem) {
  * (–5 em Defesa e em perícias com penalidade de carga, –3m de deslocamento) e
  * não podes passar do dobro do limite.
  */
+/** Itens que aumentam o limite de carga em vez de o gastar (ex.: Mochila Militar). */
+export function bonusDeCarga(personagem) {
+  const doInventario = (personagem.inventario || [])
+    .reduce((t, i) => t + (Number(i.cargaBonus) || 0), 0);
+  return doInventario + (Number(personagem.cargaExtra) || 0);
+}
+
 export function calcCargaMaxima(personagem) {
   const forca = Number(personagem.atributos.for || 0);
-  return forca <= 0 ? 2 : forca * 5;
+  const base = forca <= 0 ? 2 : forca * 5;
+  return base + bonusDeCarga(personagem);
+}
+
+/** Espaços ocupados pelas armas. Uma arma pesa quer esteja na mão quer na mochila. */
+export function espacosDasArmas(personagem) {
+  return (personagem.ataques || []).reduce((t, a) => t + (Number(a.espacos) || 0), 0);
 }
 
 export function calcCarga(personagem) {
   const max = calcCargaMaxima(personagem);
-  const usados = (personagem.inventario || []).reduce((t, i) => t + (Number(i.espacos) || 0), 0);
+  const dosItens = (personagem.inventario || []).reduce((t, i) => t + (Number(i.espacos) || 0), 0);
+  const dasArmas = espacosDasArmas(personagem);
+  const usados = dosItens + dasArmas;
   return {
     usados,
+    dosItens,
+    dasArmas,
     max,
+    bonus: bonusDeCarga(personagem),
     limiteAbsoluto: max * 2,
     sobrecarregado: usados > max,
     excedido: usados > max * 2,

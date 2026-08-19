@@ -9,7 +9,7 @@ import { calcCarga, calcItensPorCategoria, nexEfetivo } from '../../engine/calc.
 import { PATENTES, PATENTES_POR_ID, CATEGORIAS, categoriaRomana } from '../../data/patentes.js';
 import { novoAtaque, novoItem, novaHabilidade, novoRitual } from '../../engine/character.js';
 import { rolarExpressao, rolarAtaqueCompleto, rolarDano } from '../../engine/dados.js';
-import { estatisticasArma, interpretarCritico } from '../../engine/armas.js';
+import { estatisticasArma, interpretarCritico, armaDoItem, ehArma } from '../../engine/armas.js';
 import EditorArma from './EditorArma.jsx';
 import { calcPericias } from '../../engine/calc.js';
 import IconeD20 from '../IconeD20.jsx';
@@ -106,15 +106,7 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
             </>
           )}
           onEscolher={(a) => {
-            const c = interpretarCritico(a.critico);
-            const corpoACorpo = !a.alcance || /corpo/i.test(a.grupo || '');
-            adicionar({
-              nome: a.nome, pericia: a.pericia || (corpoACorpo ? 'luta' : 'pontaria'), bonus: 0,
-              dano: a.dano || '', margem: c.margem, multiplicador: c.multiplicador,
-              tipo: a.tipoDano || '', alcance: a.alcance || '', espacos: a.espacos ?? '',
-              categoria: a.categoria ?? '', atributoDano: corpoACorpo ? 'for' : '',
-              danoExtra: [], modificacoes: [], notas: a.descricao || '',
-            });
+            adicionar(armaDoItem(a));
             setAEscolher(false);
           }}
           onFechar={() => setAEscolher(false)}
@@ -140,8 +132,9 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
           {lista.map((a, i) => {
             const e = estatisticasArma(personagem, a);
             const acerto = acertos[i];
+            const equipado = a.equipado !== false;   // fichas antigas não tinham o campo
             return (
-              <div className="bloco arma" key={i}>
+              <div className={'bloco arma' + (equipado ? '' : ' guardada')} key={i}>
                 <div className="topo">
                   <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                     {a.imagem && <div className="miniatura-arma" style={{ backgroundImage: `url(${a.imagem})` }} />}
@@ -153,15 +146,25 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
                       <span>{e.margem === 20 ? '20' : `${e.margem}–20`} / ×{e.multiplicador}</span>
                       {a.tipo && <span>{a.tipo}</span>}
                       {e.alcance && <span>{e.alcance}</span>}
+                      <span title="Ocupa este espaço na carga, esteja na mão ou guardada">{Number(a.espacos) || 0} esp.</span>
                       {e.extras.map((x) => <span key={x}>+{x}</span>)}
                     </div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                    <button className="btn sm" onClick={() => atacar(a, i)}>Atacar</button>
+                    <button
+                      type="button"
+                      className={'toggle-equipar' + (equipado ? ' equipado' : '')}
+                      onClick={() => editar(i, { equipado: !equipado })}
+                      title={equipado ? 'Está na mão. Carrega para a guardar.' : 'Está guardada. Carrega para a equipar.'}
+                    >
+                      <span className="bolinha" />
+                      {equipado ? 'Equipada' : 'Guardada'}
+                    </button>
+                    <button className="btn sm" disabled={!equipado} title={equipado ? '' : 'Equipa a arma primeiro'} onClick={() => atacar(a, i)}>Atacar</button>
                     <button
                       className={'btn sm' + (acerto?.critico ? '' : ' ghost')}
-                      disabled={!acerto}
+                      disabled={!acerto || !equipado}
                       title={acerto ? (acerto.critico ? `Crítico: dados ×${e.multiplicador}` : 'Rolar dano normal') : 'Faz primeiro o teste de ataque'}
                       onClick={() => danificar(a, i)}
                     >
@@ -365,7 +368,9 @@ export function AbaRituais({ personagem, setPersonagem }) {
 
 export function AbaInventario({ personagem, setPersonagem }) {
   const { lista, adicionar, editar, remover } = useLista(personagem, setPersonagem, 'inventario');
+  const armas = useLista(personagem, setPersonagem, 'ataques');
   const [aEscolher, setAEscolher] = useState(false);
+  const [aviso, setAviso] = useState(null);
   const carga = calcCarga(personagem);
   const cats = calcItensPorCategoria(personagem);
   const set = (patch) => setPersonagem({ ...personagem, ...patch });
@@ -390,7 +395,7 @@ export function AbaInventario({ personagem, setPersonagem }) {
           <label>Crédito</label>
           <input type="text" readOnly value={cats.patente.credito} />
         </div>
-        <div className="campo" style={{ maxWidth: 150, marginBottom: 0 }}>
+        <div className="campo" style={{ maxWidth: 190, marginBottom: 0 }}>
           <label>Carga</label>
           <input
             type="text" readOnly
@@ -398,6 +403,10 @@ export function AbaInventario({ personagem, setPersonagem }) {
             value={`${carga.usados} / ${carga.max}`}
             title={`5 espaços por ponto de Força · máximo absoluto ${carga.limiteAbsoluto}`}
           />
+          <span className="dica">
+            {carga.dosItens} em itens · {carga.dasArmas} em armas
+            {carga.bonus ? ` · +${carga.bonus} de equipamento` : ''}
+          </span>
         </div>
       </div>
 
@@ -449,16 +458,44 @@ export function AbaInventario({ personagem, setPersonagem }) {
             </>
           )}
           onEscolher={(i) => {
-            adicionar({
-              nome: i.nome,
-              categoria: categoriaRomana(i.categoria) ?? '',
-              espacos: i.espacos ?? 1,
-              descricao: i.descricao || '',
-            });
+            // uma arma vai para a lista de ataques (é lá que se usa), mas continua
+            // a contar para a carga como qualquer outro item
+            if (ehArma(i)) {
+              armas.adicionar(armaDoItem(i));
+              setAviso(`${i.nome} foi para o separador Combate, já equipada.`);
+            } else {
+              adicionar({
+                nome: i.nome,
+                categoria: categoriaRomana(i.categoria) ?? '',
+                espacos: i.espacos ?? 1,
+                cargaBonus: i.cargaBonus ?? 0,
+                descricao: i.descricao || '',
+              });
+              setAviso(null);
+            }
             setAEscolher(false);
           }}
           onFechar={() => setAEscolher(false)}
         />
+      )}
+
+      {aviso && <div className="aviso"><strong>Arma:</strong> {aviso}</div>}
+
+      {(personagem.ataques || []).length > 0 && (
+        <div className="armas-carregadas">
+          <div className="rotulo-lista">Armas ({carga.dasArmas} espaços)</div>
+          <ul>
+            {(personagem.ataques || []).map((a, i) => (
+              <li key={i}>
+                <span className={'ponto' + (a.equipado === false ? '' : ' equipado')} />
+                <span className="nome">{a.nome || 'Sem nome'}</span>
+                <span className="estado">{a.equipado === false ? 'guardada' : 'equipada'}</span>
+                <span className="esp">{Number(a.espacos) || 0} esp.</span>
+              </li>
+            ))}
+          </ul>
+          <div className="dica">Editam-se no separador Combate.</div>
+        </div>
       )}
 
       {lista.length === 0 ? (

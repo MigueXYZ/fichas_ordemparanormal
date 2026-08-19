@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node tests/calc.test.js",
-    "verificar-roda": "node tests/roda.visual.mjs"
+    "verificar-roda": "node tests/roda.visual.mjs",
+    "overlay": "node servidor/overlay.mjs"
   },
   "dependencies": {
     "pdf-lib": "^1.17.1",

@@ -367,6 +367,7 @@ export const ITENS_GERAIS = [
     subgrupo: null,
     categoria: 1,
     espacos: 0, // a tabela marca "*"; a descrição diz que não usa nenhum espaço
+    cargaBonus: 2, // "aumenta sua capacidade de carga em 2 espaços"
     descricao:
       'Uma mochila leve e de alta qualidade. Ela não usa nenhum espaço e aumenta sua capacidade de carga em 2 espaços.',
     livro: 'Livro Base',

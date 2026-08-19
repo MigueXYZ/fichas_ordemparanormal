@@ -6,11 +6,14 @@ import PainelRolagem from './components/PainelRolagem.jsx';
 import Fundo from './components/Fundo.jsx';
 import EspacoToken from './components/EspacoToken.jsx';
 import HistoricoRolagens from './components/HistoricoRolagens.jsx';
+import PainelOverlay from './components/PainelOverlay.jsx';
 import FichaAmeaca from './components/ficha/FichaAmeaca.jsx';
 import { personagemVazio } from './engine/character.js';
 import { descarregarPdf } from './export/pdf.js';
 import { guardarAgente, exportarJson, novoId } from './engine/armazenamento.js';
 import { tocarRolagem, alternarSom, somLigado, alternarCoracao, coracaoLigado } from './engine/som.js';
+import { calcMaximos } from './engine/calc.js';
+import { lerConfig, guardarConfig, publicar } from './overlay/transporte.js';
 
 export default function App() {
   const [vista, setVista] = useState('inicio'); // inicio | wizard | ficha
@@ -36,6 +39,46 @@ export default function App() {
   const [som, setSom] = useState(somLigado);
   const [coracao, setCoracao] = useState(coracaoLigado);
   const [verHistorico, setVerHistorico] = useState(false);
+
+  // ---- overlay para o OBS ----
+  const [configOverlay, setConfigOverlay] = useState(lerConfig);
+  const [verOverlay, setVerOverlay] = useState(false);
+  const [estadoEnvio, setEstadoEnvio] = useState(null);
+  const ultimoEnvio = useRef('');
+  const relogioOverlay = useRef(null);
+
+  useEffect(() => {
+    if (!configOverlay.ligado || !personagem || personagem.tipo === 'ameaca') return undefined;
+    const max = calcMaximos(personagem);
+    const ultima = rolagens[rolagens.length - 1] || null;
+    const estado = {
+      nome: personagem.nome || 'Agente',
+      legenda: [personagem.patente, personagem.regras?.nivelSeparado
+        ? `Nível ${personagem.nivel ?? 1} · NEX ${personagem.nex}%`
+        : `NEX ${personagem.nex}%`].filter(Boolean).join(' · '),
+      token: personagem.token || null,
+      pv: { atual: personagem.pvAtual ?? max.pv, max: max.pv },
+      san: max.semSanidade ? null : { atual: personagem.sanAtual ?? max.san, max: max.san },
+      pe: max.semSanidade ? null : { atual: personagem.peAtual ?? max.pe, max: max.pe },
+      pd: max.semSanidade ? { atual: personagem.pdAtual ?? max.pd, max: max.pd } : null,
+      rolagem: ultima,
+    };
+    const corpo = JSON.stringify(estado);
+    if (corpo === ultimoEnvio.current) return undefined;
+
+    clearTimeout(relogioOverlay.current);
+    relogioOverlay.current = setTimeout(async () => {
+      ultimoEnvio.current = corpo;
+      const r = await publicar(configOverlay, estado);
+      setEstadoEnvio(r.ok ? { quando: Date.now() } : { erro: r.erro });
+    }, 250);
+    return () => clearTimeout(relogioOverlay.current);
+  }, [personagem, rolagens, configOverlay]);
+
+  const mudarOverlay = useCallback((novo) => {
+    setConfigOverlay(guardarConfig(novo));
+    ultimoEnvio.current = '';       // força um envio novo com a configuração nova
+  }, []);
 
   const rolar = useCallback((resultado) => {
     if (!resultado) return;
@@ -78,11 +121,12 @@ export default function App() {
     }
   }
 
-  // o espaço do token só aparece com uma ficha de agente aberta
+  // o espaço do token só aparece com uma ficha de agente aberta (e só em ecrãs
+  // largos o suficiente para caber na margem — ver .espaco-token em styles.css)
   const comToken = vista !== 'inicio' && Boolean(personagem) && personagem.tipo !== 'ameaca';
 
   return (
-    <div className={'app' + (comToken ? ' com-token-lateral' : '')}>
+    <div className="app">
       <Fundo />
       {comToken && (
         <EspacoToken
@@ -117,6 +161,13 @@ export default function App() {
               <button className="btn ghost sm" onClick={() => setVerHistorico(true)}>
                 Histórico{personagem?.historico?.length ? ` (${personagem.historico.length})` : ''}
               </button>
+              <button
+                className={'btn ghost sm' + (configOverlay.ligado ? ' a-transmitir' : '')}
+                onClick={() => setVerOverlay(true)}
+                title="Overlay para OBS"
+              >
+                Overlay{configOverlay.ligado ? ' •' : ''}
+              </button>
               <button className="btn ghost sm" onClick={() => exportarJson(personagem)}>JSON</button>
               <button className="btn sm" onClick={exportarPdf} disabled={aExportar}>
                 {aExportar ? 'A gerar…' : 'Exportar PDF'}
@@ -144,6 +195,15 @@ export default function App() {
           historico={personagem?.historico || []}
           aoFechar={() => setVerHistorico(false)}
           aoLimpar={() => setPersonagem((p) => ({ ...p, historico: [] }))}
+        />
+      )}
+
+      {verOverlay && (
+        <PainelOverlay
+          config={configOverlay}
+          aoMudar={mudarOverlay}
+          estadoEnvio={estadoEnvio}
+          aoFechar={() => setVerOverlay(false)}
         />
       )}
 
