@@ -14,55 +14,75 @@ body.corpo-overlay::before, body.corpo-overlay::after { display: none !important
 }
 
 /* ------------------------------------------------ o agente */
-.ov-agente { display: flex; align-items: flex-end; gap: 18px; }
-.ov-token {
-  height: 210px; width: auto; max-width: 180px; object-fit: contain; object-position: bottom;
-  filter: drop-shadow(0 8px 18px rgba(0,0,0,.9));
+/* Cartão vertical: retrato, nome, vida por baixo e, mais abaixo,
+   sanidade e esforço. Cada recurso com a cor que tem na ficha. */
+.ov-cartao { width: 300px; }
+
+.ov-retrato {
+  width: 300px; height: 300px; overflow: hidden;
+  border: 2px solid rgba(0,0,0,.65);
+  box-shadow: 0 14px 34px rgba(0,0,0,.8);
+  background: rgba(8,5,6,.5);
 }
-.ov-info { min-width: 300px; }
+.ov-retrato img { width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block; }
+
 .ov-nome {
-  font-family: var(--display); font-size: 30px; line-height: 1.1;
-  text-shadow: 0 2px 6px #000, 0 0 22px rgba(0,0,0,.9);
+  font-family: var(--display); font-size: 34px; line-height: 1.05; margin-top: 12px;
+  text-transform: uppercase; letter-spacing: .02em;
+  text-shadow: 0 2px 6px #000, 0 0 24px rgba(0,0,0,.95);
+  word-break: break-word;
 }
-.ov-legenda {
-  font-size: 13px; color: var(--txt-dim); letter-spacing: .1em; margin-bottom: 10px;
+.ov-vida-grande {
+  font-family: var(--numeros); font-weight: 700; font-size: 52px; line-height: 1;
+  color: #f04653; text-shadow: 0 2px 8px #000, 0 0 26px rgba(240,70,83,.45);
+}
+.ov-vida-grande i { font-style: normal; font-size: 30px; opacity: .72; }
+
+.ov-linha-nome { display: flex; align-items: center; gap: 14px; }
+.ov-identidade { min-width: 0; flex: 1; }
+
+/* o último resultado, dentro de um d20 */
+.ov-dado {
+  position: relative; width: 92px; height: 92px; flex: 0 0 auto;
+  display: grid; place-items: center;
+  animation: ov-dado-entra .3s ease-out;
+}
+@keyframes ov-dado-entra {
+  from { opacity: 0; transform: scale(.7) rotate(-25deg); }
+  to   { opacity: 1; transform: none; }
+}
+.ov-dado-forma {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  color: var(--sangue);
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,.9));
+}
+.ov-dado-total {
+  position: relative; z-index: 1;
+  font-family: var(--numeros); font-weight: 700; font-size: 34px; line-height: 1;
+  color: #f4ece8; text-shadow: 0 2px 5px #000, 0 0 14px rgba(0,0,0,.95);
+  margin-top: 4px;
+}
+.ov-dado.critico .ov-dado-forma { color: var(--ok); filter: drop-shadow(0 0 14px rgba(74,222,128,.6)); }
+.ov-dado.critico .ov-dado-total { color: #eafff0; }
+.ov-dado.falha .ov-dado-forma { color: #5a1017; }
+
+/* sanidade e esforço: só o número */
+.ov-secundarias { margin-top: 12px; display: flex; flex-direction: column; gap: 4px; }
+.ov-recurso { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
+.ov-nome-recurso {
+  font-size: 12px; letter-spacing: .22em; text-transform: uppercase; color: #cdbfba;
   text-shadow: 0 1px 4px #000;
 }
-.ov-barras { display: flex; flex-direction: column; gap: 8px; }
+.ov-valor-recurso {
+  font-family: var(--numeros); font-weight: 700; font-size: 30px; line-height: 1.1; color: var(--cor);
+  text-shadow: 0 2px 5px #000, 0 0 16px rgba(0,0,0,.9);
+}
+.ov-valor-recurso i { font-style: normal; font-size: 18px; opacity: .65; }
+.ov-temp { color: var(--ok); font-size: 18px; margin-left: 6px; }
 
-.ov-barra .ov-titulo {
-  font-size: 10px; letter-spacing: .22em; text-transform: uppercase; color: var(--txt-dim);
-  margin-bottom: 3px; text-shadow: 0 1px 3px #000;
-}
-.ov-calha {
-  position: relative; height: 28px; width: 330px; overflow: hidden;
-  background-color: rgba(8,5,6,.86);
-  background-image: url('/img/veias.png');
-  background-size: auto 100%; background-repeat: repeat-x;
-  border: 1px solid #2a1c1f;
-  box-shadow: inset 0 0 20px rgba(0,0,0,.95);
-}
-.ov-cheio {
-  position: absolute; inset: 0 auto 0 0; transition: width .3s ease-out;
-  background-color: #150c0e;
-  background-image: radial-gradient(135% 200% at 50% 140%, var(--brilho), transparent 78%);
-}
-.ov-cheio::before {
-  content: ''; position: absolute; inset: -2px 0;
-  background: var(--veia);
-  -webkit-mask: url('/img/veias.png') repeat-x center / auto 110%;
-  mask: url('/img/veias.png') repeat-x center / auto 110%;
-  filter: drop-shadow(0 0 5px var(--veia));
-}
-.ov-num {
-  position: absolute; inset: 0; display: grid; place-items: center;
-  font-family: var(--numeros); font-weight: 700; font-size: 15px; color: #e6dcd6;
-  text-shadow: 0 1px 3px #000, 0 0 8px rgba(0,0,0,.95);
-}
-.ov-vida        .ov-cheio { --brilho: rgba(214, 44, 55, .78);  --veia: #f04653; }
-.ov-sanidade    .ov-cheio { --brilho: rgba(148, 82, 214, .78); --veia: #ad74f0; }
-.ov-esforco     .ov-cheio { --brilho: rgba(222, 142, 34, .74); --veia: #f5a636; }
-.ov-determinacao .ov-cheio { --brilho: rgba(40, 176, 158, .74); --veia: #3fd0bb; }
+.ov-sanidade     { --cor: #ad74f0; }
+.ov-esforco      { --cor: #f5a636; }
+.ov-determinacao { --cor: #3fd0bb; }
 
 /* ------------------------------------------------ rolagens */
 .ov-rolagens { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }

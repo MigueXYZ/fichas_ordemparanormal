@@ -12,7 +12,7 @@ const MULTIPLICADORES = [2, 3, 4];
 export default function EditorArma({ arma, aoGuardar, aoFechar }) {
   const [a, setA] = useState({
     nome: '', dano: '', margem: 20, multiplicador: 2, bonus: 0, tipo: '', alcance: '',
-    pericia: 'luta', atributoDano: '', espacos: '', categoria: '', danoExtra: [], modificacoes: [], notas: '',
+    pericia: 'luta', atributoDano: '', espacos: '', categoria: '', agil: false, danoExtra: [], modificacoes: [], notas: '',
     ...arma,
   });
   const set = (patch) => setA({ ...a, ...patch });
@@ -109,6 +109,14 @@ export default function EditorArma({ arma, aoGuardar, aoFechar }) {
                 <option value="">—</option>
                 {CATEGORIAS.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
+            </div>
+            <div className="campo">
+              <label>Arma ágil</label>
+              <div className="interruptor" style={{ width: 'fit-content' }}>
+                <button type="button" className={a.agil ? '' : 'ativo'} onClick={() => set({ agil: false })}>Não</button>
+                <button type="button" className={a.agil ? 'ativo' : ''} onClick={() => set({ agil: true })}>Sim</button>
+              </div>
+              <span className="dica">Facas, punhais, cajados, nunchakus, floretes e katanas: usam Agilidade em vez de Força no ataque e no dano</span>
             </div>
           </div>
 

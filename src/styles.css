@@ -279,18 +279,20 @@ textarea { resize: vertical; min-height: 92px; }
   margin-bottom: 4px; text-transform: uppercase; font-family: var(--corpo);
 }
 .nex-bloco .caixa {
-  border: 1px solid var(--linha-forte); border-radius: var(--raio); padding: 5px 9px;
-  min-width: 62px; background: var(--bg-3); font-family: var(--numeros); font-size: 15px;
-  display: flex; align-items: baseline; justify-content: center; position: relative;
+  border: 1px solid var(--linha-forte); border-radius: var(--raio); padding: 0 10px;
+  min-width: 72px; height: 34px; background: var(--bg-3);
+  font-family: var(--numeros); font-size: 15px;
+  display: flex; align-items: center; justify-content: center; position: relative;
 }
-.nex-bloco .campo-nu {
-  width: 38px; background: none; border: none; padding: 0; text-align: center;
+.nex-bloco .caixa input.campo-nu {
+  width: 40px; height: 100%; background: none; border: none; box-shadow: none;
+  padding: 0; text-align: center; line-height: 1;
   color: var(--txt); font-family: var(--numeros); font-size: 15px;
   -moz-appearance: textfield; appearance: textfield;
 }
-.nex-bloco .campo-nu::-webkit-outer-spin-button,
-.nex-bloco .campo-nu::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.nex-bloco .campo-nu:focus { outline: none; color: var(--sangue-claro); }
+.nex-bloco .caixa input.campo-nu::-webkit-outer-spin-button,
+.nex-bloco .caixa input.campo-nu::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.nex-bloco .caixa input.campo-nu:focus { outline: none; color: var(--sangue-claro); }
 .nex-bloco .sufixo {
   position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
   color: var(--txt-fraco); font-size: 12px; pointer-events: none;
@@ -362,8 +364,30 @@ textarea { resize: vertical; min-height: 92px; }
 /* barras — preto sujo, veias por baixo, nada de plástico moderno */
 .barra-recurso { margin-bottom: 14px; }
 .barra-recurso .titulo {
-  text-align: center; font-size: 11px; letter-spacing: .22em; color: var(--txt-dim);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-size: 11px; letter-spacing: .22em; color: var(--txt-dim);
   margin-bottom: 5px; font-family: var(--corpo);
+}
+.barra-recurso .temp-chip {
+  background: none; border: 1px dashed var(--linha); border-radius: 999px;
+  color: var(--txt-fraco); font-family: var(--corpo); font-size: 9.5px;
+  letter-spacing: .12em; padding: 1px 8px; opacity: .45; transition: opacity .15s, color .15s, border-color .15s;
+}
+.barra-recurso:hover .temp-chip { opacity: 1; }
+.barra-recurso .temp-chip.ativo {
+  opacity: 1; color: var(--ok); border-color: rgba(74,222,128,.5); border-style: solid;
+}
+.barra-recurso .temp-chip:hover { color: var(--txt); }
+.barra-recurso .temp-campo {
+  width: 54px; padding: 0 4px; font-size: 11px; text-align: center;
+  background: var(--bg-4); border: 1px solid var(--linha-forte); border-radius: 999px;
+  color: var(--txt); font-family: var(--numeros);
+}
+/* os temporários encostam-se à direita, por cima do que já lá está */
+.barra-recurso .temporario {
+  position: absolute; inset: 0 0 0 auto; z-index: 0;
+  background: repeating-linear-gradient(135deg, rgba(74,222,128,.5) 0 4px, rgba(74,222,128,.22) 4px 8px);
+  border-left: 1px solid rgba(74,222,128,.7);
 }
 .barra-recurso .linha-barra {
   display: flex; align-items: stretch; border-radius: 0; overflow: hidden;
@@ -591,6 +615,8 @@ body.bate-forte .barra-recurso .preenchido::before {
 .rolagem-cartao .nome { font-family: var(--display); font-size: 22px; letter-spacing: .04em; line-height: 1.2; }
 .rolagem-cartao .conta { font-size: 14.5px; color: var(--txt-dim); font-family: var(--corpo); }
 .rolagem-cartao .conta .melhor { color: var(--txt); font-weight: 700; }
+.notas-rolagem { font-size: 12px; color: var(--txt-fraco); margin-top: 3px; font-family: var(--corpo); }
+.notas-rolagem.mau { color: var(--sangue-claro); }
 .rolagem-cartao .igual { color: var(--txt-fraco); font-size: 20px; }
 .rolagem-cartao .total { font-family: var(--numeros); font-weight: 700; font-size: 40px; line-height: 1; color: var(--txt); }
 .rolagem-cartao.critico .total, .rolagem-cartao.critico .res { color: var(--ok); text-shadow: 0 0 18px rgba(74,222,128,.55); }
@@ -741,6 +767,23 @@ body.bate-forte .barra-recurso .preenchido::before {
 .armas-carregadas .estado { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
 .armas-carregadas .esp { font-family: var(--numeros); color: var(--txt); }
 .armas-carregadas .dica { margin-top: 6px; }
+.arma-stats .etiqueta-agil {
+  color: var(--ok); border-color: rgba(74,222,128,.45) !important;
+  text-transform: uppercase; letter-spacing: .12em; font-size: 10.5px;
+}
+.armas-carregadas .ponto.botao { border: none; padding: 0; cursor: pointer; }
+.armas-carregadas .ponto.botao:hover { box-shadow: 0 0 8px currentColor; }
+.armas-carregadas li .btn { padding: 3px 9px; font-size: 12px; }
+
+/* rituais prontos a conjurar, no separador Combate */
+.rituais-combate { margin-top: 22px; border-top: 1px solid var(--linha); padding-top: 14px; }
+.bloco.ritual .topo { align-items: center; }
+.bloco.ritual { border-left: 3px solid var(--linha-forte); }
+.bloco.ritual.el-sangue { border-left-color: #c8202a; }
+.bloco.ritual.el-morte { border-left-color: #969ba1; }
+.bloco.ritual.el-energia { border-left-color: #a15cd8; }
+.bloco.ritual.el-conhecimento { border-left-color: #d8b53c; }
+.bloco.ritual.el-medo { border-left-color: #e6e6ea; }
 
 /* ---------------------------------------------------------- patente / carga */
 .painel-patente { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px; }

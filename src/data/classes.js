@@ -3,8 +3,20 @@ import combatente from './classes/combatente.js';
 import especialista from './classes/especialista.js';
 import ocultista from './classes/ocultista.js';
 import sobrevivente from './classes/sobrevivente.js';
+import { trilhasExtraDaClasse } from './extra/index.js';
 
-export const CLASSES = [combatente, especialista, ocultista, sobrevivente];
+/**
+ * As trilhas dos Arquivos Secretos entram aqui, para não haver duas listas.
+ * A do Livro Base e a de Sobrevivendo ao Horror já vêm dentro de cada classe.
+ */
+function comTrilhasExtra(classe) {
+  const extra = trilhasExtraDaClasse(classe.id);
+  if (!extra.length) return classe;
+  const jaLa = new Set((classe.trilhas || []).map((t) => t.id));
+  return { ...classe, trilhas: [...(classe.trilhas || []), ...extra.filter((t) => !jaLa.has(t.id))] };
+}
+
+export const CLASSES = [combatente, especialista, ocultista, sobrevivente].map(comTrilhasExtra);
 
 export const CLASSES_POR_ID = Object.fromEntries(CLASSES.map((c) => [c.id, c]));
 

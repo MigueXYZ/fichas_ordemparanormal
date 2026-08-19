@@ -90,10 +90,14 @@ export default function PainelRolagem({ rolagens, aoFechar, aoLimpar }) {
             <div>
               <div className="nome">
                 {r.nome}
+                {r.detalhe && r.tipo === 'ritual' ? ` · ${r.detalhe}` : ''}
                 {r.critico && r.tipo !== 'dano' ? ' · crítico' : ''}
                 {r.falhaCritica ? ' · falha crítica' : ''}
               </div>
               <Dados r={r} />
+              {r.notas?.length > 0 && (
+                <div className={'notas-rolagem' + (r.sofreu ? ' mau' : '')}>{r.notas.join(' · ')}</div>
+              )}
             </div>
             <span className="igual">=</span>
             <span className="total">{r.total}</span>

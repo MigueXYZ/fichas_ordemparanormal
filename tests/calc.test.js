@@ -348,4 +348,103 @@ teste('a Mochila Militar aumenta o limite de carga em 2', () => {
   assert.equal(calcCarga(p).usados, 0);      // e ela própria não ocupa nada
 });
 
+// ---- conteúdo dos livros ----
+import { ORIGENS } from '../src/data/origens.js';
+import { CLASSES, TRILHAS_POR_ID } from '../src/data/classes.js';
+
+console.log('\nConteúdo dos livros\n');
+
+teste('as trilhas dos Arquivos Secretos entraram nas classes certas', () => {
+  const trilhasDe = (id) => CLASSES.find((c) => c.id === id).trilhas.map((t) => t.id);
+  // Monstruoso existe para as três classes: Combatente (SaH) e as duas do AS 7
+  assert.ok(trilhasDe('combatente').includes('monstruoso'));
+  assert.ok(trilhasDe('especialista').includes('monstruoso-especialista'));
+  assert.ok(trilhasDe('ocultista').includes('monstruoso-ocultista'));
+  // trilhas próprias de cada pacote
+  assert.ok(trilhasDe('ocultista').includes('maledictologo'));          // AS 1
+  assert.ok(trilhasDe('ocultista').includes('criptologista-do-oculto')); // AS 5
+});
+
+teste('a trilha geral (Performático) aparece nas três classes principais', () => {
+  for (const id of ['combatente', 'especialista', 'ocultista']) {
+    const trilha = CLASSES.find((c) => c.id === id).trilhas.find((t) => t.geral);
+    assert.ok(trilha, `${id} devia ter a trilha geral`);
+    assert.ok(/Performático$/.test(trilha.nome), `nome adaptado à classe: ${trilha.nome}`);
+  }
+  // e não se cola ao Sobrevivente, que o livro não inclui
+  assert.equal(CLASSES.find((c) => c.id === 'sobrevivente').trilhas.some((t) => t.geral), false);
+});
+
+teste('ids de trilha únicos e todas com poderes', () => {
+  const todas = CLASSES.flatMap((c) => c.trilhas);
+  const ids = todas.map((t) => t.id);
+  assert.equal(new Set(ids).size, ids.length, 'há ids repetidos: ' + ids.join(', '));
+  for (const t of todas) assert.ok((t.poderes || []).length > 0, `${t.id} sem poderes`);
+});
+
+teste('origens sem repetições e todas com duas perícias', () => {
+  const ids = ORIGENS.map((o) => o.id);
+  assert.equal(new Set(ids).size, ids.length);
+  for (const o of ORIGENS) {
+    const total = (o.pericias || []).length + (o.periciasLivres || 0);
+    assert.equal(total, 2, `${o.id} tem ${total} perícias em vez de 2`);
+  }
+});
+
+// ---- armas ágeis, leitura do teste e preço dos rituais ----
+import { formulaTeste, ehAgil } from '../src/engine/armas.js';
+import { precoDoRitual } from '../src/engine/rituais.js';
+
+console.log('\nArmas ágeis e rituais\n');
+
+teste('arma ágil usa Agilidade em vez de Força, no ataque e no dano', () => {
+  const p = personagemVazio();
+  p.atributos.for = 1;
+  p.atributos.agi = 3;
+  p.pericias.luta.grau = 'treinado';
+  const base = { pericia: 'luta', dano: '1d6', critico: '18', atributoDano: 'for', modificacoes: [] };
+  const normal = estatisticasArma(p, { ...base, nome: 'Espada' });
+  const agil = estatisticasArma(p, { ...base, nome: 'Florete', agil: true });
+  assert.equal(normal.dados, 1);
+  assert.equal(normal.bonusDano, 1);
+  assert.equal(agil.dados, 3);          // 3d20 em vez de 1d20
+  assert.equal(agil.bonusDano, 3);      // +3 de dano em vez de +1
+  assert.equal(agil.agilAtiva, true);
+});
+
+teste('a troca manual do atributo da perícia manda sobre o "ágil"', () => {
+  const p = personagemVazio();
+  p.atributos.for = 1;
+  p.atributos.agi = 3;
+  p.atributos.pre = 4;
+  p.pericias.luta.attr = 'pre';         // um poder trocou Luta para Presença
+  const e = estatisticasArma(p, { pericia: 'luta', dano: '1d6', critico: '19', atributoDano: 'for', agil: true, modificacoes: [] });
+  assert.equal(e.dados, 4);
+  assert.equal(e.agilAtiva, false);
+});
+
+teste('a tabela marca as armas ágeis', () => {
+  assert.equal(ehAgil({ propriedades: ['Ágil', 'Pode ser arremessada'] }), true);
+  assert.equal(ehAgil({ descricao: 'É uma arma ágil.' }), true);
+  assert.equal(ehAgil({ propriedades: [], descricao: 'Uma marreta pesada.' }), false);
+});
+
+teste('com o atributo a 0 escreve-se "2d20 pior", não "0d20"', () => {
+  assert.equal(formulaTeste(2, 5), '2d20 +5');
+  assert.equal(formulaTeste(0, 5), '2d20 pior +5');
+  assert.equal(formulaTeste(3, 0), '3d20');
+  assert.equal(formulaTeste(1, -2), '1d20 −2');
+});
+
+teste('preço do ritual: Sanidade abaixo de 20 + círculo, permanente abaixo de 10 + círculo', () => {
+  // 1º círculo: limites 21 e 11
+  assert.deepEqual(precoDoRitual(25, 1), { limiteSan: 21, limitePermanente: 11, perdeSan: false, perdePermanente: false });
+  assert.deepEqual(precoDoRitual(15, 1), { limiteSan: 21, limitePermanente: 11, perdeSan: true, perdePermanente: false });
+  // falhar por muito conta as duas
+  assert.deepEqual(precoDoRitual(8, 1), { limiteSan: 21, limitePermanente: 11, perdeSan: true, perdePermanente: true });
+  // 4º círculo é mais exigente
+  assert.equal(precoDoRitual(23, 4).perdeSan, true);
+  assert.equal(precoDoRitual(24, 4).perdeSan, false);
+});
+
 console.log(`\n${passou} testes ok`);

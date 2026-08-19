@@ -25,18 +25,31 @@ export function somarDados(expr, quantos) {
  */
 export function estatisticasArma(personagem, arma) {
   const pericias = calcPericias(personagem);
-  const p = pericias.find((x) => x.id === arma.pericia) || { dados: 1, bonus: 0, nome: '' };
+  const p = pericias.find((x) => x.id === arma.pericia) || { dados: 1, bonus: 0, nome: '', attr: 'for' };
   const mods = aplicarModificacoes(arma);
 
   const critico = arma.margem
     ? { margem: Number(arma.margem), multiplicador: Number(arma.multiplicador) || 2 }
     : interpretarCritico(arma.critico);
 
-  const bonusAtributoDano = arma.atributoDano ? Number(personagem.atributos[arma.atributoDano] || 0) : 0;
+  /*
+   * Armas ágeis (Livro Base, "Habilidades de Armas"): facas, punhais, cajados,
+   * nunchakus, floretes e katanas «permitem que você aplique sua Agilidade em
+   * vez de sua Força em testes de ataque e rolagens de dano realizadas com elas».
+   * Só faz diferença quando o teste ia mesmo por Força — se já trocaste o
+   * atributo da perícia à mão, essa escolha manda.
+   */
+  const agilAtiva = Boolean(arma.agil) && p.attr === 'for';
+  const dados = agilAtiva ? Number(personagem.atributos?.agi || 0) : p.dados;
+  const atributoDano = agilAtiva && arma.atributoDano === 'for' ? 'agi' : arma.atributoDano;
+  const bonusAtributoDano = atributoDano ? Number(personagem.atributos[atributoDano] || 0) : 0;
 
   return {
     pericia: p,
-    dados: p.dados,
+    dados,
+    atributoTeste: agilAtiva ? 'agi' : p.attr,
+    atributoDano,
+    agilAtiva,
     bonusAtaque: p.bonus + (Number(arma.bonus) || 0) + mods.ataque,
     dano: somarDados(arma.dano, mods.dadosDano),
     bonusDano: bonusAtributoDano + mods.dano,
@@ -59,6 +72,7 @@ export function armaDoItem(item) {
   const corpoACorpo = !item.alcance || /corpo/i.test(item.grupo || '');
   return {
     nome: item.nome,
+    agil: ehAgil(item),
     pericia: item.pericia || (corpoACorpo ? 'luta' : 'pontaria'),
     bonus: 0,
     dano: item.dano || '',
@@ -79,4 +93,22 @@ export function armaDoItem(item) {
 /** Uma arma é do catálogo de armas, ou um item amaldiçoado que é arma. */
 export function ehArma(item) {
   return item?.tipo === 'arma' || (item?.tipo === 'amaldicoado' && /arma/i.test(item?.subtipo || ''));
+}
+
+/** A tabela de armas marca as ágeis em `propriedades`; a descrição também o diz. */
+export function ehAgil(item) {
+  if (item?.agil) return true;
+  if ((item?.propriedades || []).some((x) => /ágil|agil/i.test(x))) return true;
+  return /arma\s+(tática\s+)?ágil|é uma arma ágil/i.test(item?.descricao || '');
+}
+
+/**
+ * Como se lê o teste de ataque. Com o atributo a 0 rolam-se 2 dados e fica o
+ * PIOR — escrever "0d20" não dizia nada a ninguém.
+ */
+export function formulaTeste(dados, bonus) {
+  const n = Number(dados) || 0;
+  const b = Number(bonus) || 0;
+  const sinal = b === 0 ? '' : ` ${b > 0 ? '+' : '−'}${Math.abs(b)}`;
+  return n > 0 ? `${n}d20${sinal}` : `2d20 pior${sinal}`;
 }

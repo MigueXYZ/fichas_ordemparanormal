@@ -5,14 +5,17 @@ import { ITENS, TIPOS_ITEM } from '../../data/itens.js';
 import { PODERES } from '../../data/poderes.js';
 import { CLASSES_POR_ID, TRILHAS_POR_ID } from '../../data/classes.js';
 import { ORIGENS_POR_ID } from '../../data/origens.js';
-import { calcCarga, calcItensPorCategoria, nexEfetivo } from '../../engine/calc.js';
+import { calcCarga, calcItensPorCategoria, nexEfetivo, calcMaximos } from '../../engine/calc.js';
 import { PATENTES, PATENTES_POR_ID, CATEGORIAS, categoriaRomana } from '../../data/patentes.js';
 import { novoAtaque, novoItem, novaHabilidade, novoRitual } from '../../engine/character.js';
-import { rolarExpressao, rolarAtaqueCompleto, rolarDano } from '../../engine/dados.js';
-import { estatisticasArma, interpretarCritico, armaDoItem, ehArma } from '../../engine/armas.js';
+import { rolarExpressao, rolarAtaqueCompleto, rolarDano, rolarTeste } from '../../engine/dados.js';
+import { estatisticasArma, interpretarCritico, armaDoItem, ehArma, formulaTeste } from '../../engine/armas.js';
+import { precoDoRitual } from '../../engine/rituais.js';
 import EditorArma from './EditorArma.jsx';
 import { calcPericias } from '../../engine/calc.js';
 import IconeD20 from '../IconeD20.jsx';
+
+const NOME_ATRIBUTO = { for: 'Força', agi: 'Agilidade', int: 'Intelecto', pre: 'Presença', vig: 'Vigor' };
 import Seletor from './Seletor.jsx';
 
 function Campo({ label, valor, onChange, tipo = 'text', opcoes }) {
@@ -43,13 +46,14 @@ function useLista(personagem, setPersonagem, chave) {
 
 // ---------------------------------------------------------------- COMBATE
 
+/**
+ * Combate é só para USAR: as armas que já tens e os rituais que já sabes.
+ * Adicionar, editar e remover armas faz-se no Inventário.
+ */
 export function AbaCombate({ personagem, setPersonagem, onRolar }) {
-  const { lista, adicionar, editar, remover } = useLista(personagem, setPersonagem, 'ataques');
+  const { lista, editar } = useLista(personagem, setPersonagem, 'ataques');
   const [expr, setExpr] = useState('');
-  const [aEscolher, setAEscolher] = useState(false);
-  const [aEditar, setAEditar] = useState(null);   // { indice, arma } | 'nova'
   const [acertos, setAcertos] = useState({});     // último ataque por índice
-  const armas = ITENS.filter((i) => i.tipo === 'arma' || (i.tipo === 'amaldicoado' && i.subtipo === 'Arma'));
 
   function rolar() {
     const r = rolarExpressao(expr);
@@ -89,44 +93,10 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
           style={{ flex: 1, minWidth: 170 }}
         />
         <button className="btn ghost" onClick={rolar}>Rolar</button>
-        <button className="btn ghost" onClick={() => setAEscolher(true)}>Do catálogo</button>
-        <button className="btn" onClick={() => setAEditar('nova')}>Nova arma</button>
       </div>
 
-      {aEscolher && (
-        <Seletor
-          titulo={`Armas (${armas.length})`}
-          itens={armas}
-          filtros={[{ id: 'grupo', label: 'Todos os grupos', valorDe: (i) => i.grupo, opcoes: [...new Set(armas.map((a) => a.grupo).filter(Boolean))].map((g) => ({ valor: g, label: g })) }]}
-          aoProcurar={(i, t) => i.nome.toLowerCase().includes(t) || (i.descricao || '').toLowerCase().includes(t)}
-          render={(a) => (
-            <>
-              <b>{a.nome}</b>
-              <span className="meta">{[a.dano, a.critico, a.tipoDano, a.alcance, a.grupo].filter(Boolean).join(' · ')}</span>
-            </>
-          )}
-          onEscolher={(a) => {
-            adicionar(armaDoItem(a));
-            setAEscolher(false);
-          }}
-          onFechar={() => setAEscolher(false)}
-        />
-      )}
-
-      {aEditar !== null && (
-        <EditorArma
-          arma={aEditar === 'nova' ? null : aEditar.arma}
-          aoFechar={() => setAEditar(null)}
-          aoGuardar={(nova) => {
-            if (aEditar === 'nova') adicionar(nova);
-            else editar(aEditar.indice, nova);
-            setAEditar(null);
-          }}
-        />
-      )}
-
       {lista.length === 0 ? (
-        <div className="painel-vazio">Ainda não possuis ataques</div>
+        <div className="painel-vazio">Sem armas. Escolhe-as no separador Inventário.</div>
       ) : (
         <div className="lista-blocos">
           {lista.map((a, i) => {
@@ -141,8 +111,11 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
                     <div>
                     <b>{a.nome || 'Sem nome'}</b>
                     <div className="arma-stats">
-                      <span>{e.dados}d20 {e.bonusAtaque >= 0 ? '+' : '−'}{Math.abs(e.bonusAtaque)}</span>
-                      <span>{e.dano}{e.bonusDano ? (e.bonusDano > 0 ? ` + ${e.bonusDano}` : ` − ${Math.abs(e.bonusDano)}`) : ''}</span>
+                      <span title={`Teste de ${e.pericia.nome} com ${NOME_ATRIBUTO[e.atributoTeste] || ''}${e.dados > 0 ? '' : ' — com o atributo a 0 rolas 2 dados e fica o pior'}`}>
+                        {e.pericia.nome} {formulaTeste(e.dados, e.bonusAtaque)}
+                      </span>
+                      {e.agilAtiva && <span className="etiqueta-agil" title="Arma ágil: usa Agilidade em vez de Força no ataque e no dano">ágil</span>}
+                      <span title="Dano">{e.dano}{e.bonusDano ? (e.bonusDano > 0 ? ` + ${e.bonusDano}` : ` − ${Math.abs(e.bonusDano)}`) : ''}</span>
                       <span>{e.margem === 20 ? '20' : `${e.margem}–20`} / ×{e.multiplicador}</span>
                       {a.tipo && <span>{a.tipo}</span>}
                       {e.alcance && <span>{e.alcance}</span>}
@@ -170,8 +143,6 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
                     >
                       {acerto?.critico ? `Dano ×${e.multiplicador}` : 'Só dano'}
                     </button>
-                    <button className="btn ghost sm" onClick={() => setAEditar({ indice: i, arma: a })}>Editar</button>
-                    <button className="btn danger sm" onClick={() => remover(i)}>Remover</button>
                   </div>
                 </div>
 
@@ -202,6 +173,116 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
           })}
         </div>
       )}
+
+      <RituaisEmCombate personagem={personagem} setPersonagem={setPersonagem} onRolar={onRolar} />
+    </div>
+  );
+}
+
+/**
+ * Os rituais que o agente já sabe, prontos a conjurar. Conjurar desconta os PE
+ * (ou PD) e mostra a DT para quem tiver de resistir. Aprendem-se no separador
+ * Rituais — aqui é só para usar.
+ */
+function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
+  const rituais = personagem.rituais || [];
+  if (!rituais.length) return null;
+
+  const max = calcMaximos(personagem);
+  const usaPd = max.semSanidade;
+  const atual = usaPd ? (personagem.pdAtual ?? max.pd) : (personagem.peAtual ?? max.pe);
+  const dt = Number(personagem.dtRitual) || null;
+
+  /**
+   * Conjurar custa pontos e cobra ao corpo: fazes um teste de Ocultismo e,
+   * se ele não chegar, o Outro Lado leva a sua parte da tua Sanidade.
+   *   total < 20 + círculo  ->  −1 de Sanidade
+   *   total < 10 + círculo  ->  −1 de Sanidade PERMANENTE (baixa o máximo)
+   * Com a regra "Jogando sem Sanidade" isto cai nos Pontos de Determinação.
+   */
+  function conjurar(r) {
+    const custo = Number(String(r.custo).replace(/\D/g, '')) || 0;
+    if (custo > atual) return;
+
+    const circulo = Number(r.circulo) || 1;
+    const oc = calcPericias(personagem).find((x) => x.id === 'ocultismo') || { dados: 0, bonus: 0 };
+    const teste = rolarTeste({ nome: `${r.nome || 'Ritual'} — Ocultismo`, dados: oc.dados, bonus: oc.bonus });
+
+    const { perdeSan, perdePermanente, limiteSan, limitePermanente } = precoDoRitual(teste.total, circulo);
+
+    const campoAtual = usaPd ? 'pdAtual' : 'sanAtual';
+    const campoExtra = usaPd ? 'pdExtra' : 'sanExtra';
+    const maximoMental = usaPd ? max.pd : max.san;
+    const mentalAtual = personagem[campoAtual] ?? maximoMental;
+
+    const patch = { [usaPd ? 'pdAtual' : 'peAtual']: atual - custo };
+    if (usaPd) {
+      // com PD é tudo o mesmo poço: o custo e a perda saem do mesmo sítio
+      let pd = atual - custo;
+      if (perdeSan) pd = Math.max(0, pd - 1);
+      patch.pdAtual = pd;
+      if (perdePermanente) patch.pdExtra = (Number(personagem.pdExtra) || 0) - 1;
+    } else {
+      if (perdeSan) patch.sanAtual = Math.max(0, mentalAtual - 1);
+      if (perdePermanente) {
+        patch.sanExtra = (Number(personagem.sanExtra) || 0) - 1;
+        patch.sanAtual = Math.max(0, Math.min(patch.sanAtual ?? mentalAtual, maximoMental - 1));
+      }
+    }
+    setPersonagem({ ...personagem, ...patch });
+
+    const nomeMental = usaPd ? 'Determinação' : 'Sanidade';
+    const notas = [
+      `${custo} ${usaPd ? 'PD' : 'PE'} gastos`,
+      dt ? `DT ${dt} para resistir` : null,
+      perdePermanente
+        ? `falhou por muito (< ${limitePermanente}): −1 de ${nomeMental} e −1 permanente`
+        : perdeSan
+          ? `abaixo de ${limiteSan}: −1 de ${nomeMental}`
+          : `${limiteSan} ou mais: a mente aguentou`,
+    ].filter(Boolean);
+
+    onRolar({ ...teste, tipo: 'ritual', nome: r.nome || 'Ritual', detalhe: `${circulo}º círculo`, notas, sofreu: perdeSan });
+  }
+
+  return (
+    <div className="rituais-combate">
+      <div className="rotulo-lista">Rituais · {usaPd ? `${atual} PD` : `${atual} PE`} disponíveis{dt ? ` · DT ${dt}` : ''}</div>
+      <div className="lista-blocos">
+        {rituais.map((r, i) => {
+          const custo = Number(String(r.custo).replace(/\D/g, '')) || 0;
+          const circulo = Number(r.circulo) || 1;
+          const podeGastar = custo <= atual;
+          return (
+            <div className={'bloco ritual el-' + (r.elemento || 'variavel')} key={i}>
+              <div className="topo">
+                <div>
+                  <b>{r.nome || 'Sem nome'}</b>
+                  <div className="arma-stats">
+                    <span>{circulo}º círculo</span>
+                    {r.elemento && <span>{r.elemento}</span>}
+                    <span>{custo} {usaPd ? 'PD' : 'PE'}</span>
+                    <span title="Abaixo disto perdes 1 de Sanidade; abaixo de 10 + círculo, perdes 1 permanente">
+                      Ocultismo {20 + circulo} / {10 + circulo}
+                    </span>
+                    {r.execucao && <span>{r.execucao}</span>}
+                    {r.alcance && <span>{r.alcance}</span>}
+                    {r.resistencia && <span>resistência: {r.resistencia}</span>}
+                  </div>
+                </div>
+                <button
+                  className="btn sm"
+                  disabled={!podeGastar}
+                  title={podeGastar ? `Gasta ${custo} ${usaPd ? 'PD' : 'PE'} e faz o teste de Ocultismo` : 'Não tens pontos que cheguem'}
+                  onClick={() => conjurar(r)}
+                >
+                  Conjurar
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -370,7 +451,10 @@ export function AbaInventario({ personagem, setPersonagem }) {
   const { lista, adicionar, editar, remover } = useLista(personagem, setPersonagem, 'inventario');
   const armas = useLista(personagem, setPersonagem, 'ataques');
   const [aEscolher, setAEscolher] = useState(false);
+  const [aEscolherArma, setAEscolherArma] = useState(false);
+  const [aEditarArma, setAEditarArma] = useState(null);   // { indice, arma } | 'nova'
   const [aviso, setAviso] = useState(null);
+  const catalogoArmas = ITENS.filter(ehArma);
   const carga = calcCarga(personagem);
   const cats = calcItensPorCategoria(personagem);
   const set = (patch) => setPersonagem({ ...personagem, ...patch });
@@ -429,10 +513,42 @@ export function AbaInventario({ personagem, setPersonagem }) {
         <div className="aviso"><strong>Acima da patente:</strong> tens mais itens do que a Ordem te libera nesta missão.</div>
       )}
 
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', margin: '14px 0' }}>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', margin: '14px 0', flexWrap: 'wrap' }}>
+        <button className="btn ghost" onClick={() => setAEscolherArma(true)}>Armas do catálogo</button>
+        <button className="btn ghost" onClick={() => setAEditarArma('nova')}>Nova arma</button>
+        <span style={{ flex: 1 }} />
         <button className="btn ghost" onClick={() => setAEscolher(true)}>Do catálogo</button>
         <button className="btn" onClick={() => adicionar(novoItem())}>Novo Item</button>
       </div>
+
+      {aEscolherArma && (
+        <Seletor
+          titulo={`Armas (${catalogoArmas.length})`}
+          itens={catalogoArmas}
+          filtros={[{ id: 'grupo', label: 'Todos os grupos', valorDe: (i) => i.grupo, opcoes: [...new Set(catalogoArmas.map((a) => a.grupo).filter(Boolean))].map((g) => ({ valor: g, label: g })) }]}
+          aoProcurar={(i, t) => i.nome.toLowerCase().includes(t) || (i.descricao || '').toLowerCase().includes(t)}
+          render={(a) => (
+            <>
+              <b>{a.nome}</b>
+              <span className="meta">{[a.dano, a.critico, a.tipoDano, a.alcance, a.grupo, a.espacos != null ? `${a.espacos} esp.` : null].filter(Boolean).join(' · ')}</span>
+            </>
+          )}
+          onEscolher={(a) => { armas.adicionar(armaDoItem(a)); setAEscolherArma(false); setAviso(null); }}
+          onFechar={() => setAEscolherArma(false)}
+        />
+      )}
+
+      {aEditarArma !== null && (
+        <EditorArma
+          arma={aEditarArma === 'nova' ? null : aEditarArma.arma}
+          aoFechar={() => setAEditarArma(null)}
+          aoGuardar={(nova) => {
+            if (aEditarArma === 'nova') armas.adicionar({ equipado: true, ...nova });
+            else armas.editar(aEditarArma.indice, nova);
+            setAEditarArma(null);
+          }}
+        />
+      )}
 
       {aEscolher && (
         <Seletor
@@ -485,16 +601,26 @@ export function AbaInventario({ personagem, setPersonagem }) {
         <div className="armas-carregadas">
           <div className="rotulo-lista">Armas ({carga.dasArmas} espaços)</div>
           <ul>
-            {(personagem.ataques || []).map((a, i) => (
-              <li key={i}>
-                <span className={'ponto' + (a.equipado === false ? '' : ' equipado')} />
-                <span className="nome">{a.nome || 'Sem nome'}</span>
-                <span className="estado">{a.equipado === false ? 'guardada' : 'equipada'}</span>
-                <span className="esp">{Number(a.espacos) || 0} esp.</span>
-              </li>
-            ))}
+            {(personagem.ataques || []).map((a, i) => {
+              const equipado = a.equipado !== false;
+              return (
+                <li key={i}>
+                  <button
+                    type="button"
+                    className={'ponto botao' + (equipado ? ' equipado' : '')}
+                    title={equipado ? 'Equipada — carrega para guardar' : 'Guardada — carrega para equipar'}
+                    onClick={() => armas.editar(i, { equipado: !equipado })}
+                  />
+                  <span className="nome">{a.nome || 'Sem nome'}</span>
+                  <span className="estado">{equipado ? 'equipada' : 'guardada'}</span>
+                  <span className="esp">{Number(a.espacos) || 0} esp.</span>
+                  <button className="btn ghost sm" onClick={() => setAEditarArma({ indice: i, arma: a })}>Editar</button>
+                  <button className="btn danger sm" onClick={() => armas.remover(i)}>Remover</button>
+                </li>
+              );
+            })}
           </ul>
-          <div className="dica">Editam-se no separador Combate.</div>
+          <div className="dica">Usam-se no separador Combate. Uma arma pesa na carga esteja equipada ou guardada.</div>
         </div>
       )}
 

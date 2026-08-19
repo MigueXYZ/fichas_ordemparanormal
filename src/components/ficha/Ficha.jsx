@@ -177,13 +177,28 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
             </div>
           </div>
 
-          <BarraRecurso titulo="VIDA" classe="barra-vida" atual={personagem.pvAtual ?? max.pv} max={max.pv} onChange={(v) => set({ pvAtual: v })} />
+          <BarraRecurso
+            titulo="VIDA" classe="barra-vida"
+            atual={personagem.pvAtual ?? max.pv} max={max.pv} onChange={(v) => set({ pvAtual: v })}
+            temp={personagem.pvTemp || 0} onTemp={(v) => set({ pvTemp: v })}
+          />
           {max.semSanidade ? (
-            <BarraRecurso titulo="DETERMINAÇÃO" classe="barra-determinacao" atual={personagem.pdAtual ?? max.pd} max={max.pd} onChange={(v) => set({ pdAtual: v })} />
+            <BarraRecurso
+              titulo="DETERMINAÇÃO" classe="barra-determinacao"
+              atual={personagem.pdAtual ?? max.pd} max={max.pd} onChange={(v) => set({ pdAtual: v })}
+              temp={personagem.pdTemp || 0} onTemp={(v) => set({ pdTemp: v })}
+            />
           ) : (
             <>
-              <BarraRecurso titulo="SANIDADE" classe="barra-sanidade" atual={personagem.sanAtual ?? max.san} max={max.san} onChange={(v) => set({ sanAtual: v })} />
-              <BarraRecurso titulo="ESFORÇO" classe="barra-esforco" atual={personagem.peAtual ?? max.pe} max={max.pe} onChange={(v) => set({ peAtual: v })} />
+              <BarraRecurso
+                titulo="SANIDADE" classe="barra-sanidade"
+                atual={personagem.sanAtual ?? max.san} max={max.san} onChange={(v) => set({ sanAtual: v })}
+              />
+              <BarraRecurso
+                titulo="ESFORÇO" classe="barra-esforco"
+                atual={personagem.peAtual ?? max.pe} max={max.pe} onChange={(v) => set({ peAtual: v })}
+                temp={personagem.peTemp || 0} onTemp={(v) => set({ peTemp: v })}
+              />
             </>
           )}
 

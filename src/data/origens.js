@@ -1,6 +1,7 @@
 // ORIGENS — extraído dos livros. Não editar à mão sem confirmar com o livro.
+import { ORIGENS_EXTRA } from './extra/index.js';
 
-export const ORIGENS = [
+const ORIGENS_BASE = [
   {
     id: 'academico',
     nome: 'Acadêmico',
@@ -532,6 +533,11 @@ export const ORIGENS = [
     livro: 'Livro Base',
   },
 ];
+
+/** As origens dos Arquivos Secretos juntam-se às do Livro Base e do SaH. */
+export const ORIGENS = [...ORIGENS_BASE, ...ORIGENS_EXTRA]
+  .filter((o, i, todas) => todas.findIndex((x) => x.id === o.id) === i)
+  .sort((a, b) => a.nome.localeCompare(b.nome, 'pt'));
 
 export const ORIGENS_POR_ID = Object.fromEntries(ORIGENS.map((o) => [o.id, o]));
 

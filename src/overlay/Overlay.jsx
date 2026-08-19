@@ -5,15 +5,25 @@ import { Dados } from '../components/PainelRolagem.jsx';
 
 const SEGUNDOS_ROLAGEM = 8;
 
-function Barra({ titulo, classe, atual, max }) {
-  const pct = max > 0 ? Math.max(0, Math.min(100, (atual / max) * 100)) : 0;
+function Recurso({ titulo, classe, atual, max, temp = 0 }) {
   return (
-    <div className={'ov-barra ' + classe}>
-      <div className="ov-titulo">{titulo}</div>
-      <div className="ov-calha">
-        <div className="ov-cheio" style={{ width: pct + '%' }} />
-        <span className="ov-num">{atual} / {max}</span>
-      </div>
+    <div className={'ov-recurso ' + classe}>
+      <span className="ov-nome-recurso">{titulo}</span>
+      <span className="ov-valor-recurso">
+        {atual}<i>/{max}</i>{temp > 0 ? <b className="ov-temp">+{temp}</b> : null}
+      </span>
+    </div>
+  );
+}
+
+/** O último resultado, dentro de um d20, ao lado do nome. */
+function DadoResultado({ rolagem }) {
+  if (!rolagem) return null;
+  const classe = 'ov-dado' + (rolagem.critico ? ' critico' : '') + (rolagem.falhaCritica ? ' falha' : '');
+  return (
+    <div className={classe} key={rolagem.id} title={rolagem.nome}>
+      <IconeD20 className="ov-dado-forma" />
+      <span className="ov-dado-total">{rolagem.total}</span>
     </div>
   );
 }
@@ -22,6 +32,7 @@ export default function Overlay({ config, semDiagnostico = false }) {
   const [estado, setEstado] = useState(null);
   const [ligacao, setLigacao] = useState('à espera');
   const [rolagens, setRolagens] = useState([]);
+  const [ultima, setUltima] = useState(null);   // fica no d20 ao lado do nome
   const vistas = useRef(new Set());
 
   useEffect(() => {
@@ -33,6 +44,7 @@ export default function Overlay({ config, semDiagnostico = false }) {
         const r = novo?.rolagem;
         if (r && !vistas.current.has(r.id)) {
           vistas.current.add(r.id);
+          setUltima(r);
           setRolagens((lista) => [...lista.slice(-2), r]);
           setTimeout(() => setRolagens((lista) => lista.filter((x) => x.id !== r.id)), SEGUNDOS_ROLAGEM * 1000);
         }
@@ -59,22 +71,29 @@ export default function Overlay({ config, semDiagnostico = false }) {
 
   return (
     <div className="ov">
-      <div className="ov-agente">
-        {estado.token && <img className="ov-token" src={estado.token} alt="" />}
-        <div className="ov-info">
-          <div className="ov-nome">{estado.nome || 'Agente'}</div>
-          {estado.legenda && <div className="ov-legenda">{estado.legenda}</div>}
-          <div className="ov-barras">
-            <Barra titulo="Vida" classe="ov-vida" atual={estado.pv?.atual ?? 0} max={estado.pv?.max ?? 0} />
-            {estado.pd
-              ? <Barra titulo="Determinação" classe="ov-determinacao" atual={estado.pd.atual} max={estado.pd.max} />
-              : (
-                <>
-                  <Barra titulo="Sanidade" classe="ov-sanidade" atual={estado.san?.atual ?? 0} max={estado.san?.max ?? 0} />
-                  <Barra titulo="Esforço" classe="ov-esforco" atual={estado.pe?.atual ?? 0} max={estado.pe?.max ?? 0} />
-                </>
-              )}
+      <div className="ov-cartao">
+        {estado.token && <div className="ov-retrato"><img src={estado.token} alt="" /></div>}
+
+        <div className="ov-linha-nome">
+          <div className="ov-identidade">
+            <div className="ov-nome">{estado.nome || 'Agente'}</div>
+            <div className="ov-vida-grande">
+              {estado.pv?.atual ?? 0}<i>/{estado.pv?.max ?? 0}</i>
+              {estado.pv?.temp > 0 ? <b className="ov-temp">+{estado.pv.temp}</b> : null}
+            </div>
           </div>
+          <DadoResultado rolagem={ultima} />
+        </div>
+
+        <div className="ov-secundarias">
+          {estado.pd
+            ? <Recurso titulo="Determinação" classe="ov-determinacao" atual={estado.pd.atual} max={estado.pd.max} temp={estado.pd.temp} />
+            : (
+              <>
+                <Recurso titulo="Sanidade" classe="ov-sanidade" atual={estado.san?.atual ?? 0} max={estado.san?.max ?? 0} />
+                <Recurso titulo="Esforço" classe="ov-esforco" atual={estado.pe?.atual ?? 0} max={estado.pe?.max ?? 0} temp={estado.pe?.temp} />
+              </>
+            )}
         </div>
       </div>
 
