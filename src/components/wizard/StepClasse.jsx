@@ -147,12 +147,22 @@ export default function StepClasse({ personagem, setPersonagem }) {
 
       {previa && (
         <div className="card" style={{ marginTop: 22 }}>
-          <h3 style={{ fontSize: 18 }}>Prévia em NEX {personagem.nex}%</h3>
+          <h3 style={{ fontSize: 18 }}>
+            {personagem.regras?.nivelSeparado
+              ? `Prévia no nível ${personagem.nivel ?? 1}`
+              : `Prévia em NEX ${personagem.nex}%`}
+          </h3>
           <div className="barra" />
           <div style={{ display: 'flex', gap: 26, fontSize: 15 }}>
             <div><b style={{ color: 'var(--vida)' }}>{previa.pv}</b> Vida</div>
-            <div><b style={{ color: 'var(--sanidade)' }}>{previa.san}</b> Sanidade</div>
-            <div><b style={{ color: 'var(--esforco)' }}>{previa.pe}</b> Esforço</div>
+            {previa.semSanidade ? (
+              <div><b style={{ color: 'var(--determinacao)' }}>{previa.pd}</b> Determinação</div>
+            ) : (
+              <>
+                <div><b style={{ color: 'var(--sanidade)' }}>{previa.san}</b> Sanidade</div>
+                <div><b style={{ color: 'var(--esforco)' }}>{previa.pe}</b> Esforço</div>
+              </>
+            )}
           </div>
         </div>
       )}

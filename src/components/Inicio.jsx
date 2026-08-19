@@ -3,7 +3,7 @@ import { CLASSES_POR_ID } from '../data/classes.js';
 import { ORIGENS_POR_ID } from '../data/origens.js';
 import { listarAgentes, apagarAgente, duplicarAgente, importarJson, guardarAgente } from '../engine/armazenamento.js';
 import Geradores from './Geradores.jsx';
-import { ELEMENTOS } from '../data/rituais.js';
+import { ELEMENTOS, ORDEM_ELEMENTOS } from '../data/rituais.js';
 
 function descrever(a) {
   if (a.tipo === 'ameaca') return [`VD ${a.vd}`, `Defesa ${a.defesa}`, `${a.pv} PV`].join(' · ');
@@ -44,7 +44,7 @@ export default function Inicio({ aoCriar, aoAbrir }) {
       <h1 className="marca">Ordem<em>Paranormal</em></h1>
       <div className="sub">Ordo Realitas · Ficha de Agente</div>
       <div className="elementos">
-        {ELEMENTOS.filter((e) => e.id !== 'variavel').map((e) => (
+        {ORDEM_ELEMENTOS.map((id) => ELEMENTOS.find((e) => e.id === id)).filter(Boolean).map((e) => (
           <span
             key={e.id}
             title={e.nome}

@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
 import IconeD20 from './IconeD20.jsx';
 
-function Dados({ r }) {
+/** A conta que deu origem ao resultado, conforme o tipo de rolagem. */
+export function Dados({ r }) {
   if (r.tipo === 'dano') {
     return (
       <span className="conta">
@@ -35,7 +36,37 @@ function Dados({ r }) {
   );
 }
 
-/** Cartões de resultado, canto inferior direito. */
+/** Cartão de um ataque: acerto à esquerda, dano à direita. */
+function CartaoAtaque({ r, aoFechar }) {
+  return (
+    <div className={'rolagem-cartao duplo' + (r.critico ? ' critico' : '') + (r.falhaCritica ? ' falha-critica' : '')}>
+      <IconeD20 className="icone" />
+      <div className="corpo">
+        <div className="nome">
+          {r.nome}
+          {r.critico ? ' · crítico' : ''}
+          {r.falhaCritica ? ' · falha crítica' : ''}
+        </div>
+        <div className="seccoes">
+          <div className="seccao">
+            <div className="etiqueta">Acerto</div>
+            <Dados r={r} />
+            <div className="res">{r.total}</div>
+          </div>
+          <div className="seccao">
+            <div className="etiqueta">Dano</div>
+            {r.dano
+              ? <><Dados r={r.dano} /><div className="res">{r.dano.total}</div></>
+              : <><span className="conta">sem dano válido</span><div className="res">—</div></>}
+          </div>
+        </div>
+      </div>
+      <button className="fechar" onClick={() => aoFechar(r.id)} aria-label="Fechar">✕</button>
+    </div>
+  );
+}
+
+/** Cartões de resultado, canto inferior direito. O mais recente fica em baixo. */
 export default function PainelRolagem({ rolagens, aoFechar, aoLimpar }) {
   useEffect(() => {
     if (!rolagens.length) return undefined;
@@ -47,24 +78,28 @@ export default function PainelRolagem({ rolagens, aoFechar, aoLimpar }) {
 
   return (
     <div className="rolagens">
-      {rolagens.slice(-3).map((r) => (
-        <div key={r.id} className={'rolagem-cartao' + (r.critico ? ' critico' : '') + (r.falhaCritica ? ' falha-critica' : '')}>
-          <IconeD20 className="icone" />
-          <div>
-            <div className="nome">
-              {r.nome}
-              {r.critico && r.tipo !== 'dano' ? ' · crítico' : ''}
-              {r.falhaCritica ? ' · falha crítica' : ''}
-            </div>
-            <Dados r={r} />
-          </div>
-          <span className="igual">=</span>
-          <span className="total">{r.total}</span>
-          <button className="fechar" onClick={() => aoFechar(r.id)} aria-label="Fechar">✕</button>
-        </div>
-      ))}
       {rolagens.length > 1 && (
-        <button className="btn ghost sm" style={{ alignSelf: 'flex-end' }} onClick={aoLimpar}>Limpar rolagens</button>
+        <button className="btn ghost sm limpar-rolagens" onClick={aoLimpar}>Limpar rolagens</button>
+      )}
+      {rolagens.slice(-3).map((r) =>
+        r.tipo === 'ataque' ? (
+          <CartaoAtaque key={r.id} r={r} aoFechar={aoFechar} />
+        ) : (
+          <div key={r.id} className={'rolagem-cartao' + (r.critico ? ' critico' : '') + (r.falhaCritica ? ' falha-critica' : '')}>
+            <IconeD20 className="icone" />
+            <div>
+              <div className="nome">
+                {r.nome}
+                {r.critico && r.tipo !== 'dano' ? ' · crítico' : ''}
+                {r.falhaCritica ? ' · falha crítica' : ''}
+              </div>
+              <Dados r={r} />
+            </div>
+            <span className="igual">=</span>
+            <span className="total">{r.total}</span>
+            <button className="fechar" onClick={() => aoFechar(r.id)} aria-label="Fechar">✕</button>
+          </div>
+        )
       )}
     </div>
   );

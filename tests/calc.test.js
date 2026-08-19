@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { personagemVazio } from '../src/engine/character.js';
-import { calcMaximos, calcDefesa, calcDefesas, calcPericias, pontosRestantes, calcPePorRodada, grauMaximoPorNex } from '../src/engine/calc.js';
+import { calcMaximos, calcDefesa, calcDefesas, calcPericias, pontosRestantes, calcPePorRodada, grauMaximoPorNex, degrauNex, nexEfetivo } from '../src/engine/calc.js';
 
 let passou = 0;
 function teste(nome, fn) {
@@ -25,7 +25,7 @@ teste('Combatente NEX 5% com atributos a 1 -> 21 PV / 12 SAN / 3 PE (print ofici
   const p = personagemVazio();
   p.classeId = 'combatente';
   const m = calcMaximos(p);
-  assert.deepEqual(m, { pv: 21, san: 12, pe: 3 });
+  assert.deepEqual({ pv: m.pv, san: m.san, pe: m.pe }, { pv: 21, san: 12, pe: 3 });
 });
 
 teste('Combatente NEX 10% soma um passo de progressão', () => {
@@ -33,7 +33,7 @@ teste('Combatente NEX 10% soma um passo de progressão', () => {
   p.classeId = 'combatente';
   p.nex = 10;
   const m = calcMaximos(p);
-  assert.deepEqual(m, { pv: 21 + 5, san: 12 + 3, pe: 3 + 3 });
+  assert.deepEqual({ pv: m.pv, san: m.san, pe: m.pe }, { pv: 21 + 5, san: 12 + 3, pe: 3 + 3 });
 });
 
 teste('Ocultista NEX 5% com VIG 2 / PRE 3', () => {
@@ -42,7 +42,7 @@ teste('Ocultista NEX 5% com VIG 2 / PRE 3', () => {
   p.atributos.vig = 2;
   p.atributos.pre = 3;
   const m = calcMaximos(p);
-  assert.deepEqual(m, { pv: 14, san: 20, pe: 7 });
+  assert.deepEqual({ pv: m.pv, san: m.san, pe: m.pe }, { pv: 14, san: 20, pe: 7 });
 });
 
 teste('defesa = 10 + AGI (print: 11 com AGI 1)', () => {
@@ -113,6 +113,33 @@ teste('esquiva = Defesa + bónus de Reflexos, só com treino', () => {
   assert.equal(d.esquiva.valor, 18);           // 13 + 5
 });
 
+teste('valor escrito à mão manda sobre o cálculo de bloqueio e esquiva', () => {
+  const p = personagemVazio();
+  // sem treino nenhum: normalmente não havia bloqueio nem esquiva
+  p.bloqueioManual = 4;
+  p.esquivaManual = 17;
+  const d = calcDefesas(p);
+  assert.equal(d.bloqueio.disponivel, true);
+  assert.equal(d.bloqueio.manual, true);
+  assert.equal(d.bloqueio.valor, 4);
+  assert.equal(d.esquiva.valor, 17);
+  // apagar o campo devolve o automático
+  p.bloqueioManual = null;
+  p.esquivaManual = null;
+  const d2 = calcDefesas(p);
+  assert.equal(d2.bloqueio.manual, false);
+  assert.equal(d2.bloqueio.disponivel, false);
+});
+
+teste('o valor automático continua acessível para o botão "auto"', () => {
+  const p = personagemVazio();
+  p.pericias.fortitude.grau = 'treinado';
+  p.bloqueioManual = 99;
+  const d = calcDefesas(p);
+  assert.equal(d.bloqueio.valor, 99);
+  assert.equal(d.bloqueio.auto, 5);
+});
+
 teste('extras manuais somam a bloqueio e esquiva', () => {
   const p = personagemVazio();
   p.pericias.fortitude.grau = 'treinado';
@@ -128,7 +155,7 @@ teste('extras manuais somam a bloqueio e esquiva', () => {
 // ---- carga e patente ----
 import { calcCarga, calcItensPorCategoria } from '../src/engine/calc.js';
 import { interpretarCritico, somarDados, estatisticasArma } from '../src/engine/armas.js';
-import { rolarDano } from '../src/engine/dados.js';
+import { rolarDano, rolarAtaqueCompleto } from '../src/engine/dados.js';
 
 console.log('\nCarga, patente e armas\n');
 
@@ -204,6 +231,100 @@ teste('dá para trocar o atributo de uma perícia', () => {
   assert.equal(depois.dados, 3);
   assert.equal(depois.attrTrocado, true);
   assert.equal(depois.attrPadrao, 'pre');
+});
+
+teste('dano com duas hipóteses ("1d4/1d6") usa a primeira em vez de falhar', () => {
+  const r = rolarDano({ nome: 'Coronhada', dano: '1d4/1d6', bonus: 2 });
+  assert.ok(r, 'devia rolar em vez de devolver null');
+  assert.equal(r.expressao, '1d4');
+  assert.equal(r.rolagens.length, 1);
+  assert.ok(r.total >= 3 && r.total <= 6);
+});
+
+teste('o ataque traz o dano colado, num só resultado', () => {
+  const r = rolarAtaqueCompleto({
+    nome: 'Machado', dados: 2, bonusAtaque: 5, margem: 19,
+    dano: '1d12', bonusDano: 3, multiplicador: 3,
+  });
+  assert.equal(r.tipo, 'ataque');
+  assert.equal(r.rolagens.length, 2);
+  assert.ok(r.dano, 'o resultado do ataque tem de trazer o dano');
+  assert.equal(r.dano.critico, r.critico);
+  // num crítico só os dados da arma são multiplicados
+  assert.equal(r.dano.expressao, r.critico ? '3d12' : '1d12');
+});
+
+// ---- NEX à mão e regras opcionais de Sobrevivendo ao Horror ----
+console.log('\nNEX livre e regras opcionais\n');
+
+teste('NEX escrito à mão arredonda para o degrau abaixo', () => {
+  assert.equal(degrauNex(5), 5);
+  assert.equal(degrauNex(8), 5);
+  assert.equal(degrauNex(23), 20);
+  assert.equal(degrauNex(49), 45);
+  assert.equal(degrauNex(97), 95);
+  assert.equal(degrauNex(99), 99);
+  assert.equal(degrauNex(0), 5);      // abaixo do primeiro degrau conta como o primeiro
+});
+
+teste('um NEX de 23% dá o mesmo que 20%', () => {
+  const a = personagemVazio(); a.classeId = 'combatente'; a.atributos.vig = 2; a.nex = 20;
+  const b = { ...a, nex: 23 };
+  assert.deepEqual(calcMaximos(b), calcMaximos(a));
+  assert.equal(calcPePorRodada(b), 4);
+});
+
+teste('regra "NEX & Experiência": mandam os níveis, não o NEX', () => {
+  const p = personagemVazio();
+  p.classeId = 'ocultista';
+  p.regras.nivelSeparado = true;
+  p.nivel = 4;          // nível 4 = NEX 20%
+  p.nex = 7;            // exposição baixa, não conta para as contas
+  assert.equal(nexEfetivo(p), 20);
+  const comNivel = calcMaximos(p);
+  const padrao = calcMaximos({ ...p, regras: {}, nex: 20 });
+  assert.deepEqual(comNivel, padrao);
+});
+
+teste('regra "Jogando sem Sanidade": Sanidade e Esforço viram Determinação', () => {
+  const p = personagemVazio();
+  p.classeId = 'especialista';
+  p.atributos.pre = 3;
+  p.nex = 15;                 // 3.º degrau -> 2 passos de progressão
+  p.regras.semSanidade = true;
+  const m = calcMaximos(p);
+  assert.equal(m.semSanidade, true);
+  assert.equal(m.san, 0);
+  assert.equal(m.pe, 0);
+  // especialista: 8 + Pre inicial, +4 + Pre por NEX  ->  (8+3) + (4+3)*2
+  assert.equal(m.pd, 11 + 14);
+});
+
+teste('alterações por exposição: NEX 25% liberta Ocultismo e cobra −5 noutra perícia', () => {
+  const p = personagemVazio();
+  p.regras.nivelSeparado = true;
+  p.nex = 27;                       // já passou o patamar dos 25%
+  p.exposicao = { penalidade25: 'diplomacia' };
+  const linhas = calcPericias(p);
+  assert.equal(linhas.find((x) => x.id === 'ocultismo').bloqueada, false);
+  assert.equal(linhas.find((x) => x.id === 'diplomacia').bonus, -5);
+  // treinado em Ocultismo dá +2 por cima do treino
+  p.pericias.ocultismo.grau = 'treinado';
+  assert.equal(calcPericias(p).find((x) => x.id === 'ocultismo').bonus, 7);
+});
+
+teste('alterações por exposição: NEX 35% soma o atributo escolhido ao PE', () => {
+  const p = personagemVazio();
+  p.classeId = 'combatente';
+  p.regras.nivelSeparado = true;
+  p.nivel = 1;
+  p.atributos.vig = 3;
+  const antes = calcMaximos(p).pe;
+  p.nex = 35;
+  p.exposicao = { atributo35: 'vig' };
+  assert.equal(calcMaximos(p).pe, antes + 3);
+  // sem escolher o atributo, não há bónus nenhum
+  assert.equal(calcMaximos({ ...p, exposicao: {} }).pe, antes);
 });
 
 console.log(`\n${passou} testes ok`);

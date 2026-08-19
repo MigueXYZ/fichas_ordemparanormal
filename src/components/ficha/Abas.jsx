@@ -5,10 +5,10 @@ import { ITENS, TIPOS_ITEM } from '../../data/itens.js';
 import { PODERES } from '../../data/poderes.js';
 import { CLASSES_POR_ID, TRILHAS_POR_ID } from '../../data/classes.js';
 import { ORIGENS_POR_ID } from '../../data/origens.js';
-import { calcCarga, calcItensPorCategoria } from '../../engine/calc.js';
+import { calcCarga, calcItensPorCategoria, nexEfetivo } from '../../engine/calc.js';
 import { PATENTES, PATENTES_POR_ID, CATEGORIAS, categoriaRomana } from '../../data/patentes.js';
 import { novoAtaque, novoItem, novaHabilidade, novoRitual } from '../../engine/character.js';
-import { rolarExpressao, rolarAtaque, rolarDano } from '../../engine/dados.js';
+import { rolarExpressao, rolarAtaqueCompleto, rolarDano } from '../../engine/dados.js';
 import { estatisticasArma, interpretarCritico } from '../../engine/armas.js';
 import EditorArma from './EditorArma.jsx';
 import { calcPericias } from '../../engine/calc.js';
@@ -58,16 +58,14 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
 
   function atacar(a, i) {
     const e = estatisticasArma(personagem, a);
-    const r = rolarAtaque({ nome: a.nome || 'Ataque', dados: e.dados, bonus: e.bonusAtaque, margem: e.margem });
+    // acerto e dano saem juntos, num só cartão com as duas secções
+    const r = rolarAtaqueCompleto({
+      nome: a.nome || 'Ataque',
+      dados: e.dados, bonusAtaque: e.bonusAtaque, margem: e.margem,
+      dano: e.dano, bonusDano: e.bonusDano, extras: e.extras, multiplicador: e.multiplicador,
+    });
     setAcertos({ ...acertos, [i]: r });
     onRolar(r);
-    // o dano da arma sai logo a seguir, já a contar com as modificações e o crítico
-    const d = rolarDano({
-      nome: `${a.nome || 'Ataque'} — dano`,
-      dano: e.dano, bonus: e.bonusDano, extras: e.extras,
-      critico: r.critico, multiplicador: e.multiplicador,
-    });
-    if (d) setTimeout(() => onRolar(d), 320);
   }
 
   function danificar(a, i) {
@@ -176,9 +174,18 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
 
                 {acerto && (
                   <div className={'resultado-ataque' + (acerto.critico ? ' critico' : '')}>
-                    Ataque: <b>{acerto.total}</b> ({acerto.dados}d20 [{acerto.rolagens.join(', ')}] → maior {acerto.escolhido}
-                    {acerto.bonus ? ` ${acerto.bonus > 0 ? '+' : '−'} ${Math.abs(acerto.bonus)}` : ''})
-                    {acerto.critico ? ' · ACERTO CRÍTICO' : ''}
+                    <span>
+                      Acerto: <b>{acerto.total}</b> ({acerto.dados}d20 [{acerto.rolagens.join(', ')}] → maior {acerto.escolhido}
+                      {acerto.bonus ? ` ${acerto.bonus > 0 ? '+' : '−'} ${Math.abs(acerto.bonus)}` : ''})
+                      {acerto.critico ? ' · ACERTO CRÍTICO' : ''}
+                    </span>
+                    {acerto.dano && (
+                      <span>
+                        Dano: <b>{acerto.dano.total}</b> ({acerto.dano.expressao} [{acerto.dano.rolagens.join(', ')}]
+                        {acerto.dano.bonus ? ` ${acerto.dano.bonus > 0 ? '+' : '−'} ${Math.abs(acerto.dano.bonus)}` : ''}
+                        {acerto.dano.critico ? ` · dados ×${acerto.dano.multiplicador}` : ''})
+                      </span>
+                    )}
                   </div>
                 )}
 
@@ -205,7 +212,7 @@ export function AbaHabilidades({ personagem, setPersonagem }) {
   const classe = CLASSES_POR_ID[personagem.classeId];
   const trilha = personagem.trilhaId ? TRILHAS_POR_ID[personagem.trilhaId] : null;
   const origem = personagem.origemId === '__custom__' ? personagem.origemCustom : ORIGENS_POR_ID[personagem.origemId];
-  const nex = Number(personagem.nex);
+  const nex = nexEfetivo(personagem);
 
   const automaticas = [
     origem?.poder?.nome && { nome: origem.poder.nome, descricao: origem.poder.descricao, fonte: 'Origem' },
@@ -280,7 +287,7 @@ export function AbaHabilidades({ personagem, setPersonagem }) {
 export function AbaRituais({ personagem, setPersonagem }) {
   const { lista, adicionar, editar, remover } = useLista(personagem, setPersonagem, 'rituais');
   const [aEscolher, setAEscolher] = useState(false);
-  const circuloMax = circuloMaximoPorNex(personagem.nex);
+  const circuloMax = circuloMaximoPorNex(nexEfetivo(personagem));
 
   return (
     <div>
@@ -289,7 +296,7 @@ export function AbaRituais({ personagem, setPersonagem }) {
           <label>DT de ritual</label>
           <input type="number" value={personagem.dtRitual ?? ''} onChange={(e) => setPersonagem({ ...personagem, dtRitual: e.target.value })} />
         </div>
-        <span className="pill">Círculo máximo em NEX {personagem.nex}%: {circuloMax}º</span>
+        <span className="pill">Círculo máximo em NEX {nexEfetivo(personagem)}%: {circuloMax}º</span>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn ghost" onClick={() => setAEscolher(true)}>Do catálogo</button>
           <button className="btn" onClick={() => adicionar(novoRitual())}>Novo Ritual</button>

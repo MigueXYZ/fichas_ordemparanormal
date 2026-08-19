@@ -192,7 +192,8 @@ function baqueCardiaco(ac, inicio, volume, frequencia) {
   osc.start(inicio);
   osc.stop(inicio + 0.3);
 
-  ruido(ac, inicio, 0.09, volume * 0.5, 'lowpass', 170);   // o "corpo" do baque
+  ruido(ac, inicio, 0.11, volume * 0.62, 'lowpass', 170);  // o "corpo" do baque
+  ruido(ac, inicio + 0.005, 0.16, volume * 0.3, 'lowpass', 90);  // o rufar surdo por baixo
 }
 
 function avisarDom(forte) {
@@ -209,8 +210,9 @@ function umCiclo() {
   if (!ac) return;
   try {
     const t = ac.currentTime + 0.02;
-    baqueCardiaco(ac, t, 0.085, 58);                    // lub
-    baqueCardiaco(ac, t + ATRASO_DUB, 0.055, 46);       // dub
+    // o coração estava demasiado baixo por baixo do resto: subiu ~2,5×
+    baqueCardiaco(ac, t, 0.22, 58);                     // lub
+    baqueCardiaco(ac, t + ATRASO_DUB, 0.145, 46);       // dub
   } catch { /* ignora */ }
 }
 

@@ -22,7 +22,10 @@ function detalhe(r) {
   if (r.tipo === 'expressao') {
     return `[${r.rolagens.join(', ')}]${r.bonus ? ` ${r.bonus > 0 ? '+' : '−'} ${Math.abs(r.bonus)}` : ''}`;
   }
-  return `${r.dados}d20 [${r.rolagens.join(', ')}] → ${r.piorDeDois ? 'pior' : 'maior'} ${r.escolhido}${r.bonus ? ` ${r.bonus > 0 ? '+' : '−'} ${Math.abs(r.bonus)}` : ''}`;
+  const acerto = `${r.dados}d20 [${r.rolagens.join(', ')}] → ${r.piorDeDois ? 'pior' : 'maior'} ${r.escolhido}${r.bonus ? ` ${r.bonus > 0 ? '+' : '−'} ${Math.abs(r.bonus)}` : ''}`;
+  // num ataque o dano vem colado ao acerto
+  if (r.dano) return `${acerto}  ·  dano ${r.dano.expressao} [${r.dano.rolagens.join(', ')}]${r.dano.bonus ? ` ${r.dano.bonus > 0 ? '+' : '−'} ${Math.abs(r.dano.bonus)}` : ''} = ${r.dano.total}`;
+  return acerto;
 }
 
 export default function HistoricoRolagens({ historico = [], aoFechar, aoLimpar }) {
@@ -31,6 +34,7 @@ export default function HistoricoRolagens({ historico = [], aoFechar, aoLimpar }
   const lista = historico.filter((r) => {
     if (filtro === 'todos') return true;
     if (filtro === 'criticos') return r.critico || r.falhaCritica;
+    if (filtro === 'dano') return r.tipo === 'dano' || Boolean(r.dano);
     return r.tipo === filtro;
   });
 

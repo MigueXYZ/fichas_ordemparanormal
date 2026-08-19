@@ -2,7 +2,7 @@ import { PDFDocument, PDFName, PDFBool } from 'pdf-lib';
 import { PERICIAS } from '../data/pericias.js';
 import { ORIGENS } from '../data/origens.js';
 import { TRILHAS_POR_ID } from '../data/classes.js';
-import { calcMaximos, calcDefesa, calcPericias, calcPePorRodada, calcCargaMaxima } from '../engine/calc.js';
+import { calcMaximos, calcDefesa, calcDefesas, calcPericias, calcPePorRodada, calcCargaMaxima } from '../engine/calc.js';
 import { codigoOrigem, codigoTrilha, CLASSES_PDF } from '../data/pdfCodigos.js';
 
 const URL_TEMPLATE = `${import.meta.env?.BASE_URL ?? '/'}ficha-template.pdf`;
@@ -41,19 +41,30 @@ export function mapearCampos(personagem) {
   for (const [id, valor] of Object.entries(personagem.atributos)) textos['atr_' + id] = valor;
 
   textos['PV'] = max.pv;
-  textos['San'] = max.san;
-  textos['PE'] = max.pe;
   textos['pv_atual'] = personagem.pvAtual ?? max.pv;
-  textos['san_atual'] = personagem.sanAtual ?? max.san;
-  textos['pe_atual'] = personagem.peAtual ?? max.pe;
   textos['pv_extra'] = personagem.pvExtra || 0;
-  textos['san_extra'] = personagem.sanExtra || 0;
-  textos['pe_extra'] = personagem.peExtra || 0;
-  textos['pe_rodada'] = calcPePorRodada(personagem.nex);
+  if (max.semSanidade) {
+    // A ficha oficial não tem campo de Determinação: os PD vão para o de Esforço.
+    textos['San'] = '';
+    textos['san_atual'] = '';
+    textos['san_extra'] = '';
+    textos['PE'] = max.pd;
+    textos['pe_atual'] = personagem.pdAtual ?? max.pd;
+    textos['pe_extra'] = personagem.pdExtra || 0;
+  } else {
+    textos['San'] = max.san;
+    textos['san_atual'] = personagem.sanAtual ?? max.san;
+    textos['san_extra'] = personagem.sanExtra || 0;
+    textos['PE'] = max.pe;
+    textos['pe_atual'] = personagem.peAtual ?? max.pe;
+    textos['pe_extra'] = personagem.peExtra || 0;
+  }
+  textos['pe_rodada'] = calcPePorRodada(personagem);
 
   textos['defesa'] = calcDefesa(personagem);
   textos['def_extra'] = personagem.defesaOutros || 0;
-  textos['esquiva'] = personagem.esquiva || 0;
+  const defs = calcDefesas(personagem);
+  textos['esquiva'] = defs.esquiva.disponivel ? defs.esquiva.valor : 0;
   textos['dt_ritual'] = personagem.dtRitual ?? '';
 
   for (const p of pericias) {
@@ -118,6 +129,9 @@ export function mapearCampos(personagem) {
     d.historico && `HISTÓRICO: ${d.historico}`,
     d.objetivo && `OBJETIVO: ${d.objetivo}`,
     personagem.anotacoes && `NOTAS: ${personagem.anotacoes}`,
+    // as regras opcionais não têm campo próprio na ficha oficial
+    personagem.regras?.nivelSeparado && `REGRA OPCIONAL: NEX & Experiência — nível ${personagem.nivel ?? 1} (NEX ${personagem.nex}% só de exposição).`,
+    personagem.regras?.semSanidade && `REGRA OPCIONAL: Jogando sem Sanidade — o campo de Esforço traz os Pontos de Determinação.`,
   ].filter(Boolean);
   textos['anotacoes'] = blocos.join('\n\n');
 

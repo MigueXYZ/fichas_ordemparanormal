@@ -73,8 +73,21 @@ export function rolarAtaque({ nome, dados, bonus = 0, margem = 20 }) {
  * Rolagem de dano. Num acerto crítico só os dados da arma são multiplicados —
  * bónus numéricos e dados extras não (Livro Base, cap. 4).
  */
+/**
+ * Algumas armas trazem duas hipóteses de dano ("1d4/1d6", por ser usada com uma
+ * ou com as duas mãos). Ficamos com a primeira que der para rolar.
+ */
+function primeiraExpressaoValida(dano) {
+  const partes = String(dano || '').split('/');
+  for (const parte of partes) {
+    const m = parte.replace(/\s/g, '').toLowerCase().match(/^(\d*)d(\d+)([+-]\d+)?$/);
+    if (m) return m;
+  }
+  return null;
+}
+
 export function rolarDano({ nome, dano, bonus = 0, extras = [], critico = false, multiplicador = 2 }) {
-  const m = String(dano || '').replace(/\s/g, '').toLowerCase().match(/^(\d*)d(\d+)([+-]\d+)?$/);
+  const m = primeiraExpressaoValida(dano);
   if (!m) return null;
   const vezes = critico ? Math.max(1, Number(multiplicador) || 2) : 1;
   const qtd = Math.min((Number(m[1] || 1)) * vezes, 60);
@@ -106,4 +119,18 @@ export function rolarDano({ nome, dano, bonus = 0, extras = [], critico = false,
     total,
     falhaCritica: false,
   };
+}
+
+/**
+ * Um ataque é uma coisa só: o teste de acerto e, colado a ele, o dano.
+ * O resultado leva o dano em `.dano` para o cartão mostrar as duas secções.
+ */
+export function rolarAtaqueCompleto({ nome, dados, bonusAtaque = 0, margem = 20, dano, bonusDano = 0, extras = [], multiplicador = 2 }) {
+  const acerto = rolarAtaque({ nome, dados, bonus: bonusAtaque, margem });
+  const golpe = rolarDano({
+    nome: `${nome} — dano`,
+    dano, bonus: bonusDano, extras,
+    critico: acerto.critico, multiplicador,
+  });
+  return { ...acerto, dano: golpe };
 }

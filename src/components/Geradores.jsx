@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CLASSES } from '../data/classes.js';
 import { ORIGENS } from '../data/origens.js';
-import { NEX_TRACK } from '../engine/calc.js';
+import { NEX_TRACK, calcMaximos, calcDefesas, calcPericias } from '../engine/calc.js';
 import {
   CONCEITOS, ARQUETIPOS_AMEACA, VD_SUGERIDOS, TAMANHOS,
   gerarFicha, gerarNpcAgente, gerarAmeaca, vdParaGrupo,
@@ -13,12 +13,17 @@ const SEPARADORES = [
   { id: 'ameaca', nome: 'Ameaça' },
 ];
 
+const ROTULO_GRAU = { treinado: 'T', veterano: 'V', expert: 'E' };
+
 function Resumo({ p }) {
   const classe = CLASSES.find((c) => c.id === p.classeId);
   const origem = ORIGENS.find((o) => o.id === p.origemId);
-  const treinadas = Object.entries(p.pericias)
-    .filter(([, v]) => v.grau !== 'destreinado')
-    .map(([k]) => k);
+  const max = calcMaximos(p);
+  const defesas = calcDefesas(p);
+  const treinadas = calcPericias(p)
+    .filter((x) => x.grau !== 'destreinado')
+    .sort((a, b) => b.bonus - a.bonus || a.nome.localeCompare(b.nome, 'pt'));
+
   return (
     <div className="previa">
       <div className="previa-nome">{p.nome}</div>
@@ -28,7 +33,43 @@ function Resumo({ p }) {
           <span key={k}><b>{v}</b> {k.toUpperCase()}</span>
         ))}
       </div>
-      <div className="previa-linha">{treinadas.length} perícias treinadas · {p.ataques?.[0]?.nome || 'sem arma'}</div>
+      <div className="previa-attrs">
+        <span><b>{max.pv}</b> PV</span>
+        <span><b>{max.san}</b> SAN</span>
+        <span><b>{max.pe}</b> PE</span>
+        <span><b>{defesas.defesa}</b> DEFESA</span>
+      </div>
+
+      <div className="previa-bloco">
+        <div className="previa-rotulo">Perícias treinadas ({treinadas.length})</div>
+        {treinadas.length === 0
+          ? <div className="previa-linha">nenhuma</div>
+          : (
+            <ul className="previa-pericias">
+              {treinadas.map((x) => (
+                <li key={x.id}>
+                  <span className="pn">{x.nome}</span>
+                  <span className="pg" title={x.grau}>{ROTULO_GRAU[x.grau] || ''}</span>
+                  <span className="pb">{x.dados}d20 {x.bonus >= 0 ? '+' : '−'}{Math.abs(x.bonus)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+      </div>
+
+      {p.ataques?.length > 0 && (
+        <div className="previa-bloco">
+          <div className="previa-rotulo">Ataques</div>
+          <ul className="previa-pericias">
+            {p.ataques.map((at, i) => (
+              <li key={i}>
+                <span className="pn">{at.nome}</span>
+                <span className="pb">{at.dano}{at.tipo ? ' ' + at.tipo : ''}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
@@ -43,6 +84,19 @@ function FichaAmeacaPrevia({ a }) {
         <span><b>{a.pv}</b> PV</span>
         <span><b>{a.dt}</b> DT</span>
       </div>
+      {a.pericias?.length > 0 && (
+        <div className="previa-bloco">
+          <div className="previa-rotulo">Perícias ({a.pericias.length})</div>
+          <ul className="previa-pericias">
+            {a.pericias.map((x) => (
+              <li key={x.nome}>
+                <span className="pn">{x.nome}</span>
+                <span className="pb">{x.dados}d20 +{x.bonus}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="previa-linha">{a.ataque.nome}: {a.ataque.teste} · dano {a.ataque.dano} {a.ataque.tipo}</div>
     </div>
   );

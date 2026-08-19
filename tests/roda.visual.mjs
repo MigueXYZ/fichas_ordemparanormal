@@ -1,17 +1,28 @@
 /**
  * Verificação da roda de atributos.
  *
- * Mede, no browser, a caixa de cada número e o centro do respetivo círculo na
- * arte (convertendo as coordenadas do viewBox para o ecrã) e confirma que o
- * número cabe dentro do círculo — em vários tamanhos de janela e zoom.
+ * O problema real nunca foi "o número está longe do centro" — era o número
+ * subir acima do círculo ou cair por cima do rótulo ("FORÇA / FOR") que já vem
+ * desenhado na arte. Por isso este teste mede a caixa de TINTA do algarismo
+ * (com as métricas reais da fonte) e confirma que ela fica dentro da faixa
+ * livre: entre o topo do círculo e o topo do rótulo.
+ *
+ * Os números abaixo foram medidos pixel a pixel sobre roda-atributos-v2.png.
  *
  * Correr com o `npm run preview` ligado noutro terminal:
  *     npm run verificar-roda
  */
 import { chromium } from 'playwright';
 
-const CENTROS = { agi: [501, 199], for: [193, 457], int: [807, 457], pre: [298, 807], vig: [704, 807] };
-const R = 88;
+// cx, cy, r = interior do círculo · topoRotulo = onde começa o texto desenhado
+const CIRCULOS = {
+  agi: { cx: 490.0, cy: 199.5, r: 114, topoRotulo: 229 },
+  for: { cx: 185.5, cy: 427.0, r: 122, topoRotulo: 443 },
+  int: { cx: 800.0, cy: 425.0, r: 120, topoRotulo: 433 },
+  pre: { cx: 281.5, cy: 791.5, r: 121, topoRotulo: 810 },
+  vig: { cx: 688.5, cy: 792.0, r: 122, topoRotulo: 811 },
+};
+const FOLGA = 6;   // margem mínima, em unidades do viewBox
 
 const b = await chromium.launch({ ...(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {}) });
 let mau = 0;
@@ -29,43 +40,81 @@ for (const [w, h, zoom, tag] of [
   await p.reload({ waitUntil: 'networkidle' });
   await p.waitForTimeout(400);
   await p.click('.agente-cartao.novo');
-  await p.waitForTimeout(400);
+  await p.waitForTimeout(500);
 
-  const r = await p.evaluate(({ CENTROS, R }) => {
+  const r = await p.evaluate(({ CIRCULOS, FOLGA }) => {
     const svg = document.querySelector('.roda');
     const ctm = svg.getScreenCTM();
+    const escala = Math.hypot(ctm.a, ctm.b);       // px de ecrã por unidade do viewBox
     const paraEcra = (x, y) => {
       const pt = svg.createSVGPoint(); pt.x = x; pt.y = y;
-      const s = pt.matrixTransform(ctm);
-      return { x: s.x, y: s.y };
+      return pt.matrixTransform(ctm);
     };
-    const escala = Math.hypot(ctm.a, ctm.b);
+    const ctx = document.createElement('canvas').getContext('2d');
     const saida = [];
-    Object.entries(CENTROS).forEach(([id, [cx, cy]]) => {
-      const centro = paraEcra(cx, cy);
+
+    for (const [id, c] of Object.entries(CIRCULOS)) {
       const alvo = svg.querySelector(`text.atr-valor[data-attr="${id}"]`);
-      const caixa = alvo.getBoundingClientRect();
-      const meio = { x: caixa.left + caixa.width / 2, y: caixa.top + caixa.height / 2 };
-      const dist = Math.hypot(meio.x - centro.x, meio.y - centro.y);
-      const raio = R * escala;
-      // o número deve caber dentro do círculo, com folga para a etiqueta em baixo
+      const est = getComputedStyle(alvo);
+      ctx.font = `${est.fontWeight} ${est.fontSize} ${est.fontFamily}`;
+      // o algarismo é o último nó do <text> (o primeiro é o <title> da dica)
+      const texto = (alvo.lastChild?.textContent || '').trim();
+      const m = ctx.measureText(texto || '0');
+      const px = parseFloat(est.fontSize);                        // = unidades do viewBox
+      const ascent = m.actualBoundingBoxAscent;
+      const descent = m.actualBoundingBoxDescent;
+      const largura = m.width;
+
+      // posição real do texto no viewBox
+      const caixaEcra = alvo.getBoundingClientRect();
+      const cxEcra = paraEcra(c.cx, c.cy);
+      // linha de base: y do <text> + dy(0.34em) — lida do próprio atributo
+      const yAttr = parseFloat(alvo.getAttribute('y'));
+      const dyEm = parseFloat(alvo.getAttribute('dy'));
+      const base = yAttr + dyEm * px;
+
+      const tinta = {
+        topo: base - ascent,
+        fundo: base + descent,
+        esq: c.cx - largura / 2,
+        dir: c.cx + largura / 2,
+      };
+      const topoCirculo = c.cy - c.r;
+      // meia-corda do círculo à altura do topo e do fundo da tinta
+      const meiaCorda = (y) => {
+        const d = Math.abs(y - c.cy);
+        return d >= c.r ? 0 : Math.sqrt(c.r * c.r - d * d);
+      };
+      const cabeEmLargura =
+        Math.max(largura / 2, 0) < Math.min(meiaCorda(tinta.topo), meiaCorda(tinta.fundo)) - FOLGA;
+
+      const problemas = [];
+      if (tinta.topo < topoCirculo + FOLGA) problemas.push('sai por cima do círculo');
+      if (tinta.fundo > c.topoRotulo - FOLGA) problemas.push('encosta/tapa o rótulo');
+      if (!cabeEmLargura) problemas.push('não cabe em largura');
+
       saida.push({
         id,
-        distanciaAoCentro: Math.round(dist),
-        raio: Math.round(raio),
-        dentro: dist + caixa.height / 2 < raio,
-        alturaTexto: Math.round(caixa.height),
+        texto,
+        topoTinta: Math.round(tinta.topo),
+        fundoTinta: Math.round(tinta.fundo),
+        zonaLivre: `${Math.round(topoCirculo)}–${c.topoRotulo}`,
+        escala: Number(escala.toFixed(3)),
+        larguraEcra: Math.round(caixaEcra.width),
+        ok: problemas.length === 0,
+        problemas,
       });
-    });
+    }
     return saida;
-  }, { CENTROS, R });
+  }, { CIRCULOS, FOLGA });
 
-  const falhas = r.filter((x) => !x.dentro);
+  const falhas = r.filter((x) => !x.ok);
   mau += falhas.length;
-  console.log(`${tag.padEnd(9)} ${falhas.length ? 'FALHA ' + JSON.stringify(falhas) : 'ok — todos os números dentro dos círculos'}`);
-  if (tag === 'grande') await p.screenshot({ path: '/tmp/z_roda.png' });
+  console.log(`${tag.padEnd(9)} ${falhas.length ? 'FALHA ' + JSON.stringify(falhas, null, 1) : 'ok — os 5 números dentro da faixa livre'}`);
+  if (tag === 'grande') await p.locator('.roda').screenshot({ path: '/tmp/z_roda.png' });
   await p.close();
 }
 
 await b.close();
-console.log(mau ? `\n${mau} números fora do sítio` : '\nTudo dentro dos círculos em todas as medidas testadas');
+console.log(mau ? `\n${mau} números fora do sítio` : '\nOs números ficam sempre entre o topo do círculo e o rótulo');
+if (mau) process.exitCode = 1;

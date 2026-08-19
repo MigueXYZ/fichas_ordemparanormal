@@ -1,5 +1,6 @@
 import { PERICIAS } from '../data/pericias.js';
 import { calcMaximos } from './calc.js';
+import { REGRAS_POR_OMISSAO } from '../data/regrasOpcionais.js';
 
 export const VERSAO_FICHA = 1;
 
@@ -15,8 +16,12 @@ export function personagemVazio() {
     nome: '',
     jogador: '',
     nex: 5,
+    nivel: 1,               // só conta com a regra opcional "NEX & Experiência"
+    regras: { ...REGRAS_POR_OMISSAO },
+    exposicao: {},          // escolhas das alterações por NEX (regra opcional)
     patente: '',
     imagem: null,
+    token: null,            // imagem do agente, na margem esquerda
 
     atributos: { for: 1, agi: 1, int: 1, pre: 1, vig: 1 },
 
@@ -30,14 +35,18 @@ export function personagemVazio() {
     pvAtual: null,
     sanAtual: null,
     peAtual: null,
+    pdAtual: null,          // regra opcional "Jogando sem Sanidade"
     pvExtra: 0,
     sanExtra: 0,
     peExtra: 0,
+    pdExtra: 0,
 
     defesaEquipamento: 0,
     defesaOutros: 0,
-    bloqueio: 0,
-    esquiva: 0,
+    bloqueioExtra: 0,
+    esquivaExtra: 0,
+    bloqueioManual: null,   // se preenchido, manda sobre o cálculo automático
+    esquivaManual: null,
     protecao: '',
     resistencias: '',
     proficiencias: '',
@@ -61,7 +70,13 @@ export function personagemVazio() {
 export function normalizarRecursos(p) {
   const max = calcMaximos(p);
   const clamp = (v, m) => (v === null || v === undefined || v > m ? m : Math.max(0, v));
-  return { ...p, pvAtual: clamp(p.pvAtual, max.pv), sanAtual: clamp(p.sanAtual, max.san), peAtual: clamp(p.peAtual, max.pe) };
+  return {
+    ...p,
+    pvAtual: clamp(p.pvAtual, max.pv),
+    sanAtual: clamp(p.sanAtual, max.san),
+    peAtual: clamp(p.peAtual, max.pe),
+    pdAtual: clamp(p.pdAtual, max.pd),
+  };
 }
 
 /**
@@ -80,6 +95,7 @@ export function ajustarRecursos(antes, depois) {
     pvAtual: mover(depois.pvAtual, a.pv, d.pv),
     sanAtual: mover(depois.sanAtual, a.san, d.san),
     peAtual: mover(depois.peAtual, a.pe, d.pe),
+    pdAtual: mover(depois.pdAtual, a.pd, d.pd),
   };
 }
 

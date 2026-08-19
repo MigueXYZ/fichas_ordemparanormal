@@ -5,7 +5,7 @@ import { iniciarCoracao } from '../engine/som.js';
  * Camada de fundo: o pulsar do coração (cada pulso é disparado pelo mesmo
  * relógio que toca o som, por isso imagem e som andam juntos) e brasas a subir.
  */
-export default function Fundo({ brasas = 16 }) {
+export default function Fundo({ brasas = 34 }) {
   const [batida, setBatida] = useState(null);   // 'forte' | 'fraca' | null
   const limpar = useRef(null);
 
@@ -29,14 +29,21 @@ export default function Fundo({ brasas = 16 }) {
       setBatida(null);
       // força o reinício da animação antes de a voltar a aplicar
       requestAnimationFrame(() => setBatida(forte ? 'forte' : 'fraca'));
+      // a mesma batida chega ao resto da app (barras de recurso, etc.)
+      document.body.classList.remove('bate-forte', 'bate-fraca');
+      requestAnimationFrame(() => document.body.classList.add(forte ? 'bate-forte' : 'bate-fraca'));
       clearTimeout(limpar.current);
-      limpar.current = setTimeout(() => setBatida(null), 620);
+      limpar.current = setTimeout(() => {
+        setBatida(null);
+        document.body.classList.remove('bate-forte', 'bate-fraca');
+      }, 620);
     }
     window.addEventListener('op-batida', aoBater);
     const parar = iniciarCoracao();
     return () => {
       window.removeEventListener('op-batida', aoBater);
       clearTimeout(limpar.current);
+      document.body.classList.remove('bate-forte', 'bate-fraca');
       parar();
     };
   }, []);
@@ -44,7 +51,7 @@ export default function Fundo({ brasas = 16 }) {
   return (
     <>
       <div className={'pulso' + (batida ? ` bate-${batida}` : '')} aria-hidden="true" />
-      <img className="criatura" src="/img/enraizado.webp" alt="" aria-hidden="true" />
+      <img className="criatura" src="/img/diabo.webp" alt="" aria-hidden="true" />
       <div className="brasas" aria-hidden="true">
         {particulas.map((p) => (
           <span

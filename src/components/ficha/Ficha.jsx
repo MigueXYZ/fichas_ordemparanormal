@@ -6,7 +6,8 @@ import { AbaCombate, AbaHabilidades, AbaRituais, AbaInventario, AbaDescricao } f
 import { CLASSES, trilhasDaClasse } from '../../data/classes.js';
 import { ORIGENS } from '../../data/origens.js';
 import { REGRAS_ATRIBUTOS } from '../../data/atributos.js';
-import { calcMaximos, calcDefesas, calcPePorRodada, NEX_TRACK } from '../../engine/calc.js';
+import { calcMaximos, calcDefesas, calcPePorRodada, degrauNex, nexEfetivo, NEX_TRACK } from '../../engine/calc.js';
+import RegrasOpcionais from './RegrasOpcionais.jsx';
 import { ajustarRecursos } from '../../engine/character.js';
 import { lerImagem } from '../../engine/armazenamento.js';
 import { rolarTeste } from '../../engine/dados.js';
@@ -22,6 +23,9 @@ const ABAS = [
 export default function Ficha({ personagem, setPersonagem, onRolar }) {
   const [aba, setAba] = useState('combate');
   const [erroFoto, setErroFoto] = useState(null);
+  const [verRegras, setVerRegras] = useState(false);
+  const regras = personagem.regras || {};
+  const nexUtil = nexEfetivo(personagem);   // o que manda nas contas
 
   const max = calcMaximos(personagem);
   const d = calcDefesas(personagem);
@@ -90,15 +94,26 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
             <label>Trilha</label>
             <select
               value={personagem.trilhaId || ''}
-              disabled={personagem.nex < 10}
+              disabled={nexUtil < 10}
               onChange={(e) => set({ trilhaId: e.target.value || null })}
             >
-              <option value="">{personagem.nex < 10 ? 'A partir de NEX 10%' : '—'}</option>
+              <option value="">{nexUtil < 10 ? (regras.nivelSeparado ? 'A partir do nível 2' : 'A partir de NEX 10%') : '—'}</option>
               {trilhasDaClasse(personagem.classeId).map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
             </select>
           </div>
         </div>
       </div>
+
+      {verRegras && (
+        <RegrasOpcionais
+          regras={regras}
+          aoMudar={(novas) => setComRecursos({ regras: novas })}
+          nex={personagem.nex}
+          exposicao={personagem.exposicao || {}}
+          aoMudarExposicao={(nova) => setComRecursos({ exposicao: nova })}
+          aoFechar={() => setVerRegras(false)}
+        />
+      )}
 
       <div className="ficha">
         {/* ---------------- coluna esquerda ---------------- */}
@@ -115,22 +130,46 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
             podeDescer={(id) => personagem.atributos[id] > 0}
           />
 
+          <div className="linha-regras">
+            <button className="btn ghost sm" onClick={() => setVerRegras(true)}>
+              Regras opcionais
+              {(regras.nivelSeparado || regras.semSanidade) && <span className="ponto-ligado" title="Há regras ligadas" />}
+            </button>
+          </div>
+
           <div className="nex-linha">
+            {regras.nivelSeparado && (
+              <div className="nex-bloco">
+                <span>Nível</span>
+                <div className="caixa">
+                  <input
+                    type="number" min="1" max={NEX_TRACK.length}
+                    value={personagem.nivel ?? 1}
+                    onChange={(e) => setComRecursos({ nivel: Math.max(1, Math.min(NEX_TRACK.length, Number(e.target.value) || 1)) })}
+                    className="campo-nu"
+                  />
+                </div>
+              </div>
+            )}
             <div className="nex-bloco">
               <span>NEX</span>
               <div className="caixa">
-                <select
+                <input
+                  type="number" min="0" max="99" step="1"
                   value={personagem.nex}
-                  onChange={(e) => setComRecursos({ nex: Number(e.target.value) })}
-                  style={{ background: 'transparent', border: 'none', padding: 0, boxShadow: 'none' }}
-                >
-                  {NEX_TRACK.map((n) => <option key={n} value={n}>{n}%</option>)}
-                </select>
+                  onChange={(e) => setComRecursos({ nex: e.target.value === '' ? 0 : Number(e.target.value) })}
+                  className="campo-nu"
+                  title="Escreve a percentagem que quiseres — as contas usam o degrau abaixo"
+                />
+                <span className="sufixo">%</span>
               </div>
+              {!regras.nivelSeparado && degrauNex(personagem.nex) !== Number(personagem.nex) && (
+                <small className="degrau">conta como {degrauNex(personagem.nex)}%</small>
+              )}
             </div>
             <div className="nex-bloco">
-              <span>PE / turno</span>
-              <div className="caixa">{calcPePorRodada(personagem.nex)}</div>
+              <span>{max.semSanidade ? 'PD / turno' : 'PE / turno'}</span>
+              <div className="caixa">{calcPePorRodada(personagem)}</div>
             </div>
             <div className="nex-bloco">
               <span>Deslocamento</span>
@@ -139,8 +178,14 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
           </div>
 
           <BarraRecurso titulo="VIDA" classe="barra-vida" atual={personagem.pvAtual ?? max.pv} max={max.pv} onChange={(v) => set({ pvAtual: v })} />
-          <BarraRecurso titulo="SANIDADE" classe="barra-sanidade" atual={personagem.sanAtual ?? max.san} max={max.san} onChange={(v) => set({ sanAtual: v })} />
-          <BarraRecurso titulo="ESFORÇO" classe="barra-esforco" atual={personagem.peAtual ?? max.pe} max={max.pe} onChange={(v) => set({ peAtual: v })} />
+          {max.semSanidade ? (
+            <BarraRecurso titulo="DETERMINAÇÃO" classe="barra-determinacao" atual={personagem.pdAtual ?? max.pd} max={max.pd} onChange={(v) => set({ pdAtual: v })} />
+          ) : (
+            <>
+              <BarraRecurso titulo="SANIDADE" classe="barra-sanidade" atual={personagem.sanAtual ?? max.san} max={max.san} onChange={(v) => set({ sanAtual: v })} />
+              <BarraRecurso titulo="ESFORÇO" classe="barra-esforco" atual={personagem.peAtual ?? max.pe} max={max.pe} onChange={(v) => set({ peAtual: v })} />
+            </>
+          )}
 
           <div className="defesas">
             <div className="defesa-caixa">
@@ -154,23 +199,43 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
               </div>
             </div>
 
-            <div className={'defesa-caixa' + (d.bloqueio.disponivel ? '' : ' inativa')} title={d.bloqueio.disponivel ? d.bloqueio.formula : d.bloqueio.requisito}>
+            <div className={'defesa-caixa' + (d.bloqueio.disponivel ? '' : ' inativa')} title={d.bloqueio.formula}>
               <div className="rotulo">Bloqueio</div>
-              <span className="num">{d.bloqueio.disponivel ? d.bloqueio.valor : '—'}</span>
+              <input
+                className="num"
+                type="number"
+                value={d.bloqueio.manual ? personagem.bloqueioManual : (d.bloqueio.disponivel ? d.bloqueio.valor : '')}
+                placeholder=""
+                title="Escreve o valor à mão; deixa vazio para voltar ao automático"
+                onChange={(e) => set({ bloqueioManual: e.target.value === '' ? null : Number(e.target.value) })}
+              />
               <div className="conta">
                 RD = Fortitude {d.bloqueio.base >= 0 ? '+' : '−'}{Math.abs(d.bloqueio.base)}
                 <br />
                 extra <input type="number" value={personagem.bloqueioExtra || 0} onChange={(e) => set({ bloqueioExtra: Number(e.target.value) })} />
+                {d.bloqueio.manual && (
+                  <button type="button" className="voltar-auto" onClick={() => set({ bloqueioManual: null })}>auto ({d.bloqueio.auto})</button>
+                )}
               </div>
             </div>
 
-            <div className={'defesa-caixa' + (d.esquiva.disponivel ? '' : ' inativa')} title={d.esquiva.disponivel ? d.esquiva.formula : d.esquiva.requisito}>
+            <div className={'defesa-caixa' + (d.esquiva.disponivel ? '' : ' inativa')} title={d.esquiva.formula}>
               <div className="rotulo">Esquiva</div>
-              <span className="num">{d.esquiva.disponivel ? d.esquiva.valor : '—'}</span>
+              <input
+                className="num"
+                type="number"
+                value={d.esquiva.manual ? personagem.esquivaManual : (d.esquiva.disponivel ? d.esquiva.valor : '')}
+                placeholder=""
+                title="Escreve o valor à mão; deixa vazio para voltar ao automático"
+                onChange={(e) => set({ esquivaManual: e.target.value === '' ? null : Number(e.target.value) })}
+              />
               <div className="conta">
                 Defesa + Reflexos {d.esquiva.base >= 0 ? '+' : '−'}{Math.abs(d.esquiva.base)}
                 <br />
                 extra <input type="number" value={personagem.esquivaExtra || 0} onChange={(e) => set({ esquivaExtra: Number(e.target.value) })} />
+                {d.esquiva.manual && (
+                  <button type="button" className="voltar-auto" onClick={() => set({ esquivaManual: null })}>auto ({d.esquiva.auto})</button>
+                )}
               </div>
             </div>
           </div>

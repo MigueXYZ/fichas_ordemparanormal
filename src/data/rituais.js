@@ -17,13 +17,17 @@ export const RITUAIS = [...RITUAIS_PARTE1, ...RITUAIS_PARTE2]
 export const RITUAIS_POR_ID = Object.fromEntries(RITUAIS.map((r) => [r.id, r]));
 
 export const ELEMENTOS = [
-  { id: 'sangue', nome: 'Sangue', cor: '#c0392b', pdf: 'sangue' },
-  { id: 'morte', nome: 'Morte', cor: '#7f8c8d', pdf: 'morte' },
-  { id: 'energia', nome: 'Energia', cor: '#8e44ad', pdf: 'energia' },
-  { id: 'conhecimento', nome: 'Conhecimento', cor: '#f1c40f', pdf: 'conhecimento' },
-  { id: 'medo', nome: 'Medo', cor: '#16a085', pdf: null },
+  // cores tiradas da arte oficial dos símbolos (ver public/img/sigilo-*.png)
+  { id: 'sangue', nome: 'Sangue', cor: '#c8202a', pdf: 'sangue' },
+  { id: 'morte', nome: 'Morte', cor: '#969ba1', pdf: 'morte' },
+  { id: 'energia', nome: 'Energia', cor: '#a15cd8', pdf: 'energia' },
+  { id: 'conhecimento', nome: 'Conhecimento', cor: '#d8b53c', pdf: 'conhecimento' },
+  { id: 'medo', nome: 'Medo', cor: '#e6e6ea', pdf: null },
   { id: 'variavel', nome: 'Variável (à escolha)', cor: '#9b9ba6', pdf: null },
 ];
+
+/** Ordem em que os símbolos aparecem no ecrã inicial, da esquerda para a direita. */
+export const ORDEM_ELEMENTOS = ['sangue', 'morte', 'medo', 'conhecimento', 'energia'];
 
 export const CIRCULOS = [1, 2, 3, 4];
 

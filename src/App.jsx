@@ -4,6 +4,7 @@ import Wizard from './components/wizard/Wizard.jsx';
 import Ficha from './components/ficha/Ficha.jsx';
 import PainelRolagem from './components/PainelRolagem.jsx';
 import Fundo from './components/Fundo.jsx';
+import EspacoToken from './components/EspacoToken.jsx';
 import HistoricoRolagens from './components/HistoricoRolagens.jsx';
 import FichaAmeaca from './components/ficha/FichaAmeaca.jsx';
 import { personagemVazio } from './engine/character.js';
@@ -77,9 +78,18 @@ export default function App() {
     }
   }
 
+  // o espaço do token só aparece com uma ficha de agente aberta
+  const comToken = vista !== 'inicio' && Boolean(personagem) && personagem.tipo !== 'ameaca';
+
   return (
-    <div className="app">
+    <div className={'app' + (comToken ? ' com-token-lateral' : '')}>
       <Fundo />
+      {comToken && (
+        <EspacoToken
+          token={personagem.token || null}
+          aoMudarToken={(t) => setPersonagem((p) => ({ ...p, token: t }))}
+        />
+      )}
       <div className="topbar">
         <h1>Claudio <span className="marca-sub">· Ordem Paranormal</span></h1>
         <div className="acoes">

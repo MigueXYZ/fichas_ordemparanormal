@@ -8,16 +8,25 @@ import { ATRIBUTOS } from '../data/atributos.js';
  * imagem (1000 × 1004). Assim nunca se desencontram: seja qual for o tamanho do
  * ecrã, o zoom do browser ou a fonte, tudo escala em bloco.
  *
- * Centros dos cinco círculos, medidos na arte da ficha oficial:
+ * A geometria abaixo NÃO foi estimada a olho: foi medida pixel a pixel sobre
+ * `public/img/roda-atributos-v2.png` (deteção do interior de cada círculo e da
+ * caixa do rótulo "FORÇA / FOR" que já lá está desenhado).
+ *
+ *   cx, cy, r  → centro e raio do interior do círculo
+ *   ny         → altura onde o algarismo fica centrado (a meio do espaço livre
+ *                entre o topo do círculo e o topo do rótulo desenhado)
+ *
+ * O texto é centrado com `dy` em `em` (nunca `dominant-baseline`, que o Safari
+ * e browsers antigos ignoram, atirando o número para fora do círculo).
  */
 const BASE = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/';
-const R = 88;                       // raio de cada círculo, em unidades do viewBox
-const CENTROS = {
-  agi: { x: 501, y: 199 },
-  for: { x: 193, y: 457 },
-  int: { x: 807, y: 457 },
-  pre: { x: 298, y: 807 },
-  vig: { x: 704, y: 807 },
+
+const CIRCULOS = {
+  agi: { cx: 490.0, cy: 199.5, r: 114, ny: 157 },
+  for: { cx: 185.5, cy: 427.0, r: 122, ny: 374 },
+  int: { cx: 800.0, cy: 425.0, r: 120, ny: 370 },
+  pre: { cx: 281.5, cy: 791.5, r: 121, ny: 740 },
+  vig: { cx: 688.5, cy: 792.0, r: 122, ny: 740 },
 };
 
 export default function RodaAtributos({ atributos, onChange, onRolar, mini = false, podeSubir, podeDescer }) {
@@ -31,21 +40,19 @@ export default function RodaAtributos({ atributos, onChange, onRolar, mini = fal
       <image href={`${BASE}img/roda-atributos-v2.png`} x="0" y="0" width="1000" height="1004" />
 
       {ATRIBUTOS.map((a) => {
-        const c = CENTROS[a.id];
+        const c = CIRCULOS[a.id];
         const valor = Number(atributos[a.id] ?? 0);
         const podeMais = podeSubir ? podeSubir(a.id) : true;
         const podeMenos = podeDescer ? podeDescer(a.id) : true;
+        const yBotoes = c.cy + c.r + 36;
         return (
           <g key={a.id}>
-            {/* nada de `dominant-baseline`: há browsers (Safari e versões antigas)
-                que o ignoram e atiram o número para cima do círculo. `dy` em `em`
-                é suportado em todo o lado e centra o algarismo à mesma. */}
             <text
               className="atr-valor"
               data-attr={a.id}
-              x={c.x}
-              y={c.y - 0.30 * R}
-              dy="0.35em"
+              x={c.cx}
+              y={c.ny}
+              dy="0.34em"
               textAnchor="middle"
               onClick={() => onRolar && onRolar(a, valor)}
             >
@@ -60,16 +67,16 @@ export default function RodaAtributos({ atributos, onChange, onRolar, mini = fal
                   onClick={() => podeMenos && onChange(a.id, valor - 1)}
                 >
                   <title>Baixar {a.nome}</title>
-                  <circle cx={c.x - 30} cy={c.y + R + 34} r={22} />
-                  <text x={c.x - 30} y={c.y + R + 34} dy="0.34em" textAnchor="middle">−</text>
+                  <circle cx={c.cx - 30} cy={yBotoes} r={22} />
+                  <text x={c.cx - 30} y={yBotoes} dy="0.34em" textAnchor="middle">−</text>
                 </g>
                 <g
                   className={'atr-botao' + (podeMais ? '' : ' inativo')}
                   onClick={() => podeMais && onChange(a.id, valor + 1)}
                 >
                   <title>Subir {a.nome}</title>
-                  <circle cx={c.x + 30} cy={c.y + R + 34} r={22} />
-                  <text x={c.x + 30} y={c.y + R + 34} dy="0.34em" textAnchor="middle">+</text>
+                  <circle cx={c.cx + 30} cy={yBotoes} r={22} />
+                  <text x={c.cx + 30} y={yBotoes} dy="0.34em" textAnchor="middle">+</text>
                 </g>
               </g>
             )}
@@ -79,3 +86,5 @@ export default function RodaAtributos({ atributos, onChange, onRolar, mini = fal
     </svg>
   );
 }
+
+export { CIRCULOS };
