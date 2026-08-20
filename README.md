@@ -21,14 +21,20 @@ npm run dev        # http://localhost:5173
 | `npm run verificar-roda` | confirma, num browser, que os números dos atributos ficam dentro dos círculos (precisa do `preview` a correr) |
 | `npm run overlay` | servidor do overlay para OBS, em http://localhost:7777 |
 
-## Overlay para OBS
+## Overlay para OBS & Transmissão para o Mestre
 
-1. `npm run overlay`
-2. Na app: botão **Overlay** → modo **Servidor** → liga → copia o link
-3. No OBS: **+ → Browser**, cola o link, 1920×1080
+A aplicação suporta transmissão em tempo real das barras de vida, sanidade, esforço, avatar e rolagens de dados:
 
-O servidor (`servidor/overlay.mjs`) não tem dependências e corre em qualquer sítio com
-Node — no teu PC ou alojado, se o mestre estiver noutro sítio.
+### Modo P2P (Recomendado / Vercel):
+1. Na app: botão **Overlay** → modo **P2P / Vercel** → clica em **Ligar**.
+2. Clica em **Copiar Link** (ou gera um código novo).
+3. Entrega o link ao Mestre ou adiciona no OBS (**+ → Browser**, cola o link, 1920×1080).
+*Não precisa de nenhum servidor ativo — funciona 100% no browser e na Vercel via WebRTC.*
+
+### Modo Servidor Node (Opcional):
+1. `npm run overlay` (corre em http://localhost:7777)
+2. Na app: botão **Overlay** → modo **Servidor Node** → liga → copia o link.
+3. No OBS: **+ → Browser**, cola o link, 1920×1080.
 
 ## Organização
 

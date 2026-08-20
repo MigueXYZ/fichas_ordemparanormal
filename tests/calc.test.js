@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { personagemVazio } from '../src/engine/character.js';
-import { calcMaximos, calcDefesa, calcDefesas, calcPericias, pontosRestantes, calcPePorRodada, grauMaximoPorNex, degrauNex, nexEfetivo } from '../src/engine/calc.js';
+import { calcMaximos, calcDefesa, calcDefesas, calcPericias, calcDeslocamento, pontosRestantes, calcPePorRodada, grauMaximoPorNex, degrauNex, nexEfetivo } from '../src/engine/calc.js';
 
 let passou = 0;
 function teste(nome, fn) {
@@ -445,6 +445,65 @@ teste('preço do ritual: Sanidade abaixo de 20 + círculo, permanente abaixo de 
   // 4º círculo é mais exigente
   assert.equal(precoDoRitual(23, 4).perdeSan, true);
   assert.equal(precoDoRitual(24, 4).perdeSan, false);
+});
+
+console.log('\nCondições e penalidades automáticas\n');
+
+teste('condição Desprevenido reduz Defesa em 5 e Reflexos em 1d20', () => {
+  const p = personagemVazio();
+  p.atributos.agi = 2;
+  p.condicoes = ['desprevenido'];
+  assert.equal(calcDefesa(p), 10 + 2 - 5); // 7
+  const per = calcPericias(p);
+  const ref = per.find((x) => x.id === 'reflexos');
+  assert.equal(ref.dados, 1); // 2 - 1 = 1
+});
+
+teste('condição Abalado reduz 1d20 em todas as perícias', () => {
+  const p = personagemVazio();
+  p.atributos.for = 3;
+  p.atributos.int = 2;
+  p.condicoes = ['abalado'];
+  const per = calcPericias(p);
+  const luta = per.find((x) => x.id === 'luta');
+  const inv = per.find((x) => x.id === 'investigacao');
+  assert.equal(luta.dados, 2); // 3 - 1 = 2
+  assert.equal(inv.dados, 1); // 2 - 1 = 1
+});
+
+teste('condições Fraco e Frustrado afetam atributos específicos', () => {
+  const p = personagemVazio();
+  p.atributos.for = 3;
+  p.atributos.int = 3;
+  p.condicoes = ['fraco']; // -1 em FOR, AGI, VIG
+  let per = calcPericias(p);
+  assert.equal(per.find((x) => x.id === 'atletismo').dados, 2);
+  assert.equal(per.find((x) => x.id === 'investigacao').dados, 3); // INT não afetado
+
+  p.condicoes = ['frustrado']; // -1 em INT, PRE
+  per = calcPericias(p);
+  assert.equal(per.find((x) => x.id === 'atletismo').dados, 3);
+  assert.equal(per.find((x) => x.id === 'investigacao').dados, 2);
+});
+
+teste('deslocamento respeita condições Imóvel, Caído e Lento', () => {
+  const p = personagemVazio();
+  p.deslocamento = 9;
+  p.condicoes = ['lento'];
+  assert.equal(calcDeslocamento(p), 4.5);
+  p.condicoes = ['caido'];
+  assert.equal(calcDeslocamento(p), 1.5);
+  p.condicoes = ['imovel'];
+  assert.equal(calcDeslocamento(p), 0);
+});
+
+teste('ataques sofrem penalidades de condições (Ofuscado)', () => {
+  const p = personagemVazio();
+  p.atributos.for = 3;
+  p.condicoes = ['ofuscado'];
+  const arma = { pericia: 'luta', dano: '1d8', critico: '20', atributoDano: 'for', modificacoes: [] };
+  const stats = estatisticasArma(p, arma);
+  assert.equal(stats.dados, 2); // 3 - 1 = 2d20
 });
 
 console.log(`\n${passou} testes ok`);

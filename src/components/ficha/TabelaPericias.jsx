@@ -1,9 +1,71 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { GRAUS_TREINO } from '../../data/pericias.js';
 import { ATRIBUTOS } from '../../data/atributos.js';
 import { calcPericias } from '../../engine/calc.js';
 import { rolarTeste } from '../../engine/dados.js';
 import IconeD20 from '../IconeD20.jsx';
+
+function InputNumeroScroll({ value, onChange, ...props }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const handleWheel = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const delta = e.deltaY < 0 ? 1 : -1;
+      const atual = Number(el.value) || 0;
+      onChange(atual + delta);
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [onChange]);
+
+  return (
+    <input
+      ref={ref}
+      type="number"
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value))}
+      {...props}
+    />
+  );
+}
+
+function SelectScroll({ value, onChange, onScrollStep, children, ...props }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const handleWheel = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const delta = e.deltaY < 0 ? 1 : -1;
+      if (onScrollStep) {
+        onScrollStep(delta);
+      }
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [onScrollStep]);
+
+  return (
+    <select
+      ref={ref}
+      value={value}
+      onChange={onChange}
+      {...props}
+    >
+      {children}
+    </select>
+  );
+}
 
 export default function TabelaPericias({ personagem, setPersonagem, onRolar }) {
   const linhas = calcPericias(personagem);
@@ -13,6 +75,23 @@ export default function TabelaPericias({ personagem, setPersonagem, onRolar }) {
       ...personagem,
       pericias: { ...personagem.pericias, [id]: { ...personagem.pericias[id], ...patch } },
     });
+  }
+
+  function rolarTreino(id, grauAtual, delta) {
+    const graus = GRAUS_TREINO.map((g) => g.id);
+    const idx = graus.indexOf(grauAtual);
+    if (idx === -1) return;
+    const novoIdx = Math.max(0, Math.min(graus.length - 1, idx + delta));
+    setPericia(id, { grau: graus[novoIdx] });
+  }
+
+  function rolarAttr(id, attrAtual, attrPadrao, delta) {
+    const ids = ATRIBUTOS.map((a) => a.id);
+    const idx = ids.indexOf(attrAtual);
+    if (idx === -1) return;
+    const novoIdx = (idx + delta + ids.length) % ids.length;
+    const novoAttr = ids[novoIdx];
+    setPericia(id, { attr: novoAttr === attrPadrao ? null : novoAttr });
   }
 
   return (
@@ -62,18 +141,23 @@ export default function TabelaPericias({ personagem, setPersonagem, onRolar }) {
               </td>
               <td className="bonus">{l.bonus >= 0 ? `+${l.bonus}` : l.bonus}</td>
               <td>
-                <select
+                <SelectScroll
                   value={l.grau}
-                  title={GRAUS_TREINO.find((g) => g.id === l.grau)?.nome}
+                  title={`${GRAUS_TREINO.find((g) => g.id === l.grau)?.nome} · Altera com o scroll`}
                   onChange={(e) => setPericia(l.id, { grau: e.target.value })}
+                  onScrollStep={(delta) => rolarTreino(l.id, l.grau, delta)}
                 >
                   {GRAUS_TREINO.map((g) => (
                     <option key={g.id} value={g.id} title={g.nome}>{g.bonus === 0 ? '0' : `+${g.bonus}`}</option>
                   ))}
-                </select>
+                </SelectScroll>
               </td>
               <td>
-                <input type="number" value={l.outros} onChange={(e) => setPericia(l.id, { outros: Number(e.target.value) })} />
+                <InputNumeroScroll
+                  value={l.outros}
+                  title="Altera digitando ou com o scroll do rato"
+                  onChange={(novo) => setPericia(l.id, { outros: novo })}
+                />
               </td>
             </tr>
           ))}
