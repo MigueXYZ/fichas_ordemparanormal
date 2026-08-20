@@ -28,8 +28,8 @@ function InputNumeroScroll({ value, onChange, ...props }) {
     <input
       ref={ref}
       type="number"
-      value={value}
-      onChange={(e) => onChange(Number(e.target.value))}
+      value={value ?? ''}
+      onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
       {...props}
     />
   );
@@ -56,12 +56,7 @@ function SelectScroll({ value, onChange, onScrollStep, children, ...props }) {
   }, [onScrollStep]);
 
   return (
-    <select
-      ref={ref}
-      value={value}
-      onChange={onChange}
-      {...props}
-    >
+    <select ref={ref} value={value} onChange={onChange} {...props}>
       {children}
     </select>
   );
@@ -73,7 +68,7 @@ export default function TabelaPericias({ personagem, setPersonagem, onRolar }) {
   function setPericia(id, patch) {
     setPersonagem({
       ...personagem,
-      pericias: { ...personagem.pericias, [id]: { ...personagem.pericias[id], ...patch } },
+      pericias: { ...personagem.pericias, [id]: { ...personagem.pericias?.[id], ...patch } },
     });
   }
 
@@ -96,6 +91,22 @@ export default function TabelaPericias({ personagem, setPersonagem, onRolar }) {
 
   return (
     <div>
+      <style>{`
+        /* Aniquilação total de texturas de background nos inputs/selects da tabela */
+        .tabela-pericias select,
+        .tabela-pericias input,
+        .tabela-pericias .trocado,
+        .tabela-pericias select:hover,
+        .tabela-pericias input:hover,
+        .tabela-pericias select:focus,
+        .tabela-pericias input:focus,
+        .tabela-pericias td {
+          background-image: none !important;
+          background: transparent !important;
+          background-color: transparent !important;
+        }
+      `}</style>
+
       <div className="titulo-seccao">Perícias</div>
       <table className="tabela-pericias">
         <thead>

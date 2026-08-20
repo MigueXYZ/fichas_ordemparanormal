@@ -18,16 +18,16 @@ import IconeD20 from '../IconeD20.jsx';
 const NOME_ATRIBUTO = { for: 'Força', agi: 'Agilidade', int: 'Intelecto', pre: 'Presença', vig: 'Vigor' };
 import Seletor from './Seletor.jsx';
 
-function Campo({ label, valor, onChange, tipo = 'text', opcoes }) {
+function Campo({ label, valor, onChange, tipo = 'text', opcoes, readOnly = false }) {
   return (
     <div className="campo">
       <label>{label}</label>
-      {opcoes ? (
+      {opcoes && !readOnly ? (
         <select value={valor} onChange={(e) => onChange(e.target.value)}>
           {opcoes.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       ) : (
-        <input type={tipo} value={valor ?? ''} onChange={(e) => onChange(e.target.value)} />
+        <input type={tipo} value={valor ?? ''} onChange={(e) => onChange(e.target.value)} readOnly={readOnly} />
       )}
     </div>
   );
@@ -46,14 +46,10 @@ function useLista(personagem, setPersonagem, chave) {
 
 // ---------------------------------------------------------------- COMBATE
 
-/**
- * Combate é só para USAR: as armas que já tens e os rituais que já sabes.
- * Adicionar, editar e remover armas faz-se no Inventário.
- */
 export function AbaCombate({ personagem, setPersonagem, onRolar }) {
   const { lista, editar } = useLista(personagem, setPersonagem, 'ataques');
   const [expr, setExpr] = useState('');
-  const [acertos, setAcertos] = useState({});     // último ataque por índice
+  const [acertos, setAcertos] = useState({});
 
   function rolar() {
     const r = rolarExpressao(expr);
@@ -62,7 +58,6 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
 
   function atacar(a, i) {
     const e = estatisticasArma(personagem, a);
-    // acerto e dano saem juntos, num só cartão com as duas secções
     const r = rolarAtaqueCompleto({
       nome: a.nome || 'Ataque',
       dados: e.dados, bonusAtaque: e.bonusAtaque, margem: e.margem,
@@ -102,15 +97,15 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
           {lista.map((a, i) => {
             const e = estatisticasArma(personagem, a);
             const acerto = acertos[i];
-            const equipado = a.equipado !== false;   // fichas antigas não tinham o campo
+            const equipado = a.equipado !== false;
             return (
               <div className={'bloco arma' + (equipado ? '' : ' guardada')} key={i}>
                 <div className="topo">
                   <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                     {a.imagem && <div className="miniatura-arma" style={{ backgroundImage: `url(${a.imagem})` }} />}
                     <div>
-                    <b>{a.nome || 'Sem nome'}</b>
-                    <div className="arma-stats">
+                    <b style={{ fontSize: '18px', letterSpacing: '0.5px' }}>{a.nome || 'Sem nome'}</b>
+                    <div className="arma-stats" style={{ fontSize: '14px' }}>
                       <span title={`Teste de ${e.pericia.nome} com ${NOME_ATRIBUTO[e.atributoTeste] || ''}${e.dados > 0 ? '' : ' — com o atributo a 0 rolas 2 dados e fica o pior'}`}>
                         {e.pericia.nome}{' '}
                         <span style={{ color: e.dados === 0 ? '#ef4444' : '#22c55e' }}>
@@ -183,11 +178,6 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
   );
 }
 
-/**
- * Os rituais que o agente já sabe, prontos a conjurar. Conjurar desconta os PE
- * (ou PD) e mostra a DT para quem tiver de resistir. Aprendem-se no separador
- * Rituais — aqui é só para usar.
- */
 function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
   const rituais = personagem.rituais || [];
   if (!rituais.length) return null;
@@ -197,13 +187,6 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
   const atual = usaPd ? (personagem.pdAtual ?? max.pd) : (personagem.peAtual ?? max.pe);
   const dt = Number(personagem.dtRitual) || null;
 
-  /**
-   * Conjurar custa pontos e cobra ao corpo: fazes um teste de Ocultismo e,
-   * se ele não chegar, o Outro Lado leva a sua parte da tua Sanidade.
-   *   total < 20 + círculo  ->  −1 de Sanidade
-   *   total < 10 + círculo  ->  −1 de Sanidade PERMANENTE (baixa o máximo)
-   * Com a regra "Jogando sem Sanidade" isto cai nos Pontos de Determinação.
-   */
   function conjurar(r) {
     const custo = Number(String(r.custo).replace(/\D/g, '')) || 0;
     if (custo > atual) return;
@@ -215,13 +198,11 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
     const { perdeSan, perdePermanente, limiteSan, limitePermanente } = precoDoRitual(teste.total, circulo);
 
     const campoAtual = usaPd ? 'pdAtual' : 'sanAtual';
-    const campoExtra = usaPd ? 'pdExtra' : 'sanExtra';
     const maximoMental = usaPd ? max.pd : max.san;
     const mentalAtual = personagem[campoAtual] ?? maximoMental;
 
     const patch = { [usaPd ? 'pdAtual' : 'peAtual']: atual - custo };
     if (usaPd) {
-      // com PD é tudo o mesmo poço: o custo e a perda saem do mesmo sítio
       let pd = atual - custo;
       if (perdeSan) pd = Math.max(0, pd - 1);
       patch.pdAtual = pd;
@@ -261,8 +242,8 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
             <div className={'bloco ritual el-' + (r.elemento || 'variavel')} key={i}>
               <div className="topo">
                 <div>
-                  <b>{r.nome || 'Sem nome'}</b>
-                  <div className="arma-stats">
+                  <b style={{ fontSize: '18px', letterSpacing: '0.5px' }}>{r.nome || 'Sem nome'}</b>
+                  <div className="arma-stats" style={{ fontSize: '14px' }}>
                     <span>{circulo}º círculo</span>
                     {r.elemento && <span>{r.elemento}</span>}
                     <span>{custo} {usaPd ? 'PD' : 'PE'}</span>
@@ -328,7 +309,7 @@ export function AbaHabilidades({ personagem, setPersonagem }) {
           aoProcurar={(i, t) => i.nome.toLowerCase().includes(t) || (i.descricao || '').toLowerCase().includes(t)}
           render={(p) => (
             <>
-              <b>{p.nome}</b>
+              <b style={{ fontSize: '18px' }}>{p.nome}</b>
               <span className="meta">{[p.tipo, p.classe, p.elemento, p.prerequisito].filter(Boolean).join(' · ')}</span>
               <span className="corte">{p.descricao}</span>
             </>
@@ -342,8 +323,8 @@ export function AbaHabilidades({ personagem, setPersonagem }) {
         <div className="lista-blocos" style={{ marginBottom: 14 }}>
           {automaticas.map((h, i) => (
             <div className="bloco" key={'auto' + i}>
-              <div className="topo"><b>{h.nome}</b><span className="pill">{h.fonte}{h.nex ? ` · NEX ${h.nex}%` : ''}</span></div>
-              <div style={{ color: 'var(--txt-dim)', fontSize: 13, marginTop: 6 }}>{h.descricao}</div>
+              <div className="topo"><b style={{ fontSize: '18px' }}>{h.nome}</b><span className="pill">{h.fonte}{h.nex ? ` · NEX ${h.nex}%` : ''}</span></div>
+              <div style={{ color: 'var(--txt-dim)', fontSize: '14.5px', marginTop: 6 }}>{h.descricao}</div>
             </div>
           ))}
         </div>
@@ -356,11 +337,11 @@ export function AbaHabilidades({ personagem, setPersonagem }) {
           {lista.map((h, i) => (
             <div className="bloco" key={i}>
               <div className="topo">
-                <input type="text" placeholder="Nome da habilidade" value={h.nome} onChange={(e) => editar(i, { nome: e.target.value })} />
+                <input type="text" placeholder="Nome da habilidade" value={h.nome} onChange={(e) => editar(i, { nome: e.target.value })} style={{ fontSize: '18px', fontWeight: 'bold' }} />
                 <button className="btn sm danger" onClick={() => remover(i)}>Remover</button>
               </div>
               <div className="campo" style={{ marginTop: 10, marginBottom: 0 }}>
-                <textarea placeholder="Descrição" value={h.descricao} onChange={(e) => editar(i, { descricao: e.target.value })} />
+                <textarea placeholder="Descrição" value={h.descricao} onChange={(e) => editar(i, { descricao: e.target.value })} style={{ fontSize: '14px' }} />
               </div>
             </div>
           ))}
@@ -402,7 +383,7 @@ export function AbaRituais({ personagem, setPersonagem }) {
           aoProcurar={(r, t) => r.nome.toLowerCase().includes(t) || (r.descricao || '').toLowerCase().includes(t)}
           render={(r) => (
             <>
-              <b>{r.nome}</b>
+              <b style={{ fontSize: '18px' }}>{r.nome}</b>
               <span className="meta">{r.elemento} {r.circulo}º · {r.execucao} · {r.alcance}</span>
               <span className="corte">{r.descricao}</span>
             </>
@@ -419,7 +400,7 @@ export function AbaRituais({ personagem, setPersonagem }) {
           {lista.map((r, i) => (
             <div className="bloco" key={i}>
               <div className="topo">
-                <input type="text" placeholder="Nome do ritual" value={r.nome} onChange={(e) => editar(i, { nome: e.target.value })} />
+                <input type="text" placeholder="Nome do ritual" value={r.nome} onChange={(e) => editar(i, { nome: e.target.value })} style={{ fontSize: '18px', fontWeight: 'bold' }} />
                 <button className="btn sm danger" onClick={() => remover(i)}>Remover</button>
               </div>
               <div className="grelha">
@@ -433,10 +414,10 @@ export function AbaRituais({ personagem, setPersonagem }) {
                 <Campo label="Custo (PE)" valor={r.custo} onChange={(v) => editar(i, { custo: v })} />
               </div>
               <div className="campo" style={{ marginTop: 10, marginBottom: 0 }}>
-                <textarea placeholder="Descrição" value={r.descricao} onChange={(e) => editar(i, { descricao: e.target.value })} />
+                <textarea placeholder="Descrição" value={r.descricao} onChange={(e) => editar(i, { descricao: e.target.value })} style={{ fontSize: '14px' }} />
               </div>
               {(r.discente || r.verdadeiro) && (
-                <div style={{ fontSize: 12, color: 'var(--txt-dim)', marginTop: 8 }}>
+                <div style={{ fontSize: 13, color: 'var(--txt-dim)', marginTop: 8 }}>
                   {r.discente && <div><b>Discente ({r.discente.custo}):</b> {r.discente.texto} {r.discente.requer}</div>}
                   {r.verdadeiro && <div><b>Verdadeiro ({r.verdadeiro.custo}):</b> {r.verdadeiro.texto} {r.verdadeiro.requer}</div>}
                 </div>
@@ -456,7 +437,8 @@ export function AbaInventario({ personagem, setPersonagem }) {
   const armas = useLista(personagem, setPersonagem, 'ataques');
   const [aEscolher, setAEscolher] = useState(false);
   const [aEscolherArma, setAEscolherArma] = useState(false);
-  const [aEditarArma, setAEditarArma] = useState(null);   // { indice, arma } | 'nova'
+  const [aEditarArma, setAEditarArma] = useState(null);   
+  const [aEditarItem, setAEditarItem] = useState(null);   
   const [aviso, setAviso] = useState(null);
   const catalogoArmas = ITENS.filter(ehArma);
   const carga = calcCarga(personagem);
@@ -522,7 +504,7 @@ export function AbaInventario({ personagem, setPersonagem }) {
         <button className="btn ghost" onClick={() => setAEditarArma('nova')}>Nova arma</button>
         <span style={{ flex: 1 }} />
         <button className="btn ghost" onClick={() => setAEscolher(true)}>Do catálogo</button>
-        <button className="btn" onClick={() => adicionar(novoItem())}>Novo Item</button>
+        <button className="btn" onClick={() => adicionar({ ...novoItem(), manual: true })}>Novo Item</button>
       </div>
 
       {aEscolherArma && (
@@ -533,7 +515,7 @@ export function AbaInventario({ personagem, setPersonagem }) {
           aoProcurar={(i, t) => i.nome.toLowerCase().includes(t) || (i.descricao || '').toLowerCase().includes(t)}
           render={(a) => (
             <>
-              <b>{a.nome}</b>
+              <b style={{ fontSize: '18px' }}>{a.nome}</b>
               <span className="meta">{[a.dano, a.critico, a.tipoDano, a.alcance, a.grupo, a.espacos != null ? `${a.espacos} esp.` : null].filter(Boolean).join(' · ')}</span>
             </>
           )}
@@ -554,6 +536,36 @@ export function AbaInventario({ personagem, setPersonagem }) {
         />
       )}
 
+      {aEditarItem !== null && (
+        <div className="modal-fundo" style={{ zIndex: 100 }}>
+          <div className="modal" style={{ maxWidth: 400 }}>
+            <div className="modal-topo">
+              <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>Editar Item</h3>
+              <button className="fechar" onClick={() => setAEditarItem(null)}>×</button>
+            </div>
+            <div className="modal-corpo">
+              <div className="campo">
+                <label>Nome</label>
+                <input type="text" value={aEditarItem.item.nome} onChange={(e) => setAEditarItem({ ...aEditarItem, item: { ...aEditarItem.item, nome: e.target.value } })} />
+              </div>
+              <div className="grelha">
+                <Campo label="Categoria" valor={aEditarItem.item.categoria} onChange={(v) => setAEditarItem({ ...aEditarItem, item: { ...aEditarItem.item, categoria: v } })}
+                  opcoes={[{ value: '', label: '—' }, ...CATEGORIAS.map((c) => ({ value: c, label: c }))]} />
+                <Campo label="Espaços" valor={aEditarItem.item.espacos} onChange={(v) => setAEditarItem({ ...aEditarItem, item: { ...aEditarItem.item, espacos: Number(v) } })} tipo="number" />
+              </div>
+              <div className="campo">
+                <label>Descrição</label>
+                <textarea value={aEditarItem.item.descricao} onChange={(e) => setAEditarItem({ ...aEditarItem, item: { ...aEditarItem.item, descricao: e.target.value } })} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+                <button className="btn ghost" onClick={() => setAEditarItem(null)}>Cancelar</button>
+                <button className="btn" onClick={() => { editar(aEditarItem.indice, aEditarItem.item); setAEditarItem(null); }}>Guardar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {aEscolher && (
         <Seletor
           titulo={`Itens (${ITENS.length})`}
@@ -565,7 +577,7 @@ export function AbaInventario({ personagem, setPersonagem }) {
           aoProcurar={(i, t) => i.nome.toLowerCase().includes(t) || (i.descricao || '').toLowerCase().includes(t)}
           render={(i) => (
             <>
-              <b>{i.nome}</b>
+              <b style={{ fontSize: '18px' }}>{i.nome}</b>
               <span className="meta">
                 {[
                   TIPOS_ITEM.find((t) => t.id === i.tipo)?.nome,
@@ -578,8 +590,6 @@ export function AbaInventario({ personagem, setPersonagem }) {
             </>
           )}
           onEscolher={(i) => {
-            // uma arma vai para a lista de ataques (é lá que se usa), mas continua
-            // a contar para a carga como qualquer outro item
             if (ehArma(i)) {
               armas.adicionar(armaDoItem(i));
               setAviso(`${i.nome} foi para o separador Combate, já equipada.`);
@@ -590,6 +600,7 @@ export function AbaInventario({ personagem, setPersonagem }) {
                 espacos: i.espacos ?? 1,
                 cargaBonus: i.cargaBonus ?? 0,
                 descricao: i.descricao || '',
+                manual: false 
               });
               setAviso(null);
             }
@@ -615,7 +626,7 @@ export function AbaInventario({ personagem, setPersonagem }) {
                     title={equipado ? 'Equipada — carrega para guardar' : 'Guardada — carrega para equipar'}
                     onClick={() => armas.editar(i, { equipado: !equipado })}
                   />
-                  <span className="nome">{a.nome || 'Sem nome'}</span>
+                  <span className="nome" style={{ fontSize: '18px', fontWeight: 'bold' }}>{a.nome || 'Sem nome'}</span>
                   <span className="estado">{equipado ? 'equipada' : 'guardada'}</span>
                   <span className="esp">{Number(a.espacos) || 0} esp.</span>
                   <button className="btn ghost sm" onClick={() => setAEditarArma({ indice: i, arma: a })}>Editar</button>
@@ -632,20 +643,28 @@ export function AbaInventario({ personagem, setPersonagem }) {
         <div className="painel-vazio">Inventário vazio</div>
       ) : (
         <div className="lista-blocos">
-          {lista.map((it, i) => (
-            <div className="bloco" key={i}>
-              <div className="topo">
-                <input type="text" placeholder="Nome do item" value={it.nome} onChange={(e) => editar(i, { nome: e.target.value })} />
-                <button className="btn sm danger" onClick={() => remover(i)}>Remover</button>
-              </div>
-              <div className="grelha">
-                <Campo label="Categoria" valor={it.categoria} onChange={(v) => editar(i, { categoria: v })}
-                  opcoes={[{ value: '', label: '—' }, ...CATEGORIAS.map((c) => ({ value: c, label: c }))]} />
-                <Campo label="Espaços" valor={it.espacos} onChange={(v) => editar(i, { espacos: v })} />
-              </div>
-              {it.descricao && <div className="descricao-item">{it.descricao}</div>}
-            </div>
-          ))}
+          <div className="armas-carregadas" style={{ marginTop: 10 }}>
+            <div className="rotulo-lista">Itens ({carga.dosItens} espaços)</div>
+            <ul>
+              {lista.map((it, i) => {
+                const ehManual = it.manual === true;
+                return (
+                  <li key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '12px 14px', borderBottom: '1px solid var(--linha)', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 150 }}>
+                      <span className="nome" style={{ fontSize: '18px', fontWeight: 'bold' }}>{it.nome || 'Sem nome'}</span>
+                      <span className="estado" style={{ color: 'var(--txt-dim)', fontSize: '14px' }}>CAT. {it.categoria || '0'}</span>
+                      <span className="esp" style={{ color: 'var(--txt-dim)', fontSize: '14px' }}>{Number(it.espacos) || 0} esp.</span>
+                    </div>
+                    {it.descricao && <div style={{ width: '100%', fontSize: '14px', color: 'var(--txt-dim)', marginTop: 4 }}>{it.descricao}</div>}
+                    <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
+                      <button className="btn ghost sm" onClick={() => setAEditarItem({ indice: i, item: it })}>Editar</button>
+                      <button className="btn danger sm" onClick={() => remover(i)}>Remover</button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         </div>
       )}
     </div>

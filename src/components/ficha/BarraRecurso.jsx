@@ -12,7 +12,6 @@ export default function BarraRecurso({ titulo, classe, atual, max, onChange, tem
     if (destravado && onMaxManualChange) {
       const novoMax = Math.max(0, max - 1);
       onMaxManualChange(novoMax);
-      // Garante que o valor atual não fica superior ao novo limite
       if (valor > novoMax) {
         onChange(novoMax);
       }
@@ -47,9 +46,28 @@ export default function BarraRecurso({ titulo, classe, atual, max, onChange, tem
 
   return (
     <div className={'barra-recurso ' + classe}>
-      <div className="titulo" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontWeight: 'bold', letterSpacing: '1px' }}>{titulo}</span>
+      {/* Grelha de 3 colunas: o lado esquerdo equilibra o botão da direita, garantindo que o título fica 100% centrado com a barra */}
+      <div className="titulo" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', position: 'relative', marginBottom: '2px' }}>
+        
+        {/* Lado esquerdo (vazio ou com o botão de destrancar se houver) */}
+        <div style={{ justifySelf: 'start' }}>
+          {onMaxManualChange && (
+            <button
+              type="button"
+              onClick={() => setDestravado(!destravado)}
+              title={destravado ? "Bloquear limites" : "Desbloquear limites"}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', opacity: destravado ? 1 : 0.5, padding: 0 }}
+            >
+              {destravado ? '🔓' : '🔒'}
+            </button>
+          )}
+        </div>
+
+        {/* Centro: Título perfeitamente centrado */}
+        <span style={{ fontWeight: 'bold', letterSpacing: '1px', textAlign: 'center' }}>{titulo}</span>
+        
+        {/* Lado direito: Chip de temp alinhado horizontalmente na mesma linha */}
+        <div style={{ justifySelf: 'end', display: 'flex', alignItems: 'center', gap: '4px' }}>
           {onTemp && (
             aEditarTemp ? (
               <input
@@ -61,7 +79,7 @@ export default function BarraRecurso({ titulo, classe, atual, max, onChange, tem
                 onBlur={() => setAEditarTemp(false)}
                 onKeyDown={(e) => e.key === 'Enter' && setAEditarTemp(false)}
                 title="Pontos temporários"
-                style={{ width: '50px' }}
+                style={{ width: '45px', textAlign: 'center', fontSize: '10px' }}
               />
             ) : (
               <button
@@ -69,22 +87,14 @@ export default function BarraRecurso({ titulo, classe, atual, max, onChange, tem
                 className={'temp-chip' + (t > 0 ? ' ativo' : '')}
                 onClick={() => setAEditarTemp(true)}
                 title="Pontos temporários"
+                style={{ fontSize: '10px', padding: '1px 4px' }}
               >
                 {t > 0 ? `+${t} temp` : '+ temp'}
               </button>
             )
           )}
         </div>
-        {onMaxManualChange && (
-          <button
-            type="button"
-            onClick={() => setDestravado(!destravado)}
-            title={destravado ? "Bloquear limites" : "Desbloquear: os botões + e - alteram o limite máximo"}
-            style={{ position: 'absolute', right: 0, background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', opacity: destravado ? 1 : 0.5 }}
-          >
-            {destravado ? '🔓' : '🔒'}
-          </button>
-        )}
+
       </div>
 
       <div className="linha-barra">
