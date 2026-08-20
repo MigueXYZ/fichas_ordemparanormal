@@ -25,7 +25,7 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
   const [erroFoto, setErroFoto] = useState(null);
   const [verRegras, setVerRegras] = useState(false);
   const regras = personagem.regras || {};
-  const nexUtil = nexEfetivo(personagem);   // o que manda nas contas
+  const nexUtil = nexEfetivo(personagem);
 
   const max = calcMaximos(personagem);
   const d = calcDefesas(personagem);
@@ -34,6 +34,9 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
   const nomeOrigem = personagem.origemId === '__custom__'
     ? personagem.origemCustom?.nome || 'Personalizada'
     : ORIGENS.find((o) => o.id === personagem.origemId)?.nome || '';
+
+  const trilhaAtual = (personagem.trilhaId || '').toLowerCase();
+  const ehMonstruoso = trilhaAtual.includes('monstruoso');
 
   async function escolherFoto(e) {
     const f = e.target.files?.[0];
@@ -90,16 +93,103 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
               {CLASSES.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
             </select>
           </div>
-          <div className="campo-linha">
+          <div className="campo-linha" style={{ position: 'relative' }}>
             <label>Trilha</label>
-            <select
-              value={personagem.trilhaId || ''}
-              disabled={nexUtil < 10}
-              onChange={(e) => set({ trilhaId: e.target.value || null })}
-            >
-              <option value="">{nexUtil < 10 ? (regras.nivelSeparado ? 'A partir do nível 2' : 'A partir de NEX 10%') : '—'}</option>
-              {trilhasDaClasse(personagem.classeId).map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
-            </select>
+            <div style={{ position: 'relative', width: '100%' }}>
+              <select
+                style={{ width: '100%', paddingRight: ehMonstruoso ? '36px' : '10px' }}
+                value={personagem.trilhaId || ''}
+                disabled={nexUtil < 10}
+                onChange={(e) => {
+                  const novaTrilha = e.target.value || null;
+                  if (novaTrilha && novaTrilha.toLowerCase().includes('monstruoso') && !personagem.monstruosoElemento) {
+                    const elem = prompt('Escolhe o elemento (Sangue, Morte, Conhecimento ou Energia):', 'Sangue');
+                    if (elem) {
+                      const limpo = elem.trim().toLowerCase();
+                      const valido = ['sangue', 'morte', 'conhecimento', 'energia'].find(el => limpo.includes(el));
+                      if (valido) {
+                        set({ trilhaId: novaTrilha, monstruosoElemento: valido });
+                        return;
+                      }
+                    }
+                  }
+                  set({ trilhaId: novaTrilha });
+                }}
+              >
+                <option value="">{nexUtil < 10 ? (regras.nivelSeparado ? 'A partir do nível 2' : 'A partir de NEX 10%') : '—'}</option>
+                {trilhasDaClasse(personagem.classeId).map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
+              </select>
+
+              {ehMonstruoso && (
+                <button
+                  type="button"
+                  title={personagem.monstruosoAtivo ? `Monstruoso (${personagem.monstruosoElemento}) Ativo` : `Ativar Monstruoso (${personagem.monstruosoElemento || 'Elemento'})`}
+                  onClick={() => {
+                    if (!personagem.monstruosoElemento) {
+                      const elem = prompt('Escolhe o elemento (Sangue, Morte, Conhecimento ou Energia):', 'Sangue');
+                      if (!elem) return;
+                      const limpo = elem.trim().toLowerCase();
+                      const valido = ['sangue', 'morte', 'conhecimento', 'energia'].find(el => limpo.includes(el));
+                      if (!valido) return;
+                      set({ monstruosoElemento: valido });
+                      return;
+                    }
+
+                    if (personagem.monstruosoAtivo) {
+                      set({ monstruosoAtivo: false });
+                      return;
+                    }
+
+                    const inv = [...(personagem.inventario || [])];
+                    const idxComp = inv.findIndex(item => 
+                      item.nome && item.nome.toLowerCase().includes('componentes')
+                    );
+
+                    if (idxComp === -1) {
+                      alert('Não tens "Componentes Ritualísticos" no inventário para realizar o experimento!');
+                      return;
+                    }
+
+                    const itemComp = inv[idxComp];
+                    const qtd = Number(itemComp.quantidade || 1);
+                    if (qtd > 1) {
+                      inv[idxComp] = { ...itemComp, quantidade: qtd - 1 };
+                    } else {
+                      inv.splice(idxComp, 1);
+                    }
+
+                    setComRecursos({
+                      inventario: inv,
+                      monstruosoAtivo: true,
+                    });
+                    
+                    onRolar(rolarTeste({ nome: `Experimento Monstruoso (${personagem.monstruosoElemento})`, dados: 1, bonus: 0, detalhe: 'Ativado' }));
+                  }}
+                  style={{
+                    position: 'absolute',
+                    right: '24px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: '20px',
+                    height: '20px',
+                    borderRadius: '50%',
+                    border: '1px solid var(--sangue)',
+                    background: personagem.monstruosoAtivo ? 'var(--sangue)' : 'var(--bg-4)',
+                    color: '#fff',
+                    fontWeight: 'bold',
+                    fontSize: '9px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textTransform: 'uppercase',
+                    zIndex: 5
+                  }}
+                >
+                  {personagem.monstruosoElemento ? personagem.monstruosoElemento[0] : 'M'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -116,7 +206,6 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
       )}
 
       <div className="ficha">
-        {/* ---------------- coluna esquerda ---------------- */}
         <div>
           <RodaAtributos
             atributos={personagem.atributos}
@@ -265,12 +354,10 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
           </div>
         </div>
 
-        {/* ---------------- coluna do meio ---------------- */}
         <div>
           <TabelaPericias personagem={personagem} setPersonagem={setPersonagem} onRolar={onRolar} />
         </div>
 
-        {/* ---------------- coluna direita ---------------- */}
         <div>
           <div className="abas">
             {ABAS.map((a) => (

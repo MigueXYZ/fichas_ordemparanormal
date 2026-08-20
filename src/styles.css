@@ -1010,3 +1010,13 @@ body.bate-forte .barra-recurso .preenchido::before {
 @media (prefers-reduced-motion: reduce) { .roda-sigilos { animation: none; } }
 @media (max-width: 700px) { .roda-sigilos { width: 300px; height: 300px; } }
 .inicio { position: relative; }
+
+/* Linha de trilha personalizada com botão Monstruoso */
+.linha-trilha-flex {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+}
+.linha-trilha-flex select {
+  flex: 1;
+}
