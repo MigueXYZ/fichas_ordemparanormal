@@ -65,6 +65,7 @@ export default function App() {
       san: max.semSanidade ? null : { atual: personagem.sanAtual ?? max.san, max: max.san },
       pe: max.semSanidade ? null : { atual: personagem.peAtual ?? max.pe, max: max.pe, temp: personagem.peTemp || 0 },
       pd: max.semSanidade ? { atual: personagem.pdAtual ?? max.pd, max: max.pd, temp: personagem.pdTemp || 0 } : null,
+      condicoes: personagem.condicoes || [],
       rolagem: ultima,
     };
     const corpo = JSON.stringify(estado);

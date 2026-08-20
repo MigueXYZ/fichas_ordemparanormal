@@ -135,14 +135,72 @@ export function calcPePorRodada(personagemOuNex) {
   return Math.max(1, Math.floor(nex / 5));
 }
 
+import { CONDICOES_POR_ID } from '../data/condicoes.js';
+
+// ---------- Condições ----------
+
+export function calcPenalidadesCondicoes(personagem) {
+  const conds = (personagem?.condicoes || []).map((id) => CONDICOES_POR_ID[id]).filter(Boolean);
+  let penalidadeDefesa = 0;
+  let dadosGeral = 0;
+  const dadosAttr = { for: 0, agi: 0, int: 0, pre: 0, vig: 0 };
+  const dadosPericia = {};
+  let deslocamentoEfeito = 'normal'; // 'normal' | 'metade' | 'zero' | 1.5
+
+  for (const c of conds) {
+    const ef = c.efeitos || {};
+    if (ef.defesa) penalidadeDefesa += ef.defesa;
+    if (ef.dadosGeral) dadosGeral += ef.dadosGeral;
+    if (ef.dadosAttr) {
+      for (const [atr, val] of Object.entries(ef.dadosAttr)) {
+        if (dadosAttr[atr] !== undefined) dadosAttr[atr] += val;
+      }
+    }
+    if (ef.dadosPericia) {
+      for (const [per, val] of Object.entries(ef.dadosPericia)) {
+        dadosPericia[per] = (dadosPericia[per] || 0) + val;
+      }
+    }
+    if (ef.deslocamento === 'zero') deslocamentoEfeito = 'zero';
+    else if (ef.deslocamento === 1.5 && deslocamentoEfeito !== 'zero') deslocamentoEfeito = 1.5;
+    else if (ef.deslocamento === 'metade' && deslocamentoEfeito === 'normal') deslocamentoEfeito = 'metade';
+  }
+
+  return {
+    condicoes: conds,
+    penalidadeDefesa,
+    dadosGeral,
+    dadosAttr,
+    dadosPericia,
+    deslocamentoEfeito,
+  };
+}
+
+export function calcDeslocamento(personagem) {
+  const conds = calcPenalidadesCondicoes(personagem);
+  const base = Number(personagem?.deslocamento) || 9;
+  const carga = calcCarga(personagem);
+  const aposCarga = Math.max(0, base - (carga.sobrecarregado ? 3 : 0));
+
+  if (conds.deslocamentoEfeito === 'zero') return 0;
+  if (conds.deslocamentoEfeito === 1.5) return 1.5;
+  if (conds.deslocamentoEfeito === 'metade') return Math.max(0, Math.floor((aposCarga / 2) / 1.5) * 1.5);
+  return aposCarga;
+}
+
 // ---------- Defesa ----------
 
 export function calcDefesa(personagem) {
+  const conds = calcPenalidadesCondicoes(personagem);
+  const carga = calcCarga(personagem);
+  const penalidadeCarga = carga.sobrecarregado ? -5 : 0;
   return (
     10 +
     Number(personagem.atributos.agi || 0) +
     Number(personagem.defesaEquipamento || 0) +
-    Number(personagem.defesaOutros || 0)
+    Number(personagem.defesaOutros || 0) +
+    conds.penalidadeDefesa +
+    penalidadeCarga
   );
 }
 
@@ -204,13 +262,14 @@ export function alteracoesAtingidas(personagem) {
 }
 
 /**
- * Devolve, para cada perícia: dados (= valor do atributo), bónus de treino,
+ * Devolve, para cada perícia: dados (= valor do atributo ajustado por condições), bónus de treino,
  * bónus "outros", penalidade de carga e o bónus total.
  */
 export function calcPericias(personagem) {
   // a penalidade por sobrecarga é automática; `penalidadeCarga` soma-se a ela
   const carga = calcCarga(personagem);
   const penalidadeCarga = carga.penalidade + (Number(personagem.penalidadeCarga) || 0);
+  const conds = calcPenalidadesCondicoes(personagem);
 
   // alterações por exposição (Sobrevivendo ao Horror, p. 99)
   const atingidas = alteracoesAtingidas(personagem).map((a) => a.id);
@@ -232,13 +291,19 @@ export function calcPericias(personagem) {
       (ocultismoLivre && p.id === 'ocultismo' && treino > 0 ? 2 : 0) -
       (penalizadas.has(p.id) ? 5 : 0);
     const desbloqueada = ocultismoLivre && p.id === 'ocultismo';
+
+    const dadosBase = Number(personagem.atributos[attr] || 0);
+    const penalidadeDados = conds.dadosGeral + (conds.dadosAttr[attr] || 0) + (conds.dadosPericia[p.id] || 0);
+    const dados = Math.max(0, dadosBase + penalidadeDados);
+
     return {
       ...p,
       attr,
       attrPadrao: p.attr,
       attrTrocado: attr !== p.attr,
       grau: estado.grau,
-      dados: Number(personagem.atributos[attr] || 0),
+      dados,
+      dadosBase,
       treino,
       outros,
       penalidade,

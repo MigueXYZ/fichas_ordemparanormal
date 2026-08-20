@@ -124,21 +124,20 @@ export default function TabelaPericias({ personagem, setPersonagem, onRolar }) {
                 </div>
               </td>
               <td className="attr">
-                <SelectScroll
+                <select
                   className={l.attrTrocado ? 'trocado' : ''}
                   value={l.attr}
                   title={l.attrTrocado
-                    ? `Atributo trocado (o normal é ${ATRIBUTOS.find((a) => a.id === l.attrPadrao)?.sigla}) · Altera com o scroll`
-                    : 'Atributo usado nesta perícia · Altera com o scroll'}
+                    ? `Atributo trocado (o normal é ${ATRIBUTOS.find((a) => a.id === l.attrPadrao)?.sigla})`
+                    : 'Atributo usado nesta perícia'}
                   onChange={(e) => setPericia(l.id, { attr: e.target.value === l.attrPadrao ? null : e.target.value })}
-                  onScrollStep={(delta) => rolarAttr(l.id, l.attr, l.attrPadrao, delta)}
                 >
                   {ATRIBUTOS.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.sigla}{a.id === l.attrPadrao ? '' : ' *'}
                     </option>
                   ))}
-                </SelectScroll>
+                </select>
               </td>
               <td className="bonus">{l.bonus >= 0 ? `+${l.bonus}` : l.bonus}</td>
               <td>

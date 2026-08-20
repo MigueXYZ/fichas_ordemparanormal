@@ -2,11 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import RodaAtributos from '../RodaAtributos.jsx';
 import BarraRecurso from './BarraRecurso.jsx';
 import TabelaPericias from './TabelaPericias.jsx';
+import PainelCondicoes from './PainelCondicoes.jsx';
 import { AbaCombate, AbaHabilidades, AbaRituais, AbaInventario, AbaDescricao } from './Abas.jsx';
 import { CLASSES, trilhasDaClasse } from '../../data/classes.js';
 import { ORIGENS } from '../../data/origens.js';
 import { REGRAS_ATRIBUTOS } from '../../data/atributos.js';
-import { calcMaximos, calcDefesas, calcPePorRodada, degrauNex, nexEfetivo, NEX_TRACK } from '../../engine/calc.js';
+import { calcMaximos, calcDefesas, calcPePorRodada, calcDeslocamento, degrauNex, nexEfetivo, NEX_TRACK } from '../../engine/calc.js';
 import RegrasOpcionais from './RegrasOpcionais.jsx';
 import { ajustarRecursos } from '../../engine/character.js';
 import { lerImagem } from '../../engine/armazenamento.js';
@@ -203,7 +204,9 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
             </div>
             <div className="nex-bloco">
               <span>Deslocamento</span>
-              <div className="caixa">{personagem.deslocamento} m / {Math.round(personagem.deslocamento / 1.5)} q</div>
+              <div className="caixa">
+                {calcDeslocamento(personagem)} m / {Math.round(calcDeslocamento(personagem) / 1.5)} q
+              </div>
             </div>
           </div>
 
@@ -301,6 +304,11 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
               </div>
             </div>
           </div>
+
+          <PainelCondicoes
+            condicoes={personagem.condicoes || []}
+            aoMudar={(novas) => set({ condicoes: novas })}
+          />
 
           <div style={{ marginTop: 16 }}>
             <div className="campo-linha"><label>Proteção</label><input type="text" value={personagem.protecao} onChange={(e) => set({ protecao: e.target.value })} /></div>
