@@ -48,7 +48,10 @@ export default function App() {
   const relogioOverlay = useRef(null);
 
   useEffect(() => {
-    if (!configOverlay.ligado || !personagem || personagem.tipo === 'ameaca') return undefined;
+    if (!configOverlay.ligado || !personagem || personagem.tipo === 'ameaca') {
+      publicar({ ligado: false }, null);
+      return undefined;
+    }
     const max = calcMaximos(personagem);
     const ultima = rolagens[rolagens.length - 1] || null;
     const estado = {
@@ -57,7 +60,7 @@ export default function App() {
         ? `Nível ${personagem.nivel ?? 1} · NEX ${personagem.nex}%`
         : `NEX ${personagem.nex}%`].filter(Boolean).join(' · '),
       token: personagem.token || null,
-      imagem: personagem.imagem || null, // <--- ADICIONADO AQUI
+      imagem: personagem.imagem || null,
       pv: { atual: personagem.pvAtual ?? max.pv, max: max.pv, temp: personagem.pvTemp || 0 },
       san: max.semSanidade ? null : { atual: personagem.sanAtual ?? max.san, max: max.san },
       pe: max.semSanidade ? null : { atual: personagem.peAtual ?? max.pe, max: max.pe, temp: personagem.peTemp || 0 },
@@ -65,14 +68,14 @@ export default function App() {
       rolagem: ultima,
     };
     const corpo = JSON.stringify(estado);
-    if (corpo === ultimoEnvio.current) return undefined;
+    if (corpo === ultimoEnvio.current && configOverlay.modo !== 'p2p') return undefined;
 
     clearTimeout(relogioOverlay.current);
     relogioOverlay.current = setTimeout(async () => {
       ultimoEnvio.current = corpo;
       const r = await publicar(configOverlay, estado);
       setEstadoEnvio(r.ok ? { quando: Date.now() } : { erro: r.erro });
-    }, 250);
+    }, 150);
     return () => clearTimeout(relogioOverlay.current);
   }, [personagem, rolagens, configOverlay]);
 
