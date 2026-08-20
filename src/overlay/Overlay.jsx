@@ -70,10 +70,14 @@ export default function Overlay({ config, semDiagnostico = false }) {
         <div>
           <b>Overlay do Claudio</b>
           <div className="ov-detalhe">
-            sala <code>{config.codigo}</code> · {config.modo}
-            {config.modo === 'remoto' ? ` · ${config.url}` : ''} · {ligacao}
+            sala <code>{config.codigo}</code> · modo <code>{config.modo}</code> · status: <b>{ligacao}</b>
+            {config.modo === 'remoto' ? ` · ${config.url}` : ''}
           </div>
-          <div className="ov-detalhe">À espera da ficha…</div>
+          <div className="ov-detalhe" style={{ marginTop: 4 }}>
+            {ligacao === 'ligado'
+              ? 'Conectado! A carregar dados do agente...'
+              : 'À espera que o jogador abra a ficha e ative a transmissão nesta sala...'}
+          </div>
         </div>
       </div>
     );

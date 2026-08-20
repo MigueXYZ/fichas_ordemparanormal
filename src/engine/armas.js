@@ -1,4 +1,4 @@
-import { calcPericias } from './calc.js';
+import { calcPericias, calcPenalidadesCondicoes } from './calc.js';
 import { aplicarModificacoes } from '../data/modificacoesArma.js';
 
 /** Lê o crítico como vem nos livros: "x2", "19/x2", "19", "18/x3". */
@@ -27,6 +27,7 @@ export function estatisticasArma(personagem, arma) {
   const pericias = calcPericias(personagem);
   const p = pericias.find((x) => x.id === arma.pericia) || { dados: 1, bonus: 0, nome: '', attr: 'for' };
   const mods = aplicarModificacoes(arma);
+  const conds = calcPenalidadesCondicoes(personagem);
 
   const critico = arma.margem
     ? { margem: Number(arma.margem), multiplicador: Number(arma.multiplicador) || 2 }
@@ -40,7 +41,24 @@ export function estatisticasArma(personagem, arma) {
    * atributo da perícia à mão, essa escolha manda.
    */
   const agilAtiva = Boolean(arma.agil) && p.attr === 'for';
-  const dados = agilAtiva ? Number(personagem.atributos?.agi || 0) : p.dados;
+  const atributoTeste = agilAtiva ? 'agi' : p.attr;
+
+  let dadosAtaquePenalidade = 0;
+  for (const c of conds.condicoes) {
+    if (c.efeitos?.dadosAtaque) dadosAtaquePenalidade += c.efeitos.dadosAtaque;
+    if (c.efeitos?.dadosAtaqueCorpoACorpo && arma.pericia === 'luta') {
+      dadosAtaquePenalidade += c.efeitos.dadosAtaqueCorpoACorpo;
+    }
+  }
+
+  let dados = p.dados;
+  if (agilAtiva) {
+    const dadosBaseAgi = Number(personagem.atributos?.agi || 0);
+    const penAgi = conds.dadosGeral + (conds.dadosAttr['agi'] || 0) + (conds.dadosPericia[arma.pericia] || 0);
+    dados = Math.max(0, dadosBaseAgi + penAgi);
+  }
+  dados = Math.max(0, dados + dadosAtaquePenalidade);
+
   const atributoDano = agilAtiva && arma.atributoDano === 'for' ? 'agi' : arma.atributoDano;
   const bonusAtributoDano = atributoDano ? Number(personagem.atributos[atributoDano] || 0) : 0;
 
