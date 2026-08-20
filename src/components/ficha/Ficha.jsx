@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import RodaAtributos from '../RodaAtributos.jsx';
 import BarraRecurso from './BarraRecurso.jsx';
 import TabelaPericias from './TabelaPericias.jsx';
@@ -11,6 +11,36 @@ import RegrasOpcionais from './RegrasOpcionais.jsx';
 import { ajustarRecursos } from '../../engine/character.js';
 import { lerImagem } from '../../engine/armazenamento.js';
 import { rolarTeste } from '../../engine/dados.js';
+
+function InputNumeroScroll({ value, onChange, ...props }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const handleWheel = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const delta = e.deltaY < 0 ? 1 : -1;
+      const atual = Number(el.value) || 0;
+      onChange(atual + delta);
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [onChange]);
+
+  return (
+    <input
+      ref={ref}
+      type="number"
+      value={value ?? ''}
+      onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
+      {...props}
+    />
+  );
+}
 
 const ABAS = [
   { id: 'combate', nome: 'Combate' },
@@ -211,26 +241,37 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
               <span className="num">{d.defesa}</span>
               <div className="conta">
                 10 + AGI +
-                <input type="number" value={personagem.defesaEquipamento} onChange={(e) => set({ defesaEquipamento: Number(e.target.value) })} title="Equipamento" />
+                <InputNumeroScroll
+                  value={personagem.defesaEquipamento}
+                  onChange={(v) => set({ defesaEquipamento: v ?? 0 })}
+                  title="Equipamento · Altera com o scroll"
+                />
                 +
-                <input type="number" value={personagem.defesaOutros} onChange={(e) => set({ defesaOutros: Number(e.target.value) })} title="Outros" />
+                <InputNumeroScroll
+                  value={personagem.defesaOutros}
+                  onChange={(v) => set({ defesaOutros: v ?? 0 })}
+                  title="Outros · Altera com o scroll"
+                />
               </div>
             </div>
 
             <div className={'defesa-caixa' + (d.bloqueio.disponivel ? '' : ' inativa')} title={d.bloqueio.formula}>
               <div className="rotulo">Bloqueio</div>
-              <input
+              <InputNumeroScroll
                 className="num"
-                type="number"
                 value={d.bloqueio.manual ? personagem.bloqueioManual : (d.bloqueio.disponivel ? d.bloqueio.valor : '')}
                 placeholder=""
-                title="Escreve o valor à mão; deixa vazio para voltar ao automático"
-                onChange={(e) => set({ bloqueioManual: e.target.value === '' ? null : Number(e.target.value) })}
+                title="Escreve o valor à mão ou roda o scroll; deixa vazio para voltar ao automático"
+                onChange={(v) => set({ bloqueioManual: v })}
               />
               <div className="conta">
                 RD = Fortitude {d.bloqueio.base >= 0 ? '+' : '−'}{Math.abs(d.bloqueio.base)}
                 <br />
-                extra <input type="number" value={personagem.bloqueioExtra || 0} onChange={(e) => set({ bloqueioExtra: Number(e.target.value) })} />
+                extra <InputNumeroScroll
+                  value={personagem.bloqueioExtra || 0}
+                  onChange={(v) => set({ bloqueioExtra: v ?? 0 })}
+                  title="Extra · Altera com o scroll"
+                />
                 {d.bloqueio.manual && (
                   <button type="button" className="voltar-auto" onClick={() => set({ bloqueioManual: null })}>auto ({d.bloqueio.auto})</button>
                 )}
@@ -239,18 +280,21 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
 
             <div className={'defesa-caixa' + (d.esquiva.disponivel ? '' : ' inativa')} title={d.esquiva.formula}>
               <div className="rotulo">Esquiva</div>
-              <input
+              <InputNumeroScroll
                 className="num"
-                type="number"
                 value={d.esquiva.manual ? personagem.esquivaManual : (d.esquiva.disponivel ? d.esquiva.valor : '')}
                 placeholder=""
-                title="Escreve o valor à mão; deixa vazio para voltar ao automático"
-                onChange={(e) => set({ esquivaManual: e.target.value === '' ? null : Number(e.target.value) })}
+                title="Escreve o valor à mão ou roda o scroll; deixa vazio para voltar ao automático"
+                onChange={(v) => set({ esquivaManual: v })}
               />
               <div className="conta">
                 Defesa + Reflexos {d.esquiva.base >= 0 ? '+' : '−'}{Math.abs(d.esquiva.base)}
                 <br />
-                extra <input type="number" value={personagem.esquivaExtra || 0} onChange={(e) => set({ esquivaExtra: Number(e.target.value) })} />
+                extra <InputNumeroScroll
+                  value={personagem.esquivaExtra || 0}
+                  onChange={(v) => set({ esquivaExtra: v ?? 0 })}
+                  title="Extra · Altera com o scroll"
+                />
                 {d.esquiva.manual && (
                   <button type="button" className="voltar-auto" onClick={() => set({ esquivaManual: null })}>auto ({d.esquiva.auto})</button>
                 )}
