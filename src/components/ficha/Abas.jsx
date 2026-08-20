@@ -112,9 +112,13 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
                     <b>{a.nome || 'Sem nome'}</b>
                     <div className="arma-stats">
                       <span title={`Teste de ${e.pericia.nome} com ${NOME_ATRIBUTO[e.atributoTeste] || ''}${e.dados > 0 ? '' : ' — com o atributo a 0 rolas 2 dados e fica o pior'}`}>
-                        {e.pericia.nome} {formulaTeste(e.dados, e.bonusAtaque)}
+                        {e.pericia.nome}{' '}
+                        <span style={{ color: e.dados === 0 ? '#ef4444' : '#22c55e' }}>
+                          {e.dados === 0 ? 2 : e.dados}d20
+                        </span>
+                        {e.bonusAtaque ? (e.bonusAtaque > 0 ? ` +${e.bonusAtaque}` : ` ${e.bonusAtaque}`) : ''}
                       </span>
-                      {e.agilAtiva && <span className="etiqueta-agil" title="Arma ágil: usa Agilidade em vez de Força no ataque e no dano">ágil</span>}
+                      {e.agilAtiva && <span title="Arma ágil: usa Agilidade em vez de Força no ataque e no dano" style={{ opacity: 0.8 }}>ÁGIL</span>}
                       <span title="Dano">{e.dano}{e.bonusDano ? (e.bonusDano > 0 ? ` + ${e.bonusDano}` : ` − ${Math.abs(e.bonusDano)}`) : ''}</span>
                       <span>{e.margem === 20 ? '20' : `${e.margem}–20`} / ×{e.multiplicador}</span>
                       {a.tipo && <span>{a.tipo}</span>}

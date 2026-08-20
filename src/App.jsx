@@ -57,6 +57,7 @@ export default function App() {
         ? `Nível ${personagem.nivel ?? 1} · NEX ${personagem.nex}%`
         : `NEX ${personagem.nex}%`].filter(Boolean).join(' · '),
       token: personagem.token || null,
+      imagem: personagem.imagem || null, // <--- ADICIONADO AQUI
       pv: { atual: personagem.pvAtual ?? max.pv, max: max.pv, temp: personagem.pvTemp || 0 },
       san: max.semSanidade ? null : { atual: personagem.sanAtual ?? max.san, max: max.san },
       pe: max.semSanidade ? null : { atual: personagem.peAtual ?? max.pe, max: max.pe, temp: personagem.peTemp || 0 },

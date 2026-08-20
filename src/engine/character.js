@@ -40,9 +40,15 @@ export function personagemVazio() {
     sanExtra: 0,
     peExtra: 0,
     pdExtra: 0,
-    pvTemp: 0,             // pontos temporários: levam com o dano antes dos normais
+    pvTemp: 0,      // pontos temporários: levam com o dano antes dos normais
     peTemp: 0,
     pdTemp: 0,
+    sanTemp: 0,     // NOVO: Sanidade temporária
+
+    // NOVO: Gestão manual de máximos (null = cálculo automático)
+    pvMaxManual: null,
+    sanMaxManual: null,
+    peMaxManual: null,
 
     defesaEquipamento: 0,
     defesaOutros: 0,

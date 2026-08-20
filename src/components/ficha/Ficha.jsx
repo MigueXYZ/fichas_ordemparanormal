@@ -29,8 +29,8 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
 
   const max = calcMaximos(personagem);
   const d = calcDefesas(personagem);
-  const set = (patch) => setPersonagem({ ...personagem, ...patch });
-  const setComRecursos = (patch) => setPersonagem(ajustarRecursos(personagem, { ...personagem, ...patch }));
+  const set = (patch) => setPersonagem(prev => ({ ...prev, ...patch }));
+  const setComRecursos = (patch) => setPersonagem(prev => ajustarRecursos(prev, { ...prev, ...patch }));
   const nomeOrigem = personagem.origemId === '__custom__'
     ? personagem.origemCustom?.nome || 'Personalizada'
     : ORIGENS.find((o) => o.id === personagem.origemId)?.nome || '';
@@ -181,6 +181,7 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
             titulo="VIDA" classe="barra-vida"
             atual={personagem.pvAtual ?? max.pv} max={max.pv} onChange={(v) => set({ pvAtual: v })}
             temp={personagem.pvTemp || 0} onTemp={(v) => set({ pvTemp: v })}
+            maxManual={personagem.pvMaxManual} onMaxManualChange={(v) => set({ pvMaxManual: v })}
           />
           {max.semSanidade ? (
             <BarraRecurso
@@ -193,15 +194,17 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
               <BarraRecurso
                 titulo="SANIDADE" classe="barra-sanidade"
                 atual={personagem.sanAtual ?? max.san} max={max.san} onChange={(v) => set({ sanAtual: v })}
+                temp={personagem.sanTemp || 0} onTemp={(v) => set({ sanTemp: v })}
+                maxManual={personagem.sanMaxManual} onMaxManualChange={(v) => set({ sanMaxManual: v })}
               />
               <BarraRecurso
                 titulo="ESFORÇO" classe="barra-esforco"
                 atual={personagem.peAtual ?? max.pe} max={max.pe} onChange={(v) => set({ peAtual: v })}
                 temp={personagem.peTemp || 0} onTemp={(v) => set({ peTemp: v })}
+                maxManual={personagem.peMaxManual} onMaxManualChange={(v) => set({ peMaxManual: v })}
               />
             </>
           )}
-
           <div className="defesas">
             <div className="defesa-caixa">
               <div className="rotulo">Defesa</div>

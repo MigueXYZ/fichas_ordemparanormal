@@ -93,19 +93,32 @@ export function calcMaximos(personagem) {
   const semSanidade = Boolean(personagem.regras?.semSanidade);
   if (!classe) return { pv: 0, san: 0, pe: 0, pd: 0, semSanidade };
 
-  const pv = calcRecurso(classe.progressao.pv, a, nex) + Number(personagem.pvExtra || 0);
+  // Função para ler o valor manual (se existir)
+  const manual = (v) => (v === null || v === undefined || v === '' ? null : Number(v));
+  
+  const pvManual = manual(personagem.pvMaxManual);
+  const sanManual = manual(personagem.sanMaxManual);
+  const peManual = manual(personagem.peMaxManual);
 
-  // Regra opcional "Jogando sem Sanidade": Sanidade e Esforço fundem-se em
-  // Pontos de Determinação (Sobrevivendo ao Horror, p. 104).
+  // Calcula o PV automático, mas usa o manual se ele existir
+  const pvAuto = calcRecurso(classe.progressao.pv, a, nex) + Number(personagem.pvExtra || 0);
+  const pv = pvManual !== null ? pvManual : pvAuto;
+
+  // Regra opcional "Jogando sem Sanidade"
   if (semSanidade) {
-    const pd = calcRecurso(PROGRESSAO_PD[classe.id], a, nex) + Number(personagem.pdExtra || 0) + bonusPeExposicao(personagem);
+    const pdAuto = calcRecurso(PROGRESSAO_PD[classe.id], a, nex) + Number(personagem.pdExtra || 0) + bonusPeExposicao(personagem);
+    const pd = pdAuto; // Mantém-se automático para PD
     return { pv, san: 0, pe: 0, pd, semSanidade: true };
   }
 
+  // Calcula SAN e PE automáticos
+  const sanAuto = calcRecurso(classe.progressao.san, a, nex) + Number(personagem.sanExtra || 0);
+  const peAuto = calcRecurso(classe.progressao.pe, a, nex) + Number(personagem.peExtra || 0) + bonusPeExposicao(personagem);
+
   return {
     pv,
-    san: calcRecurso(classe.progressao.san, a, nex) + Number(personagem.sanExtra || 0),
-    pe: calcRecurso(classe.progressao.pe, a, nex) + Number(personagem.peExtra || 0) + bonusPeExposicao(personagem),
+    san: sanManual !== null ? sanManual : sanAuto,
+    pe: peManual !== null ? peManual : peAuto,
     pd: 0,
     semSanidade: false,
   };

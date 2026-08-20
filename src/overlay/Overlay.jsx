@@ -3,12 +3,11 @@ import { subscrever } from './transporte.js';
 import IconeD20 from '../components/IconeD20.jsx';
 import { Dados } from '../components/PainelRolagem.jsx';
 
-const SEGUNDOS_ROLAGEM = 8;
+const SEGUNDOS_ROLAGEM = 6;
 
-function Recurso({ titulo, classe, atual, max, temp = 0 }) {
+function Recurso({ classe, atual, max, temp = 0 }) {
   return (
     <div className={'ov-recurso ' + classe}>
-      <span className="ov-nome-recurso">{titulo}</span>
       <span className="ov-valor-recurso">
         {atual}<i>/{max}</i>{temp > 0 ? <b className="ov-temp">+{temp}</b> : null}
       </span>
@@ -16,9 +15,21 @@ function Recurso({ titulo, classe, atual, max, temp = 0 }) {
   );
 }
 
-/** O último resultado, dentro de um d20, ao lado do nome. */
+/** O dado só aparece quando rolas e desvanece passado uns segundos */
 function DadoResultado({ rolagem }) {
-  if (!rolagem) return null;
+  const [visivel, setVisivel] = useState(false);
+
+  useEffect(() => {
+    if (!rolagem) return;
+    setVisivel(true);
+    const t = setTimeout(() => {
+      setVisivel(false);
+    }, SEGUNDOS_ROLAGEM * 1000);
+    return () => clearTimeout(t);
+  }, [rolagem?.id]);
+
+  if (!rolagem || !visivel) return null;
+
   const classe = 'ov-dado' + (rolagem.critico ? ' critico' : '') + (rolagem.falhaCritica ? ' falha' : '');
   return (
     <div className={classe} key={rolagem.id} title={rolagem.nome}>
@@ -32,7 +43,7 @@ export default function Overlay({ config, semDiagnostico = false }) {
   const [estado, setEstado] = useState(null);
   const [ligacao, setLigacao] = useState('à espera');
   const [rolagens, setRolagens] = useState([]);
-  const [ultima, setUltima] = useState(null);   // fica no d20 ao lado do nome
+  const [ultima, setUltima] = useState(null);
   const vistas = useRef(new Set());
 
   useEffect(() => {
@@ -40,7 +51,6 @@ export default function Overlay({ config, semDiagnostico = false }) {
       config,
       (novo) => {
         setEstado(novo);
-        // cada rolagem só aparece uma vez, e desaparece sozinha
         const r = novo?.rolagem;
         if (r && !vistas.current.has(r.id)) {
           vistas.current.add(r.id);
@@ -69,31 +79,42 @@ export default function Overlay({ config, semDiagnostico = false }) {
     );
   }
 
+  // Garante que vai buscar a imagem do avatar da ficha, ignorando tokens secundários
+  const fotoAvatar = estado.imagem || estado.tokenUrl || estado.token;
+
   return (
     <div className="ov">
-      <div className="ov-cartao">
-        {estado.token && <div className="ov-retrato"><img src={estado.token} alt="" /></div>}
-
-        <div className="ov-linha-nome">
-          <div className="ov-identidade">
-            <div className="ov-nome">{estado.nome || 'Agente'}</div>
-            <div className="ov-vida-grande">
-              {estado.pv?.atual ?? 0}<i>/{estado.pv?.max ?? 0}</i>
-              {estado.pv?.temp > 0 ? <b className="ov-temp">+{estado.pv.temp}</b> : null}
-            </div>
+      <div className="ov-cartao-principal">
+        {/* Bloco do Avatar e do Nome/Vida lado a lado, tal como na imagem de referência */}
+        {fotoAvatar && (
+          <div className="ov-retrato">
+            <img src={fotoAvatar} alt="" className="overlay-avatar" />
           </div>
-          <DadoResultado rolagem={ultima} />
-        </div>
+        )}
 
-        <div className="ov-secundarias">
-          {estado.pd
-            ? <Recurso titulo="Determinação" classe="ov-determinacao" atual={estado.pd.atual} max={estado.pd.max} temp={estado.pd.temp} />
-            : (
-              <>
-                <Recurso titulo="Sanidade" classe="ov-sanidade" atual={estado.san?.atual ?? 0} max={estado.san?.max ?? 0} />
-                <Recurso titulo="Esforço" classe="ov-esforco" atual={estado.pe?.atual ?? 0} max={estado.pe?.max ?? 0} temp={estado.pe?.temp} />
-              </>
-            )}
+        <div className="ov-conteudo-principal">
+          <div className="ov-linha-nome">
+            <div className="ov-identidade">
+              <div className="ov-nome">{estado.nome || 'Agente'}</div>
+              <div className="ov-vida-grande">
+                {estado.pv?.atual ?? 0}<i>/{estado.pv?.max ?? 0}</i>
+                {estado.pv?.temp > 0 ? <b className="ov-temp">+{estado.pv.temp}</b> : null}
+              </div>
+            </div>
+            {/* O d20 que aparece, cai e desvanece */}
+            <DadoResultado rolagem={ultima} />
+          </div>
+
+          <div className="ov-secundarias">
+            {estado.pd
+              ? <Recurso classe="ov-determinacao" atual={estado.pd.atual} max={estado.pd.max} temp={estado.pd.temp} />
+              : (
+                <>
+                  <Recurso classe="ov-sanidade" atual={estado.san?.atual ?? 0} max={estado.san?.max ?? 0} />
+                  <Recurso classe="ov-esforco" atual={estado.pe?.atual ?? 0} max={estado.pe?.max ?? 0} temp={estado.pe?.temp} />
+                </>
+              )}
+          </div>
         </div>
       </div>
 

@@ -1,6 +1,5 @@
 /* ============================================================
-   Overlay para OBS. Fundo transparente de propósito: no OBS
-   metes isto como Browser Source e só aparece o conteúdo.
+   Overlay para OBS
    ============================================================ */
 
 html, body.corpo-overlay, #overlay { height: 100%; background: transparent !important; }
@@ -14,43 +13,57 @@ body.corpo-overlay::before, body.corpo-overlay::after { display: none !important
 }
 
 /* ------------------------------------------------ o agente */
-/* Cartão vertical: retrato, nome, vida por baixo e, mais abaixo,
-   sanidade e esforço. Cada recurso com a cor que tem na ficha. */
-.ov-cartao { width: 300px; }
+.ov-cartao-principal {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
 
 .ov-retrato {
-  width: 300px; height: 300px; overflow: hidden;
-  border: 2px solid rgba(0,0,0,.65);
-  box-shadow: 0 14px 34px rgba(0,0,0,.8);
-  background: rgba(8,5,6,.5);
+  width: 160px; height: 160px; overflow: hidden;
+  border-radius: 50%; /* Estilo circular elegante, podes remover se preferires quadrado */
+  border: 3px solid rgba(240,70,83,0.8);
+  box-shadow: 0 14px 34px rgba(0,0,0,.9);
+  background: rgba(8,5,6,.8);
+  flex-shrink: 0;
 }
-.ov-retrato img { width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block; }
+.ov-retrato img.overlay-avatar { width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block; }
+
+.ov-conteudo-principal {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 
 .ov-nome {
-  font-family: var(--display); font-size: 34px; line-height: 1.05; margin-top: 12px;
+  font-family: var(--display); font-size: 38px; line-height: 1; 
   text-transform: uppercase; letter-spacing: .02em;
-  text-shadow: 0 2px 6px #000, 0 0 24px rgba(0,0,0,.95);
+  color: #fff;
+  text-shadow: 0 2px 6px #000, 0 0 24px rgba(240,70,83,.8);
   word-break: break-word;
 }
 .ov-vida-grande {
-  font-family: var(--numeros); font-weight: 700; font-size: 52px; line-height: 1;
+  font-family: var(--numeros); font-weight: 700; font-size: 54px; line-height: 1.1;
   color: #f04653; text-shadow: 0 2px 8px #000, 0 0 26px rgba(240,70,83,.45);
 }
 .ov-vida-grande i { font-style: normal; font-size: 30px; opacity: .72; }
 
-.ov-linha-nome { display: flex; align-items: center; gap: 14px; }
+.ov-linha-nome { display: flex; align-items: center; gap: 20px; }
 .ov-identidade { min-width: 0; flex: 1; }
 
-/* o último resultado, dentro de um d20 */
+/* O dado aparece, cai e desvanece (Fade-out + Slide down) */
 .ov-dado {
-  position: relative; width: 92px; height: 92px; flex: 0 0 auto;
+  position: relative; width: 84px; height: 84px; flex: 0 0 auto;
   display: grid; place-items: center;
-  animation: ov-dado-entra .3s ease-out;
+  animation: ov-dado-entra-some 6s ease-in-out forwards;
 }
-@keyframes ov-dado-entra {
-  from { opacity: 0; transform: scale(.7) rotate(-25deg); }
-  to   { opacity: 1; transform: none; }
+@keyframes ov-dado-entra-some {
+  0% { opacity: 0; transform: translateY(-20px) scale(0.8); }
+  15% { opacity: 1; transform: translateY(0) scale(1); }
+  80% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(20px) scale(0.9); }
 }
+
 .ov-dado-forma {
   position: absolute; inset: 0; width: 100%; height: 100%;
   color: var(--sangue);
@@ -58,7 +71,7 @@ body.corpo-overlay::before, body.corpo-overlay::after { display: none !important
 }
 .ov-dado-total {
   position: relative; z-index: 1;
-  font-family: var(--numeros); font-weight: 700; font-size: 34px; line-height: 1;
+  font-family: var(--numeros); font-weight: 700; font-size: 32px; line-height: 1;
   color: #f4ece8; text-shadow: 0 2px 5px #000, 0 0 14px rgba(0,0,0,.95);
   margin-top: 4px;
 }
@@ -66,15 +79,12 @@ body.corpo-overlay::before, body.corpo-overlay::after { display: none !important
 .ov-dado.critico .ov-dado-total { color: #eafff0; }
 .ov-dado.falha .ov-dado-forma { color: #5a1017; }
 
-/* sanidade e esforço: só o número */
-.ov-secundarias { margin-top: 12px; display: flex; flex-direction: column; gap: 4px; }
-.ov-recurso { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
-.ov-nome-recurso {
-  font-size: 12px; letter-spacing: .22em; text-transform: uppercase; color: #cdbfba;
-  text-shadow: 0 1px 4px #000;
-}
+/* Recursos secundários (Sanidade e Esforço) lado a lado em linha */
+.ov-secundarias { display: flex; flex-direction: row; gap: 20px; align-items: baseline; }
+.ov-recurso { display: flex; align-items: baseline; }
+
 .ov-valor-recurso {
-  font-family: var(--numeros); font-weight: 700; font-size: 30px; line-height: 1.1; color: var(--cor);
+  font-family: var(--numeros); font-weight: 700; font-size: 30px; line-height: 1; color: var(--cor);
   text-shadow: 0 2px 5px #000, 0 0 16px rgba(0,0,0,.9);
 }
 .ov-valor-recurso i { font-style: normal; font-size: 18px; opacity: .65; }
