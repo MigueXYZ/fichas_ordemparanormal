@@ -91,7 +91,7 @@ export default function FichaAmeaca({ ameaca, setAmeaca, onRolar }) {
                 <button className="btn sm" onClick={() => rolar(a.ataque.nome, a.ataque.dados, a.ataque.bonus)}>Atacar</button>
                 <button
                   className="btn ghost sm"
-                  onClick={() => onRolar(rolarDano({ nome: `${a.nome} — dano`, dano: a.ataque.dano.replace(/\+\d+$/, ''), bonus: Number(a.ataque.dano.match(/\+(\d+)$/)?.[1] || 0) }))}
+                  onClick={() => onRolar(rolarDano({ nome: `${a.nome} — dano`, dano: a.ataque.dano.replace(/\+\d+$/, ''), tipoDano: a.ataque.tipo, bonus: Number(a.ataque.dano.match(/\+(\d+)$/)?.[1] || 0) }))}
                 >
                   Dano
                 </button>

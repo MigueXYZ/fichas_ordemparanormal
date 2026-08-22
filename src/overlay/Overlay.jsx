@@ -3,6 +3,7 @@ import { subscrever } from './transporte.js';
 import { LAYOUT_PADRAO } from './layoutConfig.js';
 import IconeD20 from '../components/IconeD20.jsx';
 import { Dados } from '../components/PainelRolagem.jsx';
+import { ExibirDanoSeparado } from '../components/ExibirDano.jsx';
 
 const SEGUNDOS_ROLAGEM = 6;
 
@@ -398,8 +399,8 @@ export default function Overlay({ config, semDiagnostico = false }) {
                     </div>
                     <Dados r={r} />
                   </div>
-                  <div className="ov-r-total">{r.total}</div>
-                  {r.dano && <div className="ov-r-dano"><span>dano</span><b>{r.dano.total}</b></div>}
+                  <div className="ov-r-total">{r.tipo === 'dano' ? <ExibirDanoSeparado dano={r} /> : r.total}</div>
+                  {r.dano && <div className="ov-r-dano"><span>dano</span><ExibirDanoSeparado dano={r.dano} /></div>}
                 </div>
               ))}
             </div>

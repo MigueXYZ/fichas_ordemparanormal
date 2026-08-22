@@ -628,7 +628,16 @@ export default function EditorOverlay({ layoutInicial, personagem, aoGuardar, ao
                       <div className="ov-conta">3d20 → maior 20 + 5</div>
                     </div>
                     <div className="ov-r-total">25</div>
-                    <div className="ov-r-dano"><span>dano</span><b>18</b></div>
+                    <div className="ov-r-dano">
+                      <span>dano</span>
+                      <span className="dano-separado" style={{ fontSize: 13 }}>
+                        <span className="dano-parcela"><b>8</b> <span className="dano-tipo-tag" style={{ opacity: 0.85 }}>Bal</span></span>
+                        <span className="dano-sep" style={{ opacity: 0.7 }}> + </span>
+                        <span className="dano-parcela" style={{ color: '#f04653' }}><b>8</b> <span className="dano-tipo-tag" style={{ color: '#f04653' }}>Sangue</span></span>
+                        <span className="dano-sep" style={{ opacity: 0.7 }}> = </span>
+                        <b className="dano-total-destaque">16</b>
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>

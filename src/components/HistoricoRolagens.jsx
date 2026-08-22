@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import IconeD20 from './IconeD20.jsx';
+import { ExibirDanoSeparado, obterInfoTipoDano } from './ExibirDano.jsx';
 
 const FILTROS = [
   { id: 'todos', nome: 'Tudo' },
@@ -17,14 +18,34 @@ function hora(t) {
 
 function detalhe(r) {
   if (r.tipo === 'dano') {
-    return `${r.expressao} [${r.rolagens.join(', ')}]${(r.extras || []).map((e) => ` + ${e.expr} [${e.rolagens.join(', ')}]`).join('')}${r.bonus ? ` ${r.bonus > 0 ? '+' : '−'} ${Math.abs(r.bonus)}` : ''}${r.critico ? ` · dados ×${r.multiplicador}` : ''}`;
+    if (r.partes && r.partes.length > 0) {
+      return r.partes
+        .map((p) => {
+          const info = obterInfoTipoDano(p.tipoDano);
+          const rotulo = info.abrev || info.nome;
+          const rText = p.rolagens && p.rolagens.length > 0 ? ` [${p.rolagens.join(', ')}]` : '';
+          return `${p.expressao}${rText}${rotulo ? ` ${rotulo}` : ''}`;
+        })
+        .join(' + ') + (r.critico ? ` · dados ×${r.multiplicador}` : '');
+    }
+    return `${r.expressao} [${r.rolagens?.join(', ') || ''}]${(r.extras || []).map((e) => ` + ${e.expr} [${e.rolagens.join(', ')}]`).join('')}${r.bonus ? ` ${r.bonus > 0 ? '+' : '−'} ${Math.abs(r.bonus)}` : ''}${r.critico ? ` · dados ×${r.multiplicador}` : ''}`;
   }
   if (r.tipo === 'expressao') {
+    if (r.partes && r.partes.length > 0) {
+      return r.partes
+        .map((p) => {
+          const info = obterInfoTipoDano(p.tipoDano);
+          const rotulo = info.abrev || info.nome;
+          const rText = p.rolagens && p.rolagens.length > 0 ? ` [${p.rolagens.join(', ')}]` : '';
+          return `${p.expressao}${rText}${rotulo ? ` ${rotulo}` : ''}`;
+        })
+        .join(' + ');
+    }
     return `[${r.rolagens.join(', ')}]${r.bonus ? ` ${r.bonus > 0 ? '+' : '−'} ${Math.abs(r.bonus)}` : ''}`;
   }
   const acerto = `${r.dados}d20 [${r.rolagens.join(', ')}] → ${r.piorDeDois ? 'pior' : 'maior'} ${r.escolhido}${r.bonus ? ` ${r.bonus > 0 ? '+' : '−'} ${Math.abs(r.bonus)}` : ''}${(r.dadosExtra || []).map((d) => ` + ${d.expr} [${d.rolagens.join(', ')}]`).join('')}`;
   // num ataque o dano vem colado ao acerto
-  if (r.dano) return `${acerto}  ·  dano ${r.dano.expressao} [${r.dano.rolagens.join(', ')}]${r.dano.bonus ? ` ${r.dano.bonus > 0 ? '+' : '−'} ${Math.abs(r.dano.bonus)}` : ''} = ${r.dano.total}`;
+  if (r.dano) return `${acerto}  ·  dano ${detalhe(r.dano)} = ${r.dano.total}`;
   return acerto;
 }
 
@@ -81,7 +102,7 @@ export default function HistoricoRolagens({ historico = [], aoFechar, aoLimpar }
                     <td className="h-icone"><IconeD20 /></td>
                     <td className="h-nome">{r.nome}{r.critico ? ' · crítico' : ''}{r.falhaCritica ? ' · falha crítica' : ''}</td>
                     <td className="h-conta">{detalhe(r)}</td>
-                    <td className="h-total">{r.total}</td>
+                    <td className="h-total">{r.tipo === 'dano' ? <ExibirDanoSeparado dano={r} /> : r.total}</td>
                   </tr>
                 ))}
               </tbody>
