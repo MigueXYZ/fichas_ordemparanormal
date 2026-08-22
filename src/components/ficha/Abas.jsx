@@ -297,7 +297,13 @@ export function AbaHabilidades({ personagem, setPersonagem }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 14 }}>
-        <button className="btn ghost" onClick={() => setAEscolher(true)}>Do catálogo</button>
+        <button
+          type="button"
+          className={'btn ghost' + (aEscolher ? ' ativo' : '')}
+          onClick={() => setAEscolher((v) => !v)}
+        >
+          Poderes do Catálogo
+        </button>
         <button className="btn" onClick={() => adicionar(novaHabilidade())}>Nova Habilidade</button>
       </div>
 
@@ -367,7 +373,13 @@ export function AbaRituais({ personagem, setPersonagem }) {
         </div>
         <span className="pill">Círculo máximo em NEX {nexEfetivo(personagem)}%: {circuloMax}º</span>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn ghost" onClick={() => setAEscolher(true)}>Do catálogo</button>
+          <button
+            type="button"
+            className={'btn ghost' + (aEscolher ? ' ativo' : '')}
+            onClick={() => setAEscolher((v) => !v)}
+          >
+            Rituais do Catálogo
+          </button>
           <button className="btn" onClick={() => adicionar(novoRitual())}>Novo Ritual</button>
         </div>
       </div>
@@ -439,8 +451,10 @@ export function AbaInventario({ personagem, setPersonagem }) {
   const [aEscolherArma, setAEscolherArma] = useState(false);
   const [aEditarArma, setAEditarArma] = useState(null);   
   const [aEditarItem, setAEditarItem] = useState(null);   
+  const [itemParaAdicionar, setItemParaAdicionar] = useState(null);
   const [aviso, setAviso] = useState(null);
   const catalogoArmas = ITENS.filter(ehArma);
+  const catalogoItens = ITENS.filter((i) => !ehArma(i));
   const carga = calcCarga(personagem);
   const cats = calcItensPorCategoria(personagem);
   const set = (patch) => setPersonagem({ ...personagem, ...patch });
@@ -502,12 +516,37 @@ export function AbaInventario({ personagem, setPersonagem }) {
         <div className="aviso"><strong>Acima da patente:</strong> tens mais itens do que a Ordem te libera nesta missão.</div>
       )}
 
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', margin: '14px 0', flexWrap: 'wrap' }}>
-        <button className="btn ghost" onClick={() => setAEscolherArma(true)}>Armas do catálogo</button>
-        <button className="btn ghost" onClick={() => setAEditarArma('nova')}>Nova arma</button>
-        <span style={{ flex: 1 }} />
-        <button className="btn ghost" onClick={() => setAEscolher(true)}>Do catálogo</button>
-        <button className="btn" onClick={() => adicionar({ ...novoItem(), manual: true })}>Novo Item</button>
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'space-between', alignItems: 'center', margin: '14px 0', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className={'btn ghost' + (aEscolherArma ? ' ativo' : '')}
+            onClick={() => {
+              setAEscolherArma((v) => !v);
+              setAEscolher(false);
+            }}
+          >
+            Armas do Catálogo
+          </button>
+          <button
+            type="button"
+            className={'btn ghost' + (aEscolher ? ' ativo' : '')}
+            onClick={() => {
+              setAEscolher((v) => !v);
+              setAEscolherArma(false);
+            }}
+          >
+            Itens do Catálogo
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button type="button" className="btn" onClick={() => setAEditarArma('nova')}>
+            Nova Arma
+          </button>
+          <button type="button" className="btn" onClick={() => adicionar({ ...novoItem(), manual: true })}>
+            Novo Item
+          </button>
+        </div>
       </div>
 
       {aEscolherArma && (
@@ -571,10 +610,10 @@ export function AbaInventario({ personagem, setPersonagem }) {
 
       {aEscolher && (
         <Seletor
-          titulo={`Itens (${ITENS.length})`}
-          itens={ITENS}
+          titulo={`Itens (${catalogoItens.length})`}
+          itens={catalogoItens}
           filtros={[
-            { id: 'tipo', label: 'Todos os tipos', valorDe: (i) => i.tipo, opcoes: TIPOS_ITEM.map((t) => ({ valor: t.id, label: t.nome })) },
+            { id: 'tipo', label: 'Todos os tipos', valorDe: (i) => i.tipo, opcoes: TIPOS_ITEM.filter((t) => t.id !== 'arma').map((t) => ({ valor: t.id, label: t.nome })) },
             { id: 'categoria', label: 'Todas as categorias', valorDe: (i) => categoriaRomana(i.categoria), opcoes: CATEGORIAS.map((c) => ({ value: c, label: `Categoria ${c}` })) },
           ]}
           aoProcurar={(i, t) => i.nome.toLowerCase().includes(t) || (i.descricao || '').toLowerCase().includes(t)}
@@ -586,31 +625,109 @@ export function AbaInventario({ personagem, setPersonagem }) {
                   TIPOS_ITEM.find((t) => t.id === i.tipo)?.nome,
                   categoriaRomana(i.categoria) ? `Cat. ${categoriaRomana(i.categoria)}` : null,
                   i.espacos != null ? `${i.espacos} esp.` : null,
-                  i.dano, i.defesa ? `Defesa +${i.defesa}` : null, i.elemento,
+                  i.defesa ? `Defesa +${i.defesa}` : null, i.elemento,
                 ].filter(Boolean).join(' · ')}
               </span>
               <span className="corte">{i.descricao}</span>
             </>
           )}
           onEscolher={(i) => {
-            if (ehArma(i)) {
-              armas.adicionar(armaDoItem(i));
-              setAviso(`${i.nome} foi para o separador Combate, já equipada.`);
-            } else {
-              adicionar({
-                nome: i.nome,
-                categoria: categoriaRomana(i.categoria) ?? '',
-                espacos: i.espacos ?? 1,
-                cargaBonus: i.cargaBonus ?? 0,
-                descricao: i.descricao || '',
-                manual: false 
-              });
-              setAviso(null);
-            }
-            setAEscolher(false);
+            setItemParaAdicionar({ item: i, quantidade: 1 });
           }}
           onFechar={() => setAEscolher(false)}
         />
+      )}
+
+      {itemParaAdicionar && (
+        <div className="modal-fundo" style={{ zIndex: 100 }} onClick={(e) => e.target === e.currentTarget && setItemParaAdicionar(null)}>
+          <div className="modal" style={{ maxWidth: 420 }}>
+            <div className="modal-topo">
+              <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>Adicionar ao Inventário</h3>
+              <button className="fechar" onClick={() => setItemParaAdicionar(null)}>×</button>
+            </div>
+            <div className="modal-corpo">
+              <div style={{ marginBottom: 14 }}>
+                <b style={{ fontSize: '19px', display: 'block', marginBottom: 4 }}>{itemParaAdicionar.item.nome}</b>
+                <div style={{ fontSize: '13px', color: 'var(--sangue-claro)', marginBottom: 8 }}>
+                  {[
+                    TIPOS_ITEM.find((t) => t.id === itemParaAdicionar.item.tipo)?.nome,
+                    categoriaRomana(itemParaAdicionar.item.categoria) ? `Cat. ${categoriaRomana(itemParaAdicionar.item.categoria)}` : null,
+                    itemParaAdicionar.item.espacos != null ? `${itemParaAdicionar.item.espacos} esp. cada` : null,
+                    itemParaAdicionar.item.defesa ? `Defesa +${itemParaAdicionar.item.defesa}` : null,
+                  ].filter(Boolean).join(' · ')}
+                </div>
+                {itemParaAdicionar.item.descricao && (
+                  <div style={{ fontSize: '13.5px', color: 'var(--txt-dim)', lineHeight: '1.4', maxHeight: 80, overflowY: 'auto' }}>
+                    {itemParaAdicionar.item.descricao}
+                  </div>
+                )}
+              </div>
+
+              <div className="campo" style={{ marginTop: 16 }}>
+                <label>Quantidade</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div className="controle-quantidade">
+                    <button
+                      type="button"
+                      className="btn-qtd"
+                      disabled={itemParaAdicionar.quantidade <= 1}
+                      onClick={() => setItemParaAdicionar((prev) => ({ ...prev, quantidade: Math.max(1, prev.quantidade - 1) }))}
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      className="input-qtd"
+                      min="1"
+                      value={itemParaAdicionar.quantidade}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10);
+                        setItemParaAdicionar((prev) => ({ ...prev, quantidade: isNaN(val) || val < 1 ? 1 : val }));
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="btn-qtd"
+                      onClick={() => setItemParaAdicionar((prev) => ({ ...prev, quantidade: prev.quantidade + 1 }))}
+                    >
+                      +
+                    </button>
+                  </div>
+                  <span style={{ fontSize: '13px', color: 'var(--txt-dim)' }}>
+                    Total: <b>{(itemParaAdicionar.item.espacos ?? 1) * itemParaAdicionar.quantidade}</b> {((itemParaAdicionar.item.espacos ?? 1) * itemParaAdicionar.quantidade) === 1 ? 'espaço' : 'espaços'}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+                <button type="button" className="btn ghost" onClick={() => setItemParaAdicionar(null)}>Cancelar</button>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => {
+                    const { item, quantidade } = itemParaAdicionar;
+                    const espacosBase = item.espacos ?? 1;
+                    const cargaBonusBase = item.cargaBonus ?? 0;
+                    adicionar({
+                      nome: quantidade > 1 ? `${quantidade}x ${item.nome}` : item.nome,
+                      categoria: categoriaRomana(item.categoria) ?? '',
+                      espacos: espacosBase * quantidade,
+                      cargaBonus: cargaBonusBase * quantidade,
+                      descricao: item.descricao || '',
+                      quantidade,
+                      manual: false,
+                    });
+                    setItemParaAdicionar(null);
+                    setAEscolher(false);
+                    setAviso(null);
+                  }}
+                >
+                  Adicionar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {aviso && <div className="aviso"><strong>Arma:</strong> {aviso}</div>}
@@ -650,7 +767,6 @@ export function AbaInventario({ personagem, setPersonagem }) {
             <div className="rotulo-lista">Itens ({carga.dosItens} espaços)</div>
             <ul>
               {lista.map((it, i) => {
-                const ehManual = it.manual === true;
                 return (
                   <li key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '12px 14px', borderBottom: '1px solid var(--linha)', flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 150 }}>
@@ -658,7 +774,25 @@ export function AbaInventario({ personagem, setPersonagem }) {
                       <span className="estado" style={{ color: 'var(--txt-dim)', fontSize: '14px' }}>CAT. {it.categoria || '0'}</span>
                       <span className="esp" style={{ color: 'var(--txt-dim)', fontSize: '14px' }}>{Number(it.espacos) || 0} esp.</span>
                     </div>
-                    {it.descricao && <div style={{ width: '100%', fontSize: '14px', color: 'var(--txt-dim)', marginTop: 4 }}>{it.descricao}</div>}
+                    {it.descricao && (
+                      <div
+                        title={it.descricao}
+                        style={{
+                          width: '100%',
+                          fontSize: '14px',
+                          color: 'var(--txt-dim)',
+                          marginTop: 4,
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          lineHeight: '1.4',
+                        }}
+                      >
+                        {it.descricao}
+                      </div>
+                    )}
                     <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
                       <button className="btn ghost sm" onClick={() => setAEditarItem({ indice: i, item: it })}>Editar</button>
                       <button className="btn danger sm" onClick={() => remover(i)}>Remover</button>

@@ -115,11 +115,57 @@ h1, h2, h3, h4 { font-family: var(--display); font-weight: 400; letter-spacing: 
 .btn:disabled { opacity: .35; cursor: not-allowed; }
 .btn.ghost { background: transparent; border-color: var(--linha-forte); color: var(--txt); }
 .btn.ghost:hover:not(:disabled) { border-color: var(--sangue); color: var(--sangue-claro); box-shadow: none; filter: none; }
+.btn.ghost.ativo { border-color: var(--sangue); color: var(--sangue-claro); background: rgba(192, 21, 33, 0.16); }
 .btn.sm { padding: 5px 12px; font-size: 14px; }
 .btn.danger { background: transparent; border-color: #5a2126; color: #e0616c; }
 .btn.danger:hover:not(:disabled) { background: rgba(192,21,33,.14); box-shadow: none; }
 .btn.a-transmitir { border-color: var(--ok); color: var(--ok); }
 .btn.a-transmitir:hover:not(:disabled) { border-color: var(--ok); color: var(--ok); box-shadow: 0 0 12px rgba(74,222,128,.35); }
+
+/* controle de quantidade em popups */
+.controle-quantidade {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-4);
+  border: 1px solid var(--linha-forte);
+  border-radius: var(--raio);
+  padding: 4px 8px;
+}
+.controle-quantidade .btn-qtd {
+  background: var(--bg-3);
+  border: 1px solid var(--linha);
+  color: var(--txt);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--raio);
+  font-size: 18px;
+  font-weight: bold;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.controle-quantidade .btn-qtd:hover:not(:disabled) {
+  border-color: var(--sangue);
+  color: var(--sangue-claro);
+  background: var(--bg-2);
+}
+.controle-quantidade .btn-qtd:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+.controle-quantidade .input-qtd {
+  width: 50px;
+  text-align: center;
+  font-family: var(--numeros);
+  font-size: 20px;
+  font-weight: bold;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--txt);
+}
 
 .linha-link { display: flex; gap: 8px; align-items: center; }
 .linha-link input { font-size: 13px; font-family: var(--numeros); }

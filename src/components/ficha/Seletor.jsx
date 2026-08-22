@@ -23,7 +23,6 @@ export default function Seletor({ titulo, itens, filtros = [], render, onEscolhe
     <div className="seletor">
       <div className="seletor-topo">
         <strong>{titulo}</strong>
-        <button className="btn ghost sm" onClick={onFechar}>Fechar</button>
       </div>
       <div className="filtros">
         <input type="text" placeholder="Procurar…" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ maxWidth: 260 }} />
