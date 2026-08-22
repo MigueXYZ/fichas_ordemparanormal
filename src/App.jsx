@@ -9,6 +9,8 @@ import HistoricoRolagens from './components/HistoricoRolagens.jsx';
 import PainelOverlay from './components/PainelOverlay.jsx';
 import EditorOverlay from './components/EditorOverlay.jsx';
 import FichaAmeaca from './components/ficha/FichaAmeaca.jsx';
+import ModalDefinicoes from './components/ModalDefinicoes.jsx';
+import { IconeOBS, IconeHistorico, IconeEngrenagem } from './components/Icones.jsx';
 import { personagemVazio } from './engine/character.js';
 import { descarregarPdf } from './export/pdf.js';
 import { guardarAgente, exportarJson, novoId } from './engine/armazenamento.js';
@@ -41,6 +43,7 @@ export default function App() {
   const [som, setSom] = useState(somLigado);
   const [coracao, setCoracao] = useState(coracaoLigado);
   const [verHistorico, setVerHistorico] = useState(false);
+  const [verDefinicoes, setVerDefinicoes] = useState(false);
 
   // ---- overlay para o OBS ----
   const [configOverlay, setConfigOverlay] = useState(lerConfig);
@@ -144,42 +147,80 @@ export default function App() {
         />
       )}
       <div className="topbar">
-        <h1 onClick={voltarAoInicio} title="Voltar ao início">Claudio <span className="marca-sub">· Ordem Paranormal</span></h1>
-        <div className="acoes">
-          <button
-            className="btn ghost sm" title={som ? 'Desligar som dos dados' : 'Ligar som dos dados'}
-            onClick={() => setSom(alternarSom())}
-          >
-            {som ? '♪ dados' : '♪ mudo'}
-          </button>
-          <button
-            className={'btn ghost sm' + (coracao ? ' a-bater' : '')}
-            title={coracao ? 'Desligar o batimento cardíaco' : 'Ligar o batimento cardíaco'}
-            onClick={() => setCoracao(alternarCoracao())}
-          >
-            {coracao ? '♥' : '♡'}
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <h1 onClick={voltarAoInicio} title="Voltar ao início">
+            Claudio <span className="marca-sub">· Ordem Paranormal</span>
+          </h1>
           {vista !== 'inicio' && (
+            <button className="btn ghost sm btn-nav-agentes" onClick={voltarAoInicio} title="Voltar à lista de agentes">
+              ← Agentes
+            </button>
+          )}
+          {vista === 'wizard' && personagem?.classeId && (
+            <button className="btn ghost sm" onClick={() => setVista('ficha')}>
+              Ver ficha
+            </button>
+          )}
+        </div>
+
+        <div className="acoes">
+          {vista !== 'inicio' ? (
             <>
-              {guardadoEm && <span className="pill">guardado</span>}
-              <button className="btn ghost sm" onClick={voltarAoInicio}>Agentes</button>
-              {vista === 'ficha' && personagem?.tipo !== 'ameaca' && (
-                <button className="btn ghost sm" onClick={() => setVista('wizard')}>Criação</button>
+              {guardadoEm && (
+                <span className="pill guardado-pill" title="Guardado automaticamente">
+                  <span className="ponto-verde" /> guardado
+                </span>
               )}
-              {vista === 'wizard' && personagem?.classeId && <button className="btn ghost sm" onClick={() => setVista('ficha')}>Ver ficha</button>}
-              <button className="btn ghost sm" onClick={() => setVerHistorico(true)}>
-                Histórico{personagem?.historico?.length ? ` (${personagem.historico.length})` : ''}
+
+              {/* Botão Overlay com símbolo OBS */}
+              <button
+                className={'btn ghost sm btn-overlay-topbar' + (configOverlay.ligado ? ' a-transmitir' : '')}
+                onClick={() => setVerOverlay(true)}
+                title={configOverlay.ligado ? 'Overlay OBS ativo (a transmitir)' : 'Configurar Overlay para OBS'}
+              >
+                <IconeOBS size={16} />
+                <span>Overlay</span>
+                {configOverlay.ligado && <span className="ponto-live" />}
+              </button>
+
+              {/* Botão de Histórico */}
+              <button
+                className="btn ghost sm btn-historico-topbar"
+                onClick={() => setVerHistorico(true)}
+                title="Histórico de rolagens"
+              >
+                <IconeHistorico size={16} />
+                <span className="texto-btn-historico">Histórico</span>
+                {Boolean(personagem?.historico?.length) && (
+                  <span className="badge-contagem">{personagem.historico.length}</span>
+                )}
+              </button>
+
+              {/* Botão Definições / Opções do Personagem */}
+              <button
+                className="btn ghost sm btn-def-topbar"
+                onClick={() => setVerDefinicoes(true)}
+                title="Definições e Exportação (PDF, JSON, Criação, Áudio)"
+                aria-label="Definições do agente"
+              >
+                <IconeEngrenagem size={17} />
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                className="btn ghost sm"
+                title={som ? 'Desligar som dos dados' : 'Ligar som dos dados'}
+                onClick={() => setSom(alternarSom())}
+              >
+                {som ? '♪ dados' : '♪ mudo'}
               </button>
               <button
-                className={'btn ghost sm' + (configOverlay.ligado ? ' a-transmitir' : '')}
-                onClick={() => setVerOverlay(true)}
-                title="Overlay para OBS"
+                className={'btn ghost sm' + (coracao ? ' a-bater' : '')}
+                title={coracao ? 'Desligar o batimento cardíaco' : 'Ligar o batimento cardíaco'}
+                onClick={() => setCoracao(alternarCoracao())}
               >
-                Overlay{configOverlay.ligado ? ' •' : ''}
-              </button>
-              <button className="btn ghost sm" onClick={() => exportarJson(personagem)}>JSON</button>
-              <button className="btn sm" onClick={exportarPdf} disabled={aExportar}>
-                {aExportar ? 'A gerar…' : 'Exportar PDF'}
+                {coracao ? '♥' : '♡'}
               </button>
             </>
           )}
@@ -197,6 +238,24 @@ export default function App() {
       )}
       {vista === 'ficha' && personagem && personagem.tipo !== 'ameaca' && (
         <Ficha personagem={personagem} setPersonagem={setPersonagem} onRolar={rolar} />
+      )}
+
+      {verDefinicoes && (
+        <ModalDefinicoes
+          personagem={personagem}
+          som={som}
+          aoAlternarSom={() => setSom(alternarSom())}
+          coracao={coracao}
+          aoAlternarCoracao={() => setCoracao(alternarCoracao())}
+          aoExportarPdf={exportarPdf}
+          aExportar={aExportar}
+          aoExportarJson={exportarJson}
+          aoAbrirCriacao={() => {
+            setVerDefinicoes(false);
+            setVista('wizard');
+          }}
+          aoFechar={() => setVerDefinicoes(false)}
+        />
       )}
 
       {verHistorico && (

@@ -218,6 +218,20 @@ teste('somarDados acrescenta um dado do mesmo tipo', () => {
   assert.equal(somarDados('2d10+2', 1), '3d10+2');
 });
 
+teste('rolagem de dano separa tipos de dano nas partes', () => {
+  const r = rolarDano({
+    nome: 'Faca',
+    dano: '1d4',
+    tipoDano: 'Corte',
+    bonus: 2,
+    extras: [{ expr: '1d6', tipoDano: 'Sangue', elemental: true }],
+  });
+  assert.equal(r.partes.length, 2);
+  assert.equal(r.partes[0].tipoDano, 'Corte');
+  assert.equal(r.partes[1].tipoDano, 'Sangue');
+  assert.equal(r.total, r.partes[0].total + r.partes[1].total);
+});
+
 
 teste('dá para trocar o atributo de uma perícia', () => {
   const p = personagemVazio();

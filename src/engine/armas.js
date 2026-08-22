@@ -83,6 +83,7 @@ export function estatisticasArma(personagem, arma) {
     atributoTeste: agilAtiva ? 'agi' : p.attr,
     atributoDano,
     agilAtiva,
+    tipoDano: arma.tipoDano || arma.tipo || null,
     bonusAtaque: p.bonus + (Number(arma.bonus) || 0) + mods.ataque,
     dadosExtraAtaque,
     dano: somarDados(arma.dano, mods.dadosDano),
@@ -95,7 +96,7 @@ export function estatisticasArma(personagem, arma) {
     extras: [
       ...(arma.danoExtra || []),
       ...mods.danoExtra,
-      ...conds.monstruoso.danoExtra.map((expr) => ({ expr, elemental: true })),
+      ...conds.monstruoso.danoExtra.map((expr) => ({ expr, elemental: true, tipoDano: 'Sangue' })),
     ],
     alcance: mods.alcance || arma.alcance,
     espacos: (Number(arma.espacos) || 0) + mods.espacos,

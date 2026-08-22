@@ -112,12 +112,33 @@ body.corpo-overlay::before, body.corpo-overlay::after { display: none !important
 .ov-rolagem .conta { font-size: 13px; color: var(--txt-dim); }
 .ov-rolagem .conta .melhor { color: var(--txt); font-weight: 700; }
 .ov-r-total { font-family: var(--numeros); font-weight: 700; font-size: 34px; line-height: 1; }
-.ov-rolagem.critico .ov-r-total { color: var(--ok); text-shadow: 0 0 16px rgba(74,222,128,.5); }
 .ov-r-dano {
   border-left: 1px solid var(--linha-forte); padding-left: 12px; text-align: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
 .ov-r-dano span { display: block; font-size: 9.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--sangue-claro); }
 .ov-r-dano b { font-family: var(--numeros); font-size: 26px; }
+.ov-r-dano .dano-separado {
+  font-family: var(--numeros);
+  font-size: 17px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  white-space: nowrap;
+}
+.ov-r-dano .dano-tipo-tag {
+  font-family: var(--corpo);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: normal;
+}
+.ov-r-dano .dano-total-destaque {
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(255,255,255,0.4);
+}
 
 /* ------------------------------------------------ à espera */
 .ov-espera {

@@ -1,23 +1,65 @@
 import React, { useEffect } from 'react';
 import IconeD20 from './IconeD20.jsx';
+import { ExibirDanoSeparado, obterInfoTipoDano } from './ExibirDano.jsx';
 
 /** A conta que deu origem ao resultado, conforme o tipo de rolagem. */
 export function Dados({ r }) {
   if (r.tipo === 'dano') {
+    if (r.partes && r.partes.length > 0) {
+      return (
+        <span className="conta">
+          {r.partes.map((p, idx) => {
+            const info = obterInfoTipoDano(p.tipoDano);
+            return (
+              <React.Fragment key={idx}>
+                {idx > 0 && ' + '}
+                <span style={info.cor ? { color: info.cor } : undefined}>
+                  {p.expressao} {p.rolagens && p.rolagens.length > 0 ? `[${p.rolagens.join(', ')}]` : ''}
+                  {info.abrev ? ` ${info.abrev}` : ''}
+                </span>
+              </React.Fragment>
+            );
+          })}
+          {r.critico ? ` · dados ×${r.multiplicador}` : ''}
+        </span>
+      );
+    }
+
     return (
       <span className="conta">
-        {r.expressao} [{r.rolagens.join(', ')}]
-        {r.extras?.map((e, i) => (
-          <span key={i} style={e.elemental ? { color: 'var(--sangue-claro)' } : undefined} title={e.elemental ? 'Dano da Trilha do Monstruoso' : undefined}>
-            {` + ${e.expr} [${e.rolagens.join(', ')}]`}
-          </span>
-        ))}
+        {r.expressao} [{r.rolagens?.join(', ') || ''}]
+        {r.extras?.map((e, i) => {
+          const info = obterInfoTipoDano(e.tipoDano || (e.elemental ? 'Sangue' : ''));
+          return (
+            <span key={i} style={info.cor ? { color: info.cor } : undefined} title={e.elemental ? 'Dano Elemental' : undefined}>
+              {` + ${e.expr} [${e.rolagens.join(', ')}]${info.abrev ? ` ${info.abrev}` : ''}`}
+            </span>
+          );
+        })}
         {r.bonus ? ` ${r.bonus > 0 ? '+' : '−'} ${Math.abs(r.bonus)}` : ''}
         {r.critico ? ` · dados ×${r.multiplicador}` : ''}
       </span>
     );
   }
   if (r.tipo === 'expressao') {
+    if (r.partes && r.partes.length > 0) {
+      return (
+        <span className="conta">
+          {r.partes.map((p, idx) => {
+            const info = obterInfoTipoDano(p.tipoDano);
+            return (
+              <React.Fragment key={idx}>
+                {idx > 0 && ' + '}
+                <span style={info.cor ? { color: info.cor } : undefined}>
+                  {p.expressao} {p.rolagens && p.rolagens.length > 0 ? `[${p.rolagens.join(', ')}]` : ''}
+                  {info.abrev ? ` ${info.abrev}` : ''}
+                </span>
+              </React.Fragment>
+            );
+          })}
+        </span>
+      );
+    }
     return (
       <span className="conta">
         [{r.rolagens.join(', ')}]{r.bonus ? ` ${r.bonus > 0 ? '+' : '−'} ${Math.abs(r.bonus)}` : ''}
@@ -62,9 +104,17 @@ function CartaoAtaque({ r, aoFechar }) {
           </div>
           <div className="seccao">
             <div className="etiqueta">Dano</div>
-            {r.dano
-              ? <><Dados r={r.dano} /><div className="res">{r.dano.total}</div></>
-              : <><span className="conta">sem dano válido</span><div className="res">—</div></>}
+            {r.dano ? (
+              <>
+                <Dados r={r.dano} />
+                <div className="res"><ExibirDanoSeparado dano={r.dano} /></div>
+              </>
+            ) : (
+              <>
+                <span className="conta">sem dano válido</span>
+                <div className="res">—</div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -107,7 +157,9 @@ export default function PainelRolagem({ rolagens, aoFechar, aoLimpar }) {
               )}
             </div>
             <span className="igual">=</span>
-            <span className="total">{r.total}</span>
+            <span className="total">
+              {r.tipo === 'dano' || r.partes?.length > 0 ? <ExibirDanoSeparado dano={r} /> : r.total}
+            </span>
             <button className="fechar" onClick={() => aoFechar(r.id)} aria-label="Fechar">✕</button>
           </div>
         )
