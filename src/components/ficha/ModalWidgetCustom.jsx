@@ -88,7 +88,7 @@ export default function ModalWidgetCustom({ widgetParaEditar = null, aoGuardar, 
                 onClick={() => setTipo('contador')}
                 style={{ textAlign: 'center' }}
               >
-                🔢 Contador
+                Contador
               </button>
               <button
                 type="button"
@@ -96,7 +96,7 @@ export default function ModalWidgetCustom({ widgetParaEditar = null, aoGuardar, 
                 onClick={() => setTipo('nota')}
                 style={{ textAlign: 'center' }}
               >
-                📝 Notas
+                Notas
               </button>
               <button
                 type="button"
@@ -104,7 +104,7 @@ export default function ModalWidgetCustom({ widgetParaEditar = null, aoGuardar, 
                 onClick={() => setTipo('checklist')}
                 style={{ textAlign: 'center' }}
               >
-                ☑️ Checklist
+                Checklist
               </button>
             </div>
           </div>

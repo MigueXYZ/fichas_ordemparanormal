@@ -33,6 +33,8 @@ import {
 } from '../../engine/sheetLayout.js';
 import WidgetContainer from './WidgetContainer.jsx';
 import ModalWidgetCustom from './ModalWidgetCustom.jsx';
+import ModalReceberDano from './ModalReceberDano.jsx';
+import ModalDescanso from './ModalDescanso.jsx';
 import { IconeEngrenagem } from '../Icones.jsx';
 
 function InputNumeroScroll({ value, onChange, ...props }) {
@@ -82,6 +84,8 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
   const [modoEdicaoLayout, setModoEdicaoLayout] = useState(false);
   const [arrastandoId, setArrastandoId] = useState(null);
   const [modalCustomAberto, setModalCustomAberto] = useState(false);
+  const [modalDanoAberto, setModalDanoAberto] = useState(false);
+  const [modalDescansoAberto, setModalDescansoAberto] = useState(false);
   const [widgetParaEditar, setWidgetParaEditar] = useState(null);
   const [avisoLayout, setAvisoLayout] = useState(null);
 
@@ -314,6 +318,25 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
                   />
                 </>
               )}
+            </div>
+
+            <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <button
+                type="button"
+                className="btn ghost sm btn-receber-dano-trigger"
+                onClick={() => setModalDanoAberto(true)}
+                title="Calcular e aplicar dano de ataques sofridos com resistências e bloqueio automático"
+              >
+                Levar Dano
+              </button>
+              <button
+                type="button"
+                className="btn ghost sm btn-descanso-trigger"
+                onClick={() => setModalDescansoAberto(true)}
+                title="Cena de Interlúdio oficial e opções de descanso"
+              >
+                Descanso
+              </button>
             </div>
           </div>
         )}
@@ -732,6 +755,27 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
             }
           }}
           aoFechar={() => { setModalCustomAberto(false); setWidgetParaEditar(null); }}
+        />
+      )}
+
+      {/* Modal para Receber Dano / Recetor de Ataques */}
+      {modalDanoAberto && (
+        <ModalReceberDano
+          personagem={personagem}
+          max={max}
+          defesas={d}
+          aoAplicarDano={(patch) => set(patch)}
+          aoFechar={() => setModalDanoAberto(false)}
+        />
+      )}
+
+      {/* Modal de Descanso & Interlúdio */}
+      {modalDescansoAberto && (
+        <ModalDescanso
+          personagem={personagem}
+          max={max}
+          aoAplicarDescanso={(patch) => set(patch)}
+          aoFechar={() => setModalDescansoAberto(false)}
         />
       )}
     </div>

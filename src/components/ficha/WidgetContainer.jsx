@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { IconeLixo } from '../Icones.jsx';
+import { IconeLixo, IconeOlho, IconeEditar } from '../Icones.jsx';
 
 export default function WidgetContainer({
   id,
@@ -133,7 +133,7 @@ export default function WidgetContainer({
                 onClick={aoEditarCustom}
                 title="Editar este widget"
               >
-                ✎
+                <IconeEditar size={11} />
               </button>
             )}
             <button
@@ -142,7 +142,7 @@ export default function WidgetContainer({
               onClick={aoOcultar}
               title="Ocultar este widget"
             >
-              👁️
+              <IconeOlho size={12} />
             </button>
             {custom && aoEliminarCustom && (
               <button

@@ -635,4 +635,192 @@ teste('soltarWidgetSobre posiciona antes e depois do alvo com precisão vertical
   assert.ok(!l.colunas[0].includes('pericias'));
 });
 
+console.log('\nRecetor de ataques e cálculo automático de dano (US #71)');
+
+teste('interpretarResistencias extrai valores de texto e arrays', async () => {
+  const { interpretarResistencias } = await import('../src/engine/danoRecetor.js');
+
+  const r1 = interpretarResistencias('Balístico, corte, impacto e perfuração 5, Morte 10, Sangue 5');
+  assert.equal(r1.balistico, 5);
+  assert.equal(r1.corte, 5);
+  assert.equal(r1.impacto, 5);
+  assert.equal(r1.perfuracao, 5);
+  assert.equal(r1.morte, 10);
+  assert.equal(r1.sangue, 5);
+
+  const r2 = interpretarResistencias(['Físico 10', 'Energia 5', 'RD 2']);
+  assert.equal(r2.balistico, 10);
+  assert.equal(r2.corte, 10);
+  assert.equal(r2.energia, 5);
+  assert.equal(r2.geral, 2);
+});
+
+teste('calcularDanoRecebido abate resistências do agente no dano combinado', async () => {
+  const { calcularDanoRecebido } = await import('../src/engine/danoRecetor.js');
+
+  const personagem = {
+    pvAtual: 40,
+    pvTemp: 0,
+    sanAtual: 30,
+    resistencias: 'Perfuração 5, Morte 10',
+  };
+  const max = { pv: 40, san: 30 };
+
+  // Exemplo da US #71: 30 de dano perfurante e 20 de morte
+  const res = calcularDanoRecebido({
+    parcelas: [
+      { valor: 30, tipoId: 'perfuracao' },
+      { valor: 20, tipoId: 'morte' },
+    ],
+    personagem,
+    max,
+  });
+
+  // 30 - 5 RD = 25 perfuração; 20 - 10 RD = 10 morte. Total líquido = 35.
+  assert.equal(res.totalBruto, 50);
+  assert.equal(res.totalReducao, 15);
+  assert.equal(res.totalLiquidoPv, 35);
+  assert.equal(res.novoPvAtual, 5); // 40 - 35 = 5
+});
+
+teste('calcularDanoRecebido aplica Bloqueio e absorve PV Temporário primeiro', async () => {
+  const { calcularDanoRecebido } = await import('../src/engine/danoRecetor.js');
+
+  const personagem = {
+    pvAtual: 30,
+    pvTemp: 10,
+    resistencias: 'Corte 5',
+  };
+  const max = { pv: 30 };
+
+  // 25 de Corte, Bloqueio ativo (+5 RD)
+  const res = calcularDanoRecebido({
+    parcelas: [{ valor: 25, tipoId: 'corte' }],
+    personagem,
+    max,
+    bloqueioAtivo: true,
+    rdBloqueio: 5,
+  });
+
+  // 25 - 5 (RD Corte) - 5 (Bloqueio) = 15 dano líquido.
+  // 15 dano: 10 absorvido por pvTemp, 5 descontado de pvAtual.
+  assert.equal(res.totalBruto, 25);
+  assert.equal(res.totalReducao, 10);
+  assert.equal(res.totalLiquidoPv, 15);
+  assert.equal(res.pvTempAbsorvido, 10);
+  assert.equal(res.novoPvTemp, 0);
+  assert.equal(res.novoPvAtual, 25); // 30 - 5 = 25
+});
+
+teste('calcularDanoRecebido desconta dano mental na Sanidade', async () => {
+  const { calcularDanoRecebido } = await import('../src/engine/danoRecetor.js');
+
+  const personagem = {
+    pvAtual: 30,
+    sanAtual: 24,
+    resistencias: 'Mental 5',
+  };
+  const max = { pv: 30, san: 24, semSanidade: false };
+
+  const res = calcularDanoRecebido({
+    parcelas: [
+      { valor: 15, tipoId: 'mental' },
+      { valor: 10, tipoId: 'impacto' },
+    ],
+    personagem,
+    max,
+  });
+
+  // Mental: 15 - 5 RD = 10 dano Sanidade. Impacto: 10 - 0 RD = 10 dano PV.
+  assert.equal(res.totalLiquidoSan, 10);
+  assert.equal(res.totalLiquidoPv, 10);
+  assert.equal(res.novoSanAtual, 14); // 24 - 10 = 14
+  assert.equal(res.novoPvAtual, 20); // 30 - 10 = 20
+});
+
+console.log('\nSistema de Interlúdio e Descanso (US #84)');
+
+teste('calcularInterludio - dormir e relaxar em condição Normal recupera 1x limite de PE', async () => {
+  const { calcularInterludio } = await import('../src/engine/interludio.js');
+
+  const personagem = {
+    nex: 35, // limite de PE por rodada = 7
+    pvAtual: 10,
+    peAtual: 5,
+    sanAtual: 8,
+    pvTemp: 5,
+    condicoes: ['abalado', 'fatigado'],
+  };
+  const max = { pv: 40, pe: 20, san: 30 };
+
+  const res = calcularInterludio({
+    personagem,
+    max,
+    condicaoDescansoId: 'normal',
+    acoes: ['dormir', 'relaxar'],
+    limparCondicoes: true,
+  });
+
+  assert.equal(res.limitePe, 7);
+  assert.equal(res.pvRecuperado, 7);
+  assert.equal(res.peRecuperado, 7);
+  assert.equal(res.sanRecuperado, 7);
+  assert.equal(res.novoPv, 17); // 10 + 7
+  assert.equal(res.novoPe, 12); // 5 + 7
+  assert.equal(res.novoSan, 15); // 8 + 7
+  assert.equal(res.patch.pvTemp, 0);
+  assert.deepEqual(res.patch.condicoes, []);
+});
+
+teste('calcularInterludio - sinergia de Prato Nutritivo e Prato Favorito', async () => {
+  const { calcularInterludio } = await import('../src/engine/interludio.js');
+
+  const personagem = {
+    nex: 20, // limite de PE = 4
+    pvAtual: 10,
+    peAtual: 10,
+    sanAtual: 10,
+  };
+  const max = { pv: 30, pe: 20, san: 25 };
+
+  // Condição Confortável (2x) + Prato Nutritivo (aumenta PV em +1x -> 3x)
+  const res1 = calcularInterludio({
+    personagem,
+    max,
+    condicaoDescansoId: 'confortavel',
+    acoes: ['dormir', 'alimentar'],
+    pratoId: 'nutritivo',
+  });
+
+  assert.equal(res1.pvRecuperado, 12); // 4 * 3 = 12 PV
+  assert.equal(res1.peRecuperado, 8);  // 4 * 2 = 8 PE
+
+  // Relaxar em condição Confortável (2x) + Prato Favorito (+2 SAN) + 2 aliados relaxando (+2 SAN)
+  const res2 = calcularInterludio({
+    personagem,
+    max,
+    condicaoDescansoId: 'confortavel',
+    acoes: ['relaxar', 'alimentar'],
+    pratoId: 'favorito',
+    aliadosRelaxando: 2,
+  });
+
+  // Base: 4 * 2 = 8 + 2 (Favorito) + 2 (Aliados) = 12 SAN
+  assert.equal(res2.sanRecuperado, 12);
+  assert.equal(res2.novoSan, 22); // 10 + 12
+});
+
+teste('aplicarDescansoPleno restaura 100% e limpa temporários', async () => {
+  const { aplicarDescansoPleno } = await import('../src/engine/interludio.js');
+
+  const max = { pv: 45, pe: 25, san: 35 };
+  const patch = aplicarDescansoPleno({}, max);
+
+  assert.equal(patch.pvAtual, 45);
+  assert.equal(patch.peAtual, 25);
+  assert.equal(patch.sanAtual, 35);
+  assert.equal(patch.pvTemp, 0);
+  assert.deepEqual(patch.condicoes, []);
+});
+
 console.log(`\n${passou} testes ok`);
