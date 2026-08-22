@@ -1,5 +1,6 @@
 import React from 'react';
 import IconeD20 from '../IconeD20.jsx';
+import EditorTags from '../EditorTags.jsx';
 import { rolarTeste, rolarDano } from '../../engine/dados.js';
 
 /** Ficha de ameaça, no formato do capítulo 7 do Livro Base. */
@@ -98,6 +99,13 @@ export default function FichaAmeaca({ ameaca, setAmeaca, onRolar }) {
               </div>
             </div>
           </div>
+        </div>
+
+        <div style={{ marginTop: 16 }}>
+          <EditorTags
+            tags={a.tags || []}
+            onChange={(novasTags) => set({ tags: novasTags })}
+          />
         </div>
 
         <div className="campo" style={{ marginTop: 16 }}>

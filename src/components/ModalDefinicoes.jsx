@@ -1,8 +1,10 @@
 import React from 'react';
 import { IconePDF, IconeJSON, IconeCriacao, IconeSom } from './Icones.jsx';
+import EditorTags from './EditorTags.jsx';
 
 export default function ModalDefinicoes({
   personagem,
+  aoMudarPersonagem,
   som,
   aoAlternarSom,
   coracao,
@@ -25,6 +27,19 @@ export default function ModalDefinicoes({
         </div>
 
         <div className="modal-corpo" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Secção Tags do Agente */}
+          {personagem && aoMudarPersonagem && (
+            <div className="seccao-def">
+              <label className="rotulo-def">Tags & Organização</label>
+              <div style={{ marginTop: 8 }}>
+                <EditorTags
+                  tags={personagem.tags || []}
+                  onChange={(novasTags) => aoMudarPersonagem((p) => ({ ...p, tags: novasTags }))}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Secção 1: Ficheiros & Exportação */}
           <div className="seccao-def">
             <label className="rotulo-def">Ficheiros & Exportação</label>

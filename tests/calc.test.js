@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { personagemVazio } from '../src/engine/character.js';
+import { gerarAmeaca, gerarFicha } from '../src/engine/geradores.js';
 import { calcMaximos, calcDefesa, calcDefesas, calcPericias, calcDeslocamento, pontosRestantes, calcPePorRodada, grauMaximoPorNex, degrauNex, nexEfetivo } from '../src/engine/calc.js';
 
 let passou = 0;
@@ -518,6 +519,18 @@ teste('ataques sofrem penalidades de condições (Ofuscado)', () => {
   const arma = { pericia: 'luta', dano: '1d8', critico: '20', atributoDano: 'for', modificacoes: [] };
   const stats = estatisticasArma(p, arma);
   assert.equal(stats.dados, 2); // 3 - 1 = 2d20
+});
+
+teste('personagem e ameaça suportam tags como array', () => {
+  const p = personagemVazio();
+  assert.ok(Array.isArray(p.tags));
+  assert.equal(p.tags.length, 0);
+
+  const f = gerarFicha();
+  assert.ok(Array.isArray(f.tags));
+
+  const a = gerarAmeaca();
+  assert.ok(Array.isArray(a.tags));
 });
 
 console.log(`\n${passou} testes ok`);

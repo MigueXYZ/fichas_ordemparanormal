@@ -21,6 +21,7 @@ import { obterInfoTipoDano } from '../ExibirDano.jsx';
 
 const NOME_ATRIBUTO = { for: 'Força', agi: 'Agilidade', int: 'Intelecto', pre: 'Presença', vig: 'Vigor' };
 import Seletor from './Seletor.jsx';
+import EditorTags from '../EditorTags.jsx';
 
 function Campo({ label, valor, onChange, tipo = 'text', opcoes, readOnly = false }) {
   return (
@@ -1205,15 +1206,21 @@ export function AbaInventario({ personagem, setPersonagem }) {
 // ------------------------------------------------------------- DESCRIÇÃO
 
 export function AbaDescricao({ personagem, setPersonagem }) {
-  const d = personagem.descricao;
+  const d = personagem.descricao || {};
   const set = (campo, valor) => setPersonagem({ ...personagem, descricao: { ...d, [campo]: valor } });
   return (
     <div>
-      <div className="campo"><label>Aparência</label><textarea value={d.aparencia} onChange={(e) => set('aparencia', e.target.value)} /></div>
-      <div className="campo"><label>Personalidade</label><textarea value={d.personalidade} onChange={(e) => set('personalidade', e.target.value)} /></div>
-      <div className="campo"><label>Histórico</label><textarea value={d.historico} onChange={(e) => set('historico', e.target.value)} /></div>
-      <div className="campo"><label>Objetivo</label><textarea value={d.objetivo} onChange={(e) => set('objetivo', e.target.value)} /></div>
-      <div className="campo"><label>Anotações</label><textarea value={personagem.anotacoes} onChange={(e) => setPersonagem({ ...personagem, anotacoes: e.target.value })} /></div>
+      <div style={{ marginBottom: 18 }}>
+        <EditorTags
+          tags={personagem.tags || []}
+          onChange={(novasTags) => setPersonagem({ ...personagem, tags: novasTags })}
+        />
+      </div>
+      <div className="campo"><label>Aparência</label><textarea value={d.aparencia || ''} onChange={(e) => set('aparencia', e.target.value)} /></div>
+      <div className="campo"><label>Personalidade</label><textarea value={d.personalidade || ''} onChange={(e) => set('personalidade', e.target.value)} /></div>
+      <div className="campo"><label>Histórico</label><textarea value={d.historico || ''} onChange={(e) => set('historico', e.target.value)} /></div>
+      <div className="campo"><label>Objetivo</label><textarea value={d.objetivo || ''} onChange={(e) => set('objetivo', e.target.value)} /></div>
+      <div className="campo"><label>Anotações</label><textarea value={personagem.anotacoes || ''} onChange={(e) => setPersonagem({ ...personagem, anotacoes: e.target.value })} /></div>
     </div>
   );
 }

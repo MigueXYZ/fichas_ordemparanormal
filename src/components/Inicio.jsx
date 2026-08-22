@@ -1,8 +1,10 @@
-import React, { useRef, useState } from 'react';
-import { CLASSES_POR_ID } from '../data/classes.js';
+import React, { useRef, useState, useMemo } from 'react';
+import { CLASSES_POR_ID, TRILHAS_POR_ID } from '../data/classes.js';
 import { ORIGENS_POR_ID } from '../data/origens.js';
 import { listarAgentes, apagarAgente, apagarVariosAgentes, duplicarAgente, importarJson, guardarAgente } from '../engine/armazenamento.js';
 import Geradores from './Geradores.jsx';
+import EditorTags from './EditorTags.jsx';
+import { IconeCopiar, IconeLixo, IconeTag } from './Icones.jsx';
 import { ELEMENTOS, ORDEM_ELEMENTOS } from '../data/rituais.js';
 
 function descrever(a) {
@@ -22,6 +24,8 @@ function normalizar(texto) {
 export default function Inicio({ aoCriar, aoAbrir }) {
   const [lista, setLista] = useState(listarAgentes);
   const [busca, setBusca] = useState('');
+  const [tagSelecionada, setTagSelecionada] = useState(null);
+  const [editarTagsAgente, setEditarTagsAgente] = useState(null);
   const [erro, setErro] = useState(null);
   const [gerador, setGerador] = useState(false);
   const [modoSelecao, setModoSelecao] = useState(false);
@@ -33,22 +37,50 @@ export default function Inicio({ aoCriar, aoAbrir }) {
     setLista(listarAgentes());
   }
 
+  const todasAsTagsComContagem = useMemo(() => {
+    const mapa = new Map();
+    for (const a of lista) {
+      if (Array.isArray(a.tags)) {
+        for (const t of a.tags) {
+          const limpo = String(t || '').trim();
+          if (limpo) {
+            mapa.set(limpo, (mapa.get(limpo) || 0) + 1);
+          }
+        }
+      }
+    }
+    return Array.from(mapa.entries())
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'pt'))
+      .map(([nome, contagem]) => ({ nome, contagem }));
+  }, [lista]);
+
   const termoBusca = normalizar(busca.trim());
   const listaFiltrada = lista.filter((a) => {
+    if (tagSelecionada) {
+      const tagsAgente = Array.isArray(a.tags) ? a.tags.map((t) => t.toLowerCase()) : [];
+      if (!tagsAgente.includes(tagSelecionada.toLowerCase())) return false;
+    }
+
     if (!termoBusca) return true;
     const nome = normalizar(a.nome);
+    const jogador = normalizar(a.jogador);
     const classe = normalizar(CLASSES_POR_ID[a.classeId]?.nome);
+    const trilha = normalizar(TRILHAS_POR_ID[a.trilhaId]?.nome);
     const origem = normalizar(a.origemId === '__custom__' ? a.origemCustom?.nome : ORIGENS_POR_ID[a.origemId]?.nome);
     const nex = `${a.nex}% ${a.nex}`;
     const tipo = normalizar(a.tipo);
     const detalhes = normalizar(descrever(a));
+    const tagsTexto = (a.tags || []).map(normalizar).join(' ');
     return (
       nome.includes(termoBusca) ||
+      jogador.includes(termoBusca) ||
       classe.includes(termoBusca) ||
+      trilha.includes(termoBusca) ||
       origem.includes(termoBusca) ||
       nex.includes(termoBusca) ||
       tipo.includes(termoBusca) ||
-      detalhes.includes(termoBusca)
+      detalhes.includes(termoBusca) ||
+      tagsTexto.includes(termoBusca)
     );
   });
 
@@ -160,7 +192,7 @@ export default function Inicio({ aoCriar, aoAbrir }) {
           <span className="icone-lupa" aria-hidden="true">🔍</span>
           <input
             type="text"
-            placeholder="Pesquisar por nome, classe, origem, NEX..."
+            placeholder="Pesquisar por nome, jogador, classe, trilha, tags..."
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
           />
@@ -177,12 +209,49 @@ export default function Inicio({ aoCriar, aoAbrir }) {
         </div>
       )}
 
+      {/* Barra de Filtro de Tags */}
+      {lista.length > 0 && todasAsTagsComContagem.length > 0 && (
+        <div className="barra-filtro-tags">
+          <span className="rotulo-filtro-tags">Tags:</span>
+          <div className="lista-filtro-tags">
+            <button
+              type="button"
+              className={'btn-tag-filtro' + (!tagSelecionada ? ' ativo' : '')}
+              onClick={() => setTagSelecionada(null)}
+            >
+              Todas <span className="contagem-tag">({lista.length})</span>
+            </button>
+            {todasAsTagsComContagem.map(({ nome, contagem }) => (
+              <button
+                key={nome}
+                type="button"
+                className={'btn-tag-filtro' + (tagSelecionada?.toLowerCase() === nome.toLowerCase() ? ' ativo' : '')}
+                onClick={() => setTagSelecionada((prev) => (prev?.toLowerCase() === nome.toLowerCase() ? null : nome))}
+                title={`Filtrar por ${nome}`}
+              >
+                #{nome} <span className="contagem-tag">({contagem})</span>
+              </button>
+            ))}
+          </div>
+          {tagSelecionada && (
+            <button
+              type="button"
+              className="btn-limpar-tag"
+              onClick={() => setTagSelecionada(null)}
+              title="Remover filtro de tag"
+            >
+              Filtro ativo: <b>#{tagSelecionada}</b> ×
+            </button>
+          )}
+        </div>
+      )}
+
       {modoSelecao && lista.length > 0 && (
         <div className="barra-massa">
           <div className="barra-massa-info">
             <span>
               <b>{selecionados.size}</b> de <b>{listaFiltrada.length}</b> selecionado(s)
-              {termoBusca && <span style={{ opacity: 0.7, marginLeft: 4 }}>(filtrados de {lista.length})</span>}
+              {(termoBusca || tagSelecionada) && <span style={{ opacity: 0.7, marginLeft: 4 }}>(filtrados de {lista.length})</span>}
             </span>
             <button type="button" className="btn ghost sm" onClick={selecionados.size === listaFiltrada.length ? desmarcarTodos : selecionarTodos}>
               {selecionados.size === listaFiltrada.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
@@ -249,19 +318,56 @@ export default function Inicio({ aoCriar, aoAbrir }) {
                   {a.tipo === 'npc' && <span className="pill" style={{ marginLeft: 8 }}>NPC</span>}
                 </div>
                 <div className="det">{descrever(a)}</div>
+
+                {/* Chips de tags no cartão */}
+                {Array.isArray(a.tags) && a.tags.length > 0 && (
+                  <div className="cartao-tags">
+                    {a.tags.map((t, idx) => (
+                      <span
+                        key={idx}
+                        className={'cartao-tag-chip' + (tagSelecionada?.toLowerCase() === t.toLowerCase() ? ' ativo' : '')}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTagSelecionada((prev) => (prev?.toLowerCase() === t.toLowerCase() ? null : t));
+                        }}
+                        title={`Filtrar por tag "${t}"`}
+                      >
+                        #{t}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
                 {!modoSelecao && (
-                  <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                  <div className="cartao-acoes">
                     <button
-                      className="btn ghost sm"
-                      onClick={(e) => { e.stopPropagation(); duplicarAgente(a.id); recarregar(); }}
+                      type="button"
+                      className="btn-cartao-acao"
+                      title="Editar tags"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditarTagsAgente(a);
+                      }}
                     >
-                      Duplicar
+                      <IconeTag size={14} /> Tags
                     </button>
                     <button
-                      className="btn danger sm"
+                      type="button"
+                      className="btn-cartao-acao btn-cartao-icone"
+                      title="Duplicar agente"
+                      aria-label="Duplicar agente"
+                      onClick={(e) => { e.stopPropagation(); duplicarAgente(a.id); recarregar(); }}
+                    >
+                      <IconeCopiar size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-cartao-acao btn-cartao-icone danger"
+                      title="Eliminar agente"
+                      aria-label="Eliminar agente"
                       onClick={(e) => abrirApagarIndividual(e, a)}
                     >
-                      Apagar
+                      <IconeLixo size={15} />
                     </button>
                   </div>
                 )}
@@ -274,11 +380,20 @@ export default function Inicio({ aoCriar, aoAbrir }) {
       {lista.length > 0 && listaFiltrada.length === 0 && (
         <div style={{ textAlign: 'center', marginTop: 30, color: 'var(--txt-dim)' }}>
           <p style={{ fontSize: 15, marginBottom: 10 }}>
-            Nenhum personagem encontrado para "<b>{busca}</b>".
+            Nenhum personagem encontrado{busca ? ` para "${busca}"` : ''}{tagSelecionada ? ` com a tag "#${tagSelecionada}"` : ''}.
           </p>
-          <button type="button" className="btn ghost sm" onClick={() => setBusca('')}>
-            Limpar pesquisa
-          </button>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+            {busca && (
+              <button type="button" className="btn ghost sm" onClick={() => setBusca('')}>
+                Limpar pesquisa
+              </button>
+            )}
+            {tagSelecionada && (
+              <button type="button" className="btn ghost sm" onClick={() => setTagSelecionada(null)}>
+                Limpar filtro de tag
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -286,6 +401,36 @@ export default function Inicio({ aoCriar, aoAbrir }) {
         <p style={{ color: 'var(--txt-fraco)', marginTop: 24, fontSize: 14 }}>
           Ainda não há agentes guardados neste browser.
         </p>
+      )}
+
+      {/* Modal de Edição Rápida de Tags */}
+      {editarTagsAgente && (
+        <div className="modal-fundo" onClick={(e) => e.target === e.currentTarget && setEditarTagsAgente(null)}>
+          <div className="modal" style={{ maxWidth: 460 }}>
+            <div className="modal-topo">
+              <h3 style={{ margin: 0, fontFamily: 'var(--display)', fontSize: 18 }}>
+                Tags de <b>{editarTagsAgente.nome || 'Sem nome'}</b>
+              </h3>
+              <button className="fechar" onClick={() => setEditarTagsAgente(null)}>×</button>
+            </div>
+            <div className="modal-corpo">
+              <EditorTags
+                tags={editarTagsAgente.tags || []}
+                onChange={(novasTags) => {
+                  const atualizado = { ...editarTagsAgente, tags: novasTags };
+                  guardarAgente(atualizado);
+                  setEditarTagsAgente(atualizado);
+                  recarregar();
+                }}
+              />
+            </div>
+            <div className="modal-acoes" style={{ marginTop: 20 }}>
+              <button type="button" className="btn" onClick={() => setEditarTagsAgente(null)} style={{ width: '100%' }}>
+                Concluído
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {confirmarApagar && (
