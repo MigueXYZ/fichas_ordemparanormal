@@ -150,7 +150,18 @@ export default function TabelaPericias({ personagem, setPersonagem, onRolar }) {
                   ))}
                 </select>
               </td>
-              <td className="bonus">{l.bonus >= 0 ? `+${l.bonus}` : l.bonus}</td>
+              <td
+                className="bonus"
+                title={[
+                  `Treino ${l.treino >= 0 ? '+' : ''}${l.treino}`,
+                  l.outros ? `Outros (manual) ${l.outros >= 0 ? '+' : ''}${l.outros}` : null,
+                  l.exposicao ? `Alteração por exposição ${l.exposicao >= 0 ? '+' : ''}${l.exposicao}` : null,
+                  l.monstruoso ? `Trilha do Monstruoso ${l.monstruoso >= 0 ? '+' : ''}${l.monstruoso}` : null,
+                  l.penalidade ? `Penalidade de carga −${l.penalidade}` : null,
+                ].filter(Boolean).join(' · ') || 'Sem bónus nem penalidades'}
+              >
+                {l.bonus >= 0 ? `+${l.bonus}` : l.bonus}
+              </td>
               <td>
                 <SelectScroll
                   value={l.grau}
@@ -166,7 +177,12 @@ export default function TabelaPericias({ personagem, setPersonagem, onRolar }) {
               <td>
                 <InputNumeroScroll
                   value={l.outros}
-                  title="Altera digitando ou com o scroll do rato"
+                  className={l.outros && l.monstruoso ? 'aviso-outros' : undefined}
+                  title={
+                    l.outros && l.monstruoso
+                      ? `Altera digitando ou com o scroll do rato. Atenção: já tens ${l.monstruoso >= 0 ? '+' : ''}${l.monstruoso} automático da Trilha do Monstruoso nesta perícia — se este valor manual for um resto de antes da automatização, os dois estão a somar-se.`
+                      : 'Altera digitando ou com o scroll do rato'
+                  }
                   onChange={(novo) => setPericia(l.id, { outros: novo })}
                 />
               </td>

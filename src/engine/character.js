@@ -66,6 +66,17 @@ export function personagemVazio() {
     habilidades: [],
     rituais: [],
     inventario: [],
+
+    // Trilha do Monstruoso (Combatente/Especialista/Ocultista) — ver
+    // engine/monstruoso.js e data/monstruoso.js. Tudo nesta trilha é diário
+    // (só existe enquanto monstruosoAtivoHoje) exceto o que é explicitamente
+    // permanente no livro — ver os dois campos marcados abaixo.
+    monstruosoElemento: null,        // Sangue | Morte | Conhecimento | Energia — escolha permanente
+    monstruosoAtivoHoje: false,      // fez a etapa ritualística hoje?
+    monstruosoDrenagem: 0,           // "Ser Testado" (Especialista, 40%+): pontos drenados hoje (volta a 0 ao desativar)
+    monstruosoEscolhas: { periciasConhecimento: [], rituais: {} }, // escolhas permanentes que a trilha pede (rituais à escolha, perícias livres)
+    monstruosoPresencaPerdida: [],   // PERMANENTE: patamares (65/99) em que já perdeu 1 Presença; nunca reverte
+
     creditoLimite: '',
     pontosPrestigio: '',
     patenteTexto: '',

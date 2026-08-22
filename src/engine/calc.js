@@ -2,6 +2,10 @@ import { PERICIAS, GRAUS_TREINO } from '../data/pericias.js';
 import { CLASSES_POR_ID } from '../data/classes.js';
 import { PATENTES_POR_ID, CATEGORIAS, categoriaRomana, patentePorPrestigio } from '../data/patentes.js';
 import { PROGRESSAO_PD, ALTERACOES_GERAIS } from '../data/regrasOpcionais.js';
+import {
+  efeitosDiarios as efeitosDiariosMonstruoso, atributosEfetivos as atributosEfetivosMonstruoso,
+  periciasTreinadasAtivas as periciasTreinadasAtivasMonstruoso, resistenciaTextoAtual as resistenciaTextoAtualMonstruoso,
+} from './monstruoso.js';
 
 export const NEX_TRACK = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 99];
 
@@ -65,22 +69,24 @@ function bonusPeExposicao(personagem) {
 
 export function calcMaximos(personagem) {
   const classe = CLASSES_POR_ID[personagem.classeId];
-  
-  const a = { ...(personagem.atributos || {}) };
-  if (personagem.monstruosoAtivo) {
-    const el = personagem.monstruosoElemento;
-    if (el === 'Sangue') a.pre = a.for;
-    else if (el === 'Morte') a.pre = a.vig;
-    else if (el === 'Conhecimento') a.pre = a.int;
-    else if (el === 'Energia') a.pre = a.agi;
-  }
-
   const nex = nexEfetivo(personagem);
+
+  // Trilha do Monstruoso: enquanto a etapa ritualística de hoje estiver em
+  // efeito (ou o Combatente já tiver tudo permanente, aos 99%), os atributos
+  // já vêm com os bónus/penalidades da trilha somados (atributosEfetivos), e
+  // o atributo do elemento escolhido pode substituir Presença para calcular
+  // PE (a partir de que patamar depende da classe — ver data/monstruoso.js).
+  // Ver engine/monstruoso.js (efeitosDiarios/atributosEfetivos) para a regra.
+  const efMonstruoso = efeitosDiariosMonstruoso(personagem, nex);
+
+  const a = atributosEfetivosMonstruoso(personagem, nex);
+  if (efMonstruoso.peAtributo) a.pre = a[efMonstruoso.peAtributo];
+
   const semSanidade = Boolean(personagem.regras?.semSanidade);
   if (!classe) return { pv: 0, san: 0, pe: 0, pd: 0, semSanidade };
 
   const manual = (v) => (v === null || v === undefined || v === '' ? null : Number(v));
-  
+
   const pvManual = manual(personagem.pvMaxManual);
   const sanManual = manual(personagem.sanMaxManual);
   const peManual = manual(personagem.peMaxManual);
@@ -121,6 +127,7 @@ export function calcPenalidadesCondicoes(personagem) {
   let dadosGeral = 0;
   const dadosAttr = { for: 0, agi: 0, int: 0, pre: 0, vig: 0 };
   const dadosPericia = {};
+  const flatPericia = {};
   let deslocamentoEfeito = 'normal';
 
   for (const c of conds) {
@@ -142,7 +149,20 @@ export function calcPenalidadesCondicoes(personagem) {
     else if (ef.deslocamento === 'metade' && deslocamentoEfeito === 'normal') deslocamentoEfeito = 'metade';
   }
 
-  return { condicoes: conds, penalidadeDefesa, dadosGeral, dadosAttr, dadosPericia, deslocamentoEfeito };
+  // Trilha do Monstruoso: penalidades/bónus de perícia da etapa de hoje.
+  // Dado (pool) e número plano (flat) são coisas diferentes — ver o
+  // cabeçalho de engine/monstruoso.js — por isso vêm em sacos separados.
+  const nex = nexEfetivo(personagem);
+  const efMonstruoso = efeitosDiariosMonstruoso(personagem, nex);
+  for (const [per, val] of Object.entries(efMonstruoso.dadosPericia)) {
+    dadosPericia[per] = (dadosPericia[per] || 0) + val;
+  }
+  for (const [per, val] of Object.entries(efMonstruoso.flatPericia)) {
+    flatPericia[per] = (flatPericia[per] || 0) + val;
+  }
+  if (efMonstruoso.defesaExtra) penalidadeDefesa += efMonstruoso.defesaExtra;
+
+  return { condicoes: conds, penalidadeDefesa, dadosGeral, dadosAttr, dadosPericia, flatPericia, deslocamentoEfeito, monstruoso: efMonstruoso };
 }
 
 export function calcDeslocamento(personagem) {
@@ -156,9 +176,7 @@ export function calcDeslocamento(personagem) {
   else if (conds.deslocamentoEfeito === 1.5) finalDesloc = 1.5;
   else if (conds.deslocamentoEfeito === 'metade') finalDesloc = Math.max(0, Math.floor((aposCarga / 2) / 1.5) * 1.5);
 
-  if (personagem.monstruosoAtivo && personagem.monstruosoElemento === 'Energia') {
-    finalDesloc += 6; // Bónus fixo de +6 metros para Energia
-  }
+  finalDesloc += conds.monstruoso.deslocamentoExtra || 0;
   return finalDesloc;
 }
 
@@ -166,9 +184,11 @@ export function calcDefesa(personagem) {
   const conds = calcPenalidadesCondicoes(personagem);
   const carga = calcCarga(personagem);
   const penalidadeCarga = carga.sobrecarregado ? -5 : 0;
+  const nex = nexEfetivo(personagem);
+  const a = atributosEfetivosMonstruoso(personagem, nex);
   return (
     10 +
-    Number(personagem.atributos.agi || 0) +
+    Number(a.agi || 0) +
     Number(personagem.defesaEquipamento || 0) +
     Number(personagem.defesaOutros || 0) +
     conds.penalidadeDefesa +
@@ -182,23 +202,36 @@ export function calcDefesas(personagem) {
   const fortitude = bonusDe('fortitude');
   const reflexos = bonusDe('reflexos');
   const defesa = calcDefesa(personagem);
+  const nex = nexEfetivo(personagem);
 
   const manual = (v) => (v === null || v === undefined || v === '' ? null : Number(v));
   const bloqueioManual = manual(personagem.bloqueioManual);
   const esquivaManual = manual(personagem.esquivaManual);
 
-  const bloqueioAuto = fortitude.bonus + Number(personagem.bloqueioExtra || 0);
+  // RD da Trilha do Monstruoso: só a do Especialista-Sangue (drenagem "Ser
+  // Testado", 40%+) é GERAL (o livro não lhe associa nenhum tipo de dano —
+  // só o dano extra é "de Sangue", a resistência em si cobre qualquer coisa)
+  // — por isso é a única que soma a sério ao Bloqueio (que já É a RD desta
+  // ficha). A do Combatente só cobre tipos específicos por elemento; como a
+  // ficha não guarda tipos de dano, fica de fora da soma e aparece só como
+  // nota (ver `trilhaTexto`), para não fingir que protege de tudo.
+  const rdTrilhaGeral = efeitosDiariosMonstruoso(personagem, nex).resistenciaDano || 0;
+  const trilhaTexto = resistenciaTextoAtualMonstruoso(personagem, nex);
+
+  const bloqueioAuto = fortitude.bonus + Number(personagem.bloqueioExtra || 0) + rdTrilhaGeral;
   const esquivaAuto = defesa + reflexos.bonus + Number(personagem.esquivaExtra || 0);
 
   return {
     defesa,
     bloqueio: {
-      disponivel: bloqueioManual !== null || fortitude.treino > 0,
+      disponivel: bloqueioManual !== null || fortitude.treino > 0 || rdTrilhaGeral > 0,
       manual: bloqueioManual !== null,
       valor: bloqueioManual !== null ? bloqueioManual : bloqueioAuto,
       auto: bloqueioAuto,
       base: fortitude.bonus,
-      formula: 'RD = bónus de Fortitude',
+      trilha: rdTrilhaGeral,
+      trilhaTexto,
+      formula: 'RD = bónus de Fortitude' + (rdTrilhaGeral ? ` + ${rdTrilhaGeral} da Trilha do Monstruoso` : ''),
       requisito: 'Precisa de treino em Fortitude (ou escreve o valor à mão)',
     },
     esquiva: {
@@ -223,6 +256,12 @@ export function calcPericias(personagem) {
   const carga = calcCarga(personagem);
   const penalidadeCarga = carga.penalidade + (Number(personagem.penalidadeCarga) || 0);
   const conds = calcPenalidadesCondicoes(personagem);
+  const nex = nexEfetivo(personagem);
+  const a = atributosEfetivosMonstruoso(personagem, nex);
+  // Treino concedido pela trilha do Monstruoso (Ocultismo desde 10%; e as 2
+  // perícias livres do Especialista/Conhecimento, também desde 10%) — só
+  // está em efeito enquanto a etapa de hoje está ativa (regra-mãe).
+  const treinoMonstruoso = periciasTreinadasAtivasMonstruoso(personagem, nex);
 
   const atingidas = alteracoesAtingidas(personagem).map((a) => a.id);
   const exp = personagem.exposicao || {};
@@ -234,23 +273,29 @@ export function calcPericias(personagem) {
 
   return PERICIAS.map((p) => {
     const estado = personagem.pericias?.[p.id] || { grau: 'destreinado', outros: 0 };
-    const treino = bonusGrau(estado.grau);
+    const treinoForcado = estado.grau === 'destreinado' && treinoMonstruoso.forcar.has(p.id);
+    const treino = treinoForcado ? bonusGrau('treinado') : bonusGrau(estado.grau);
     const outros = Number(estado.outros || 0);
     const penalidade = p.carga ? penalidadeCarga : 0;
-    const attr = estado.attr || p.attr;
+    // A trilha do Monstruoso pode trocar o atributo-chave de uma perícia
+    // nomeada (ex.: Combatente Conhecimento 40%: Enganação passa a usar
+    // Intelecto) — só quando a jogadora não trocou o atributo à mão.
+    const attr = estado.attr || conds.monstruoso.atributoPericia?.[p.id] || p.attr;
     const exposicao =
       (ocultismoLivre && p.id === 'ocultismo' && treino > 0 ? 2 : 0) -
       (penalizadas.has(p.id) ? 5 : 0);
     const desbloqueada = ocultismoLivre && p.id === 'ocultismo';
 
-    const dadosBase = Number(personagem.atributos[attr] || 0);
+    const dadosBase = Number(a[attr] || 0);
     const penalidadeDados = conds.dadosGeral + (conds.dadosAttr[attr] || 0) + (conds.dadosPericia[p.id] || 0);
     const dados = Math.max(0, dadosBase + penalidadeDados);
+    const monstruoso = (conds.flatPericia[p.id] || 0) + (treinoMonstruoso.flatExtra[p.id] || 0);
 
     return {
       ...p, attr, attrPadrao: p.attr, attrTrocado: attr !== p.attr,
-      grau: estado.grau, dados, dadosBase, treino, outros, penalidade, exposicao,
-      bonus: treino + outros + exposicao - penalidade,
+      grau: treinoForcado ? 'treinado' : estado.grau, dados, dadosBase, treino, outros, penalidade, exposicao, monstruoso,
+      treinadaPeloMonstruoso: treinoForcado,
+      bonus: treino + outros + exposicao + monstruoso - penalidade,
       bloqueada: p.treinada && treino === 0 && !desbloqueada,
     };
   });
@@ -273,7 +318,8 @@ export function bonusDeCarga(personagem) {
 }
 
 export function calcCargaMaxima(personagem) {
-  const forca = Number(personagem.atributos.for || 0);
+  const nex = nexEfetivo(personagem);
+  const forca = Number(atributosEfetivosMonstruoso(personagem, nex).for || 0);
   const base = forca <= 0 ? 2 : forca * 5;
   return base + bonusDeCarga(personagem);
 }
