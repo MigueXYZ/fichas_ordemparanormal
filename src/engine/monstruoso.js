@@ -23,8 +23,10 @@ import {
   PATAMARES_MONSTRUOSO, ATRIBUTO_DO_ELEMENTO, PERICIAS_PENALIZADAS,
   PROGRESSAO_PENALIDADE, RECUPERACAO_POR_PATAMAR, CONSOME_COMPONENTE,
   PE_POR_ATRIBUTO_DESDE, SOMA_ATRIBUTO_EM_PERICIAS, SOMA_ATRIBUTO_DESDE,
-  EFEITOS_DIARIOS_COMBATENTE, DESLOCAMENTO_ENERGIA_EXTRA, TREINO_INICIAL,
-  EFEITOS_POR_PATAMAR, TEXTOS_POR_PATAMAR, CONSEQUENCIAS, TRILHA_ID_POR_CLASSE,
+  EFEITOS_DIARIOS_COMBATENTE, DESLOCAMENTO_ENERGIA_EXTRA, deslocamentoEnergiaExtraAtual,
+  PV_TEMP_IMEDIATO_MORTE, pvTempImediatoMorteAtual,
+  PERICIAS_LIVRES_CONHECIMENTO_POR_PATAMAR, quantidadePericiasLivresConhecimento,
+  TREINO_INICIAL, EFEITOS_POR_PATAMAR, TEXTOS_POR_PATAMAR, CONSEQUENCIAS, TRILHA_ID_POR_CLASSE,
   NOME_PODER_POR_PATAMAR, RESISTENCIA_POR_PATAMAR, RESISTENCIA_TIPOS_COMBATENTE,
   DRENAGEM_ATRIBUTO, COR_ELEMENTO, TAMANHO_ESPECIALISTA_SANGUE,
   patamaresPresencaPermanente, TUDO_PERMANENTE_DESDE,
@@ -125,11 +127,13 @@ export function escolherRitual(personagem, ganhoId, ritualId) {
   return { patch: { monstruosoEscolhas: { ...escolhas, rituais: { ...(escolhas.rituais || {}), [ganhoId]: ritualId } } } };
 }
 
-/** Guarda a escolha das 2 perícias livres (Especialista, Conhecimento, 10%). */
+/** Guarda a escolha das perícias livres (Especialista, Conhecimento: 2 desde os 10%, 3 desde os 99%). */
 export function escolherPericiasConhecimento(personagem, periciaIds) {
   const escolhas = escolhasDe(personagem);
   return { patch: { monstruosoEscolhas: { ...escolhas, periciasConhecimento: periciaIds } } };
 }
+
+export { quantidadePericiasLivresConhecimento };
 
 /**
  * Soma viva de todos os deltas de atributo em efeito agora (ganhos por
@@ -193,6 +197,21 @@ export function rituaisAtivos(personagem, nex) {
   const escolhas = escolhasDe(personagem);
   const resultado = [];
   for (const g of ganhosAtivos(personagem, nex)) {
+    if (g.tipo === 'ritual-toque') {
+      // Poder de toque (ex.: Especialista-Conhecimento 65%: Detecção de
+      // Ameaças/Mergulho Mental) — NÃO é uma conjuração normal (livro: ação
+      // completa + custo fixo de PE, sem teste de Ocultismo, sem custo por
+      // círculo). Aparece na lista de rituais por pedido explícito, mas
+      // `_semTeste` avisa a interface para desconta só o PE, sem rolar.
+      resultado.push({
+        nome: g.nome, circulo: '', elemento: '',
+        execucao: 'ação completa (toque)', alcance: 'toque', alvo: '', duracao: '',
+        resistencia: '', custo: `${g.custoPe} PE`,
+        descricao: 'Concedido pela Trilha do Monstruoso — poder de toque fixo, sem teste de Ocultismo.',
+        _monstruoso: true, _monstruosoId: g.id, _semTeste: true, _custoFixoPe: g.custoPe,
+      });
+      continue;
+    }
     if (g.tipo !== 'ritual' && g.tipo !== 'ritual-escolha') continue;
     let ritual = null;
     if (g.tipo === 'ritual') {
@@ -224,16 +243,21 @@ export function rituaisAtivos(personagem, nex) {
 
 /**
  * Perícias treinadas pela trilha, em efeito agora: Ocultismo (10%+, todas as
- * classes) e as 2 perícias livres do Especialista/Conhecimento (10%).
+ * classes) e as perícias livres do Especialista/Conhecimento (2 desde os
+ * 10%, sobe para 3 aos 99% — ver PERICIAS_LIVRES_CONHECIMENTO_POR_PATAMAR).
  * `forcar` = ids a tratar como treinadas mesmo destreinadas; `flatExtra` =
- * bónus plano (o "+2 em vez de treinar" quando já é treinada por outra via).
+ * bónus plano (o "+2 em vez de treinar" quando já é treinada por outra via);
+ * `expertForcado` = ids que, aos 99%, sobem diretamente a grau Expert (a
+ * trilha substitui o próprio grau que ela deu em Ser Experimentado, não é
+ * cumulativo com o progresso normal de NEX da personagem).
  */
 export function periciasTreinadasAtivas(personagem, nex) {
-  const resultado = { forcar: new Set(), flatExtra: {} };
+  const resultado = { forcar: new Set(), flatExtra: {}, expertForcado: new Set() };
   if (!efetivamenteAtivo(personagem, nex)) return resultado;
   const classe = classeMonstruosa(personagem);
   const elemento = elementoAtual(personagem);
-  if (!classe || !elemento || patamarAtual(nex) < 10) return resultado;
+  const patamar = patamarAtual(nex);
+  if (!classe || !elemento || patamar < 10) return resultado;
 
   const treino = TREINO_INICIAL[classe];
   const jaTreinada = (personagem.pericias?.[treino.pericia]?.grau || 'destreinado') !== 'destreinado';
@@ -243,7 +267,11 @@ export function periciasTreinadasAtivas(personagem, nex) {
 
   if (classe === 'especialista' && elemento === 'Conhecimento') {
     const escolhas = escolhasDe(personagem);
-    for (const id of escolhas.periciasConhecimento || []) resultado.forcar.add(id);
+    for (const id of escolhas.periciasConhecimento || []) {
+      if (!id) continue;
+      resultado.forcar.add(id);
+      if (patamar >= 99) resultado.expertForcado.add(id);
+    }
   }
   return resultado;
 }
@@ -381,7 +409,7 @@ export function efeitosDiarios(personagem, nex) {
     ataqueBonusDados.push({ faces: 8, quantidade: 1, corpoACorpoApenas: true });
   }
 
-  const deslocamentoExtra = elemento === 'Energia' ? (DESLOCAMENTO_ENERGIA_EXTRA[classe] || 0) : 0;
+  const deslocamentoExtra = elemento === 'Energia' ? deslocamentoEnergiaExtraAtual(classe, patamar) : 0;
   const peDesde = PE_POR_ATRIBUTO_DESDE[classe]?.[elemento];
   const peAtributo = peDesde != null && patamar >= peDesde ? ATRIBUTO_DO_ELEMENTO[elemento] : null;
 
@@ -456,13 +484,22 @@ function normalizar(txt) {
   return String(txt || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
-/** Procura "Componentes Ritualísticos [de <Elemento>]" no inventário. */
-function encontrarComponente(inventario, elemento) {
+/**
+ * Procura "Componentes Ritualísticos de <Elemento>" no inventário — TEM de
+ * ser exatamente o elemento certo. Não existe componente "genérico" que
+ * sirva para qualquer elemento: o livro é claro, "componentes ritualísticos
+ * são necessários para a conjuração de rituais do elemento em questão" — só
+ * Sangue serve para rituais/etapa de Sangue, só Morte para Morte, etc.
+ */
+export function encontrarComponente(inventario, elemento) {
   const lista = inventario || [];
   const elNorm = normalizar(elemento);
-  const doElemento = lista.findIndex((i) => normalizar(i.nome).includes('componentes ritualistic') && normalizar(i.nome).includes(elNorm));
-  if (doElemento !== -1) return doElemento;
-  return lista.findIndex((i) => normalizar(i.nome).includes('componentes ritualistic'));
+  return lista.findIndex((i) => normalizar(i.nome).includes('componentes ritualistic') && normalizar(i.nome).includes(elNorm));
+}
+
+/** Tem no inventário Componentes Ritualísticos do elemento certo? */
+export function temComponentesDoElemento(inventario, elemento) {
+  return encontrarComponente(inventario, elemento) !== -1;
 }
 
 /**
@@ -499,7 +536,7 @@ export function ativarHoje(personagem, nex, { onRolar } = {}) {
   if (CONSOME_COMPONENTE[classe]) {
     const idx = encontrarComponente(inventario, elemento);
     if (idx === -1) {
-      return { erro: `Precisas de "Componentes Ritualísticos de ${elemento}" (ou genéricos) no inventário.` };
+      return { erro: `Precisas de "Componentes Ritualísticos de ${elemento}" no inventário — os de outro elemento não servem.` };
     }
     inventario = [...inventario];
     const item = inventario[idx];
@@ -521,6 +558,22 @@ export function ativarHoje(personagem, nex, { onRolar } = {}) {
       patch.pvAtual = Number(personagem.pvAtual || 0) + rolo.total;
     } else if (rolo && recuperacao.recurso === 'pe') {
       patch.peAtual = Number(personagem.peAtual || 0) + rolo.total;
+    }
+  }
+
+  // Especialista-Morte (10%+): PV temporários IMEDIATOS ao ativar a etapa de
+  // hoje ("no início da transformação") — 2d6, sobe para 4d6 aos 99%. É uma
+  // mecânica DIFERENTE do "+2d8 por cena" da drenagem 40%+ (ver
+  // efeitosDrenagem/pvTempCena) — as duas coexistem, não se substituem.
+  if (classe === 'especialista' && elemento === 'Morte') {
+    const tabelaPvTemp = pvTempImediatoMorteAtual(patamar);
+    if (tabelaPvTemp) {
+      const roloPvTemp = rolarDano({
+        nome: `PV Temporário Imediato — ${NOME_PODER_POR_PATAMAR[classe][patamar]} (Morte)`,
+        dano: `${tabelaPvTemp.dados}d${tabelaPvTemp.faces}`,
+      });
+      if (roloPvTemp && onRolar) onRolar(roloPvTemp);
+      if (roloPvTemp) patch.pvTemp = Number(personagem.pvTemp || 0) + roloPvTemp.total;
     }
   }
 
@@ -602,8 +655,8 @@ function linhasGeraisNoPatamar(classe, elemento, patamar) {
     linhas.push(`Soma ${NOME_ATRIBUTO[ATRIBUTO_DO_ELEMENTO[elemento]]} em testes baseados nesse atributo`);
   }
 
-  if (classe === 'especialista' && elemento === 'Energia' && patamar === 10 && DESLOCAMENTO_ENERGIA_EXTRA.especialista > 0) {
-    linhas.push(`Deslocamento +${DESLOCAMENTO_ENERGIA_EXTRA.especialista}m`);
+  if (classe === 'especialista' && elemento === 'Energia' && DESLOCAMENTO_ENERGIA_EXTRA.especialista[patamar]) {
+    linhas.push(`Deslocamento +${DESLOCAMENTO_ENERGIA_EXTRA.especialista[patamar]}m${patamar > 10 ? ' (substitui o valor anterior)' : ''}`);
   }
 
   if (classe === 'especialista' && elemento === 'Sangue' && TAMANHO_ESPECIALISTA_SANGUE[patamar]) {

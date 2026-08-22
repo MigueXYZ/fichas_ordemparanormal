@@ -45,11 +45,6 @@ export function personagemVazio() {
     pdTemp: 0,
     sanTemp: 0,     // NOVO: Sanidade temporária
 
-    // NOVO: Gestão manual de máximos (null = cálculo automático)
-    pvMaxManual: null,
-    sanMaxManual: null,
-    peMaxManual: null,
-
     defesaEquipamento: 0,
     defesaOutros: 0,
     bloqueioExtra: 0,

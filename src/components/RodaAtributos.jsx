@@ -29,7 +29,17 @@ const CIRCULOS = {
   vig: { cx: 688.5, cy: 792.0, r: 122, ny: 740 },
 };
 
-export default function RodaAtributos({ atributos, onChange, onRolar, mini = false, podeSubir, podeDescer }) {
+/**
+ * `efetivos` (opcional): os mesmos atributos, mas já com os buffs/penalidades
+ * ao vivo da Trilha do Monstruoso somados (ver `atributosEfetivos` em
+ * engine/monstruoso.js). Quando presente, a roda MOSTRA e ROLA este valor
+ * (o que a personagem tem agora, incluindo drenagem/atributo da trilha) —
+ * os botões +/− continuam a editar sempre o valor BASE (`atributos`), nunca
+ * o efetivo, para não misturar "pontos gastos na criação" com "bónus
+ * temporário de hoje". Quando o valor efetivo difere do base, o número
+ * fica colorido (verde a subir, vermelho a descer) para ficar óbvio.
+ */
+export default function RodaAtributos({ atributos, efetivos, onChange, onRolar, mini = false, podeSubir, podeDescer }) {
   return (
     <svg
       className={mini ? 'roda roda-mini' : 'roda'}
@@ -41,30 +51,35 @@ export default function RodaAtributos({ atributos, onChange, onRolar, mini = fal
 
       {ATRIBUTOS.map((a) => {
         const c = CIRCULOS[a.id];
-        const valor = Number(atributos[a.id] ?? 0);
+        const valorBase = Number(atributos[a.id] ?? 0);
+        const valorEfetivo = Number((efetivos ? efetivos[a.id] : valorBase) ?? valorBase);
+        const alterado = efetivos != null && valorEfetivo !== valorBase;
         const podeMais = podeSubir ? podeSubir(a.id) : true;
         const podeMenos = podeDescer ? podeDescer(a.id) : true;
         const yBotoes = c.cy + c.r + 36;
         return (
           <g key={a.id}>
             <text
-              className="atr-valor"
+              className={'atr-valor' + (alterado ? (valorEfetivo > valorBase ? ' atr-buff' : ' atr-debuff') : '')}
               data-attr={a.id}
               x={c.cx}
               y={c.ny}
               dy="0.34em"
               textAnchor="middle"
-              onClick={() => onRolar && onRolar(a, valor)}
+              onClick={() => onRolar && onRolar(a, valorEfetivo)}
             >
-              <title>{onRolar ? `Rolar ${a.nome}: ${valor}d20` : a.nome}</title>
-              {valor}
+              <title>
+                {onRolar ? `Rolar ${a.nome}: ${valorEfetivo}d20` : a.nome}
+                {alterado ? ` (base ${valorBase}, ${valorEfetivo > valorBase ? '+' : ''}${valorEfetivo - valorBase} da Trilha do Monstruoso)` : ''}
+              </title>
+              {valorEfetivo}
             </text>
 
             {onChange && (
               <g className="atr-controlos">
                 <g
                   className={'atr-botao' + (podeMenos ? '' : ' inativo')}
-                  onClick={() => podeMenos && onChange(a.id, valor - 1)}
+                  onClick={() => podeMenos && onChange(a.id, valorBase - 1)}
                 >
                   <title>Baixar {a.nome}</title>
                   <circle cx={c.cx - 30} cy={yBotoes} r={22} />
@@ -72,7 +87,7 @@ export default function RodaAtributos({ atributos, onChange, onRolar, mini = fal
                 </g>
                 <g
                   className={'atr-botao' + (podeMais ? '' : ' inativo')}
-                  onClick={() => podeMais && onChange(a.id, valor + 1)}
+                  onClick={() => podeMais && onChange(a.id, valorBase + 1)}
                 >
                   <title>Subir {a.nome}</title>
                   <circle cx={c.cx + 30} cy={yBotoes} r={22} />

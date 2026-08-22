@@ -4,6 +4,9 @@ import { ExibirDanoSeparado, obterInfoTipoDano } from './ExibirDano.jsx';
 
 /** A conta que deu origem ao resultado, conforme o tipo de rolagem. */
 export function Dados({ r }) {
+  if (r.semTeste) {
+    return <span className="conta">poder de toque — sem teste de Ocultismo</span>;
+  }
   if (r.tipo === 'dano') {
     if (r.partes && r.partes.length > 0) {
       return (

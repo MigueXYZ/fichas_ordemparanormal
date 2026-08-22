@@ -11,10 +11,12 @@ import { novoAtaque, novoItem, novaHabilidade, novoRitual } from '../../engine/c
 import { rolarExpressao, rolarAtaqueCompleto, rolarDano, rolarTeste } from '../../engine/dados.js';
 import { estatisticasArma, interpretarCritico, armaDoItem, ehArma, formulaTeste } from '../../engine/armas.js';
 import { precoDoRitual } from '../../engine/rituais.js';
-import { ataquesNaturaisAtivos, rituaisAtivos } from '../../engine/monstruoso.js';
+import { ataquesNaturaisAtivos, rituaisAtivos, temComponentesDoElemento } from '../../engine/monstruoso.js';
+import { ELEMENTOS_MONSTRUOSO, COR_ELEMENTO } from '../../data/monstruoso.js';
 import EditorArma from './EditorArma.jsx';
 import { calcPericias } from '../../engine/calc.js';
 import IconeD20 from '../IconeD20.jsx';
+import CabecalhoSeta from './CabecalhoSeta.jsx';
 import { obterInfoTipoDano } from '../ExibirDano.jsx';
 
 const NOME_ATRIBUTO = { for: 'Força', agi: 'Agilidade', int: 'Intelecto', pre: 'Presença', vig: 'Vigor' };
@@ -30,6 +32,29 @@ function Campo({ label, valor, onChange, tipo = 'text', opcoes, readOnly = false
         </select>
       ) : (
         <input type={tipo} value={valor ?? ''} onChange={(e) => onChange(e.target.value)} readOnly={readOnly} />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Descrição de habilidade/ritual — fica totalmente fechada por omissão
+ * (só o nome e as infos necessárias ficam visíveis fora daqui), com uma
+ * setinha para abrir e mostrar o texto todo. Nada de pré-visualização: ou
+ * está fechada (sem texto nenhum) ou está aberta (texto completo).
+ */
+function TextoExpandivel({ texto, cor = 'var(--txt-dim)' }) {
+  const [aberto, setAberto] = useState(false);
+  if (!texto) return null;
+  return (
+    <div style={{ marginTop: 8 }}>
+      <CabecalhoSeta estaAberto={aberto} onClick={() => setAberto((v) => !v)}>
+        {aberto ? 'Esconder descrição' : 'Mostrar descrição'}
+      </CabecalhoSeta>
+      {aberto && (
+        <div style={{ color: cor, fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap', marginTop: 6 }}>
+          {texto}
+        </div>
       )}
     </div>
   );
@@ -244,9 +269,36 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
   const atual = usaPd ? (personagem.pdAtual ?? max.pd) : (personagem.peAtual ?? max.pe);
   const dt = Number(personagem.dtRitual) || null;
 
+  // "Componentes ritualísticos são necessários para a conjuração de rituais
+  // do elemento em questão" (Livro Base) — precisa dos componentes DESSE
+  // elemento, os de outro elemento não servem. Medo não tem componentes
+  // (não existem, por regra) e "variável (à escolha)" não tem um elemento
+  // fixo para verificar — nenhum dos dois entra nesta exigência.
+  function precisaComponente(r) {
+    return Boolean(r.elemento) && r.elemento !== 'medo' && r.elemento !== 'variavel';
+  }
+  function temComponente(r) {
+    return !precisaComponente(r) || temComponentesDoElemento(personagem.inventario, r.elemento);
+  }
+
   function conjurar(r) {
     const custo = Number(String(r.custo).replace(/\D/g, '')) || 0;
-    if (custo > atual) return;
+    if (custo > atual || !temComponente(r)) return;
+
+    // Poder de toque da Trilha do Monstruoso (Especialista-Conhecimento
+    // 65%+: Detecção de Ameaças/Mergulho Mental) — só desconta o PE fixo,
+    // sem teste de Ocultismo nem custo de Sanidade por círculo (não é uma
+    // conjuração normal, ver `_semTeste` em engine/monstruoso.js).
+    if (r._semTeste) {
+      setPersonagem({ ...personagem, [usaPd ? 'pdAtual' : 'peAtual']: atual - custo });
+      onRolar({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        tipo: 'ritual', semTeste: true, nome: r.nome || 'Ritual', detalhe: 'poder de toque — sem teste',
+        notas: [`${custo} ${usaPd ? 'PD' : 'PE'} gastos`, 'Poder de toque da Trilha do Monstruoso — sem teste de Ocultismo'],
+        total: 'concedido', critico: false, falhaCritica: false,
+      });
+      return;
+    }
 
     const circulo = Number(r.circulo) || 1;
     const oc = calcPericias(personagem).find((x) => x.id === 'ocultismo') || { dados: 0, bonus: 0 };
@@ -310,6 +362,9 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
           const custo = Number(String(r.custo).replace(/\D/g, '')) || 0;
           const circulo = Number(r.circulo) || 1;
           const podeGastar = custo <= atual;
+          const componenteOk = temComponente(r);
+          const podeConjurar = podeGastar && componenteOk;
+          const nomeElemento = ELEMENTOS.find((e) => e.id === r.elemento)?.nome || r.elemento;
           const desc = r.descricao || '';
           const m = desc.match(/(\d+d\d+(?:\s*[+-]\s*\d+)?)\s*(?:pontos\s+de\s+dano\s*(?:de\s+)?([a-zA-Záàãâéêíóôõúç]+)?|de\s+dano\s*(?:de\s+)?([a-zA-Záàãâéêíóôõúç]+)?)/i);
           const danoExpr = r.dano || (m ? m[1].replace(/\s/g, '') : null);
@@ -323,15 +378,23 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
                     {r._monstruoso && <span className="pill" style={{ marginLeft: 8, fontSize: 10 }} title="Concedido pela Trilha do Monstruoso — só enquanto a etapa de hoje está ativa">MONSTRUOSO</span>}
                   </b>
                   <div className="arma-stats" style={{ fontSize: '14px' }}>
-                    <span>{circulo}º círculo</span>
+                    {!r._semTeste && <span>{circulo}º círculo</span>}
                     {r.elemento && <span>{r.elemento}</span>}
                     <span>{custo} {usaPd ? 'PD' : 'PE'}</span>
-                    <span title="Abaixo disto perdes 1 de Sanidade; abaixo de 10 + círculo, perdes 1 permanente">
-                      Ocultismo {20 + circulo} / {10 + circulo}
-                    </span>
+                    {!r._semTeste && (
+                      <span title="Abaixo disto perdes 1 de Sanidade; abaixo de 10 + círculo, perdes 1 permanente">
+                        Ocultismo {20 + circulo} / {10 + circulo}
+                      </span>
+                    )}
+                    {r._semTeste && <span title="Poder de toque da Trilha do Monstruoso — sem teste de Ocultismo">sem teste</span>}
                     {r.execucao && <span>{r.execucao}</span>}
                     {r.alcance && <span>{r.alcance}</span>}
                     {r.resistencia && <span>resistência: {r.resistencia}</span>}
+                    {!componenteOk && (
+                      <span style={{ color: 'var(--sangue-claro)' }} title={`Precisas de "Componentes Ritualísticos de ${nomeElemento}" no inventário`}>
+                        sem componentes de {nomeElemento}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -346,8 +409,13 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
                   )}
                   <button
                     className="btn sm"
-                    disabled={!podeGastar}
-                    title={podeGastar ? `Gasta ${custo} ${usaPd ? 'PD' : 'PE'} e faz o teste de Ocultismo` : 'Não tens pontos que cheguem'}
+                    disabled={!podeConjurar}
+                    title={
+                      !podeGastar ? 'Não tens pontos que cheguem'
+                      : !componenteOk ? `Precisas de "Componentes Ritualísticos de ${nomeElemento}" no inventário — os de outro elemento não servem`
+                      : r._semTeste ? `Gasta ${custo} ${usaPd ? 'PD' : 'PE'} — sem teste de Ocultismo (poder de toque)`
+                      : `Gasta ${custo} ${usaPd ? 'PD' : 'PE'} e faz o teste de Ocultismo`
+                    }
                     onClick={() => conjurar(r)}
                   >
                     Conjurar
@@ -420,7 +488,7 @@ export function AbaHabilidades({ personagem, setPersonagem }) {
           {automaticas.map((h, i) => (
             <div className="bloco" key={'auto' + i}>
               <div className="topo"><b style={{ fontSize: '18px' }}>{h.nome}</b><span className="pill">{h.fonte}{h.nex ? ` · NEX ${h.nex}%` : ''}</span></div>
-              <div style={{ color: 'var(--txt-dim)', fontSize: '14.5px', marginTop: 6 }}>{h.descricao}</div>
+              <TextoExpandivel texto={h.descricao} />
             </div>
           ))}
         </div>
@@ -458,6 +526,55 @@ export function AbaRituais({ personagem, setPersonagem }) {
   const lista = [...listaPropria, ...concedidos];
   const [aEscolher, setAEscolher] = useState(false);
   const circuloMax = circuloMaximoPorNex(nexEfetivo(personagem));
+  // Um ritual trazido do catálogo já vem com tudo certo (é conteúdo oficial)
+  // — por isso aparece normal, só de consulta, com um botão "Editar" ao
+  // lado para quem quiser mesmo assim ajustar algo. Um ritual em branco
+  // ("Novo Ritual") não tem nada para mostrar, por isso esse sim começa
+  // logo aberto no formulário. `emEdicao` guarda os índices (em
+  // `listaPropria`) que estão neste momento no modo de edição.
+  const [emEdicao, setEmEdicao] = useState(() => new Set());
+  function alternarEdicao(i) {
+    setEmEdicao((prev) => {
+      const novo = new Set(prev);
+      if (novo.has(i)) novo.delete(i); else novo.add(i);
+      return novo;
+    });
+  }
+  function novoRitualEmBranco() {
+    const i = listaPropria.length;
+    adicionar(novoRitual());
+    setEmEdicao((prev) => new Set(prev).add(i));
+  }
+
+  // Rituais "Variável (à escolha)" (ex.: Amaldiçoar Arma) pedem para
+  // escolher um elemento AO APRENDER — essa escolha fica permanente no
+  // ritual. `escolherElementoPara` guarda a lista de elementos possíveis
+  // (r.elementos) e o que fazer com a escolha; serve tanto para um ritual
+  // novo vindo do catálogo como para trocar o de um já guardado (pelo
+  // lápis, que avisa primeiro que isto não é suposto acontecer).
+  const [escolherElementoPara, setEscolherElementoPara] = useState(null); // { opcoes, aoEscolher(id) }
+  const [avisoTrocarElemento, setAvisoTrocarElemento] = useState(null); // { i, opcoes }
+
+  function pedirElementoParaNovoRitual(r) {
+    setAEscolher(false);
+    setEscolherElementoPara({
+      opcoes: r.elementos,
+      aoEscolher: (id) => { adicionar({ ...r, elemento: id, custo: r.circulo }); setEscolherElementoPara(null); },
+    });
+  }
+
+  function pedirTrocarElemento(i, r) {
+    setAvisoTrocarElemento({ i, opcoes: r.elementos });
+  }
+
+  function confirmarTrocarElemento() {
+    const { i, opcoes } = avisoTrocarElemento;
+    setAvisoTrocarElemento(null);
+    setEscolherElementoPara({
+      opcoes,
+      aoEscolher: (id) => { editar(i, { elemento: id }); setEscolherElementoPara(null); },
+    });
+  }
 
   return (
     <div>
@@ -475,7 +592,7 @@ export function AbaRituais({ personagem, setPersonagem }) {
           >
             Rituais do Catálogo
           </button>
-          <button className="btn" onClick={() => adicionar(novoRitual())}>Novo Ritual</button>
+          <button className="btn" onClick={novoRitualEmBranco}>Novo Ritual</button>
         </div>
       </div>
 
@@ -495,9 +612,65 @@ export function AbaRituais({ personagem, setPersonagem }) {
               <span className="corte">{r.descricao}</span>
             </>
           )}
-          onEscolher={(r) => { adicionar({ ...r, custo: r.circulo }); setAEscolher(false); }}
+          onEscolher={(r) => {
+            if (r.elemento === 'variavel') pedirElementoParaNovoRitual(r);
+            else { adicionar({ ...r, custo: r.circulo }); setAEscolher(false); }
+          }}
           onFechar={() => setAEscolher(false)}
         />
+      )}
+
+      {escolherElementoPara && (
+        <div className="modal-fundo" style={{ zIndex: 100 }} onClick={(e) => e.target === e.currentTarget && setEscolherElementoPara(null)}>
+          <div className="modal" style={{ maxWidth: 440, textAlign: 'center' }}>
+            <div className="modal-topo">
+              <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>Escolhe o Elemento</h3>
+              <button className="fechar" onClick={() => setEscolherElementoPara(null)}>×</button>
+            </div>
+            <div className="modal-corpo">
+              <p style={{ color: 'var(--txt-dim)', fontSize: 14.5, marginBottom: 24 }}>
+                Escolha permanente — o ritual passa a ser deste elemento.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                {escolherElementoPara.opcoes.map((id) => {
+                  const el = ELEMENTOS.find((e) => e.id === id);
+                  if (!el) return null;
+                  return (
+                    <button
+                      key={id} className="btn ghost"
+                      style={{ borderColor: el.cor, color: el.cor, padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+                      onClick={() => escolherElementoPara.aoEscolher(id)}
+                    >
+                      <img src={`/img/sigilo-${id}.png`} alt={el.nome} style={{ width: 46, height: 46, objectFit: 'contain', mixBlendMode: 'screen', marginBottom: 8 }} />
+                      <strong style={{ fontSize: 15 }}>{el.nome.toUpperCase()}</strong>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {avisoTrocarElemento && (
+        <div className="modal-fundo" style={{ zIndex: 100 }} onClick={(e) => e.target === e.currentTarget && setAvisoTrocarElemento(null)}>
+          <div className="modal" style={{ maxWidth: 420, textAlign: 'center' }}>
+            <div className="modal-topo">
+              <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>Trocar de elemento?</h3>
+              <button className="fechar" onClick={() => setAvisoTrocarElemento(null)}>×</button>
+            </div>
+            <div className="modal-corpo">
+              <p style={{ color: 'var(--txt-dim)', fontSize: 14.5, marginBottom: 22 }}>
+                A escolha do elemento deste ritual é <strong>permanente</strong> — não é suposto voltar atrás depois
+                de a fazeres. Isto aqui é só para quando isso aconteceu por engano, ou o mestre permitir uma exceção.
+              </p>
+              <div style={{ display: 'flex', gap: 14, justifyContent: 'center' }}>
+                <button className="btn ghost" onClick={() => setAvisoTrocarElemento(null)}>Cancelar</button>
+                <button className="btn" style={{ borderColor: 'var(--sangue)', background: 'var(--sangue)' }} onClick={confirmarTrocarElemento}>Sim, escolher outro elemento</button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {lista.length === 0 ? (
@@ -518,15 +691,67 @@ export function AbaRituais({ personagem, setPersonagem }) {
                     {r.execucao && <span>{r.execucao}</span>}
                     {r.alcance && <span>{r.alcance}</span>}
                   </div>
-                  {r.descricao && <p style={{ fontSize: 13, color: 'var(--txt-dim)', marginTop: 8 }}>{r.descricao}</p>}
+                  <TextoExpandivel texto={r.descricao} />
                 </div>
               );
             }
+
+            // Ritual próprio (não concedido pela trilha): vem do catálogo
+            // (conteúdo oficial, mostra-se normal, com "Editar" ao lado) ou
+            // é um ritual em branco/à mão, que começa logo no formulário.
+            if (!emEdicao.has(i)) {
+              return (
+                <div className="bloco" key={i}>
+                  <div className="topo">
+                    <b style={{ fontSize: '18px' }}>{r.nome || 'Sem nome'}</b>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button className="btn ghost sm" onClick={() => alternarEdicao(i)}>Editar</button>
+                      <button className="btn sm danger" onClick={() => remover(i)}>Remover</button>
+                    </div>
+                  </div>
+                  <div className="arma-stats" style={{ fontSize: '14px' }}>
+                    {r.circulo !== '' && r.circulo != null && <span>{r.circulo}º círculo</span>}
+                    {r.elemento && (
+                      <span>
+                        {ELEMENTOS.find((e) => e.id === r.elemento)?.nome || r.elemento}
+                        {r.elementos?.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => pedirTrocarElemento(i, r)}
+                            title="Trocar de elemento (não é suposto — só para engano ou exceção do mestre)"
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--txt-fraco)', marginLeft: 4, fontSize: 12, padding: 0 }}
+                          >
+                            ✎
+                          </button>
+                        )}
+                      </span>
+                    )}
+                    {r.execucao && <span>{r.execucao}</span>}
+                    {r.alcance && <span>{r.alcance}</span>}
+                    {r.alvo && <span>{r.alvo}</span>}
+                    {r.duracao && <span>{r.duracao}</span>}
+                    {r.resistencia && <span>{r.resistencia}</span>}
+                    {r.custo !== '' && r.custo != null && <span>{r.custo} PE</span>}
+                  </div>
+                  <TextoExpandivel texto={r.descricao} />
+                  {(r.discente || r.verdadeiro) && (
+                    <div style={{ fontSize: 13, color: 'var(--txt-dim)', marginTop: 8 }}>
+                      {r.discente && <div><b>Discente ({r.discente.custo}):</b> {r.discente.texto} {r.discente.requer}</div>}
+                      {r.verdadeiro && <div><b>Verdadeiro ({r.verdadeiro.custo}):</b> {r.verdadeiro.texto} {r.verdadeiro.requer}</div>}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
             return (
               <div className="bloco" key={i}>
                 <div className="topo">
                   <input type="text" placeholder="Nome do ritual" value={r.nome} onChange={(e) => editar(i, { nome: e.target.value })} style={{ fontSize: '18px', fontWeight: 'bold' }} />
-                  <button className="btn sm danger" onClick={() => remover(i)}>Remover</button>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button className="btn ghost sm" onClick={() => alternarEdicao(i)}>Concluir edição</button>
+                    <button className="btn sm danger" onClick={() => remover(i)}>Remover</button>
+                  </div>
                 </div>
                 <div className="grelha">
                   <Campo label="Círculo" valor={r.circulo} onChange={(v) => editar(i, { circulo: Number(v) })} opcoes={CIRCULOS.map((c) => ({ value: c, label: `${c}º` }))} />
@@ -564,9 +789,13 @@ export function AbaInventario({ personagem, setPersonagem }) {
   const [aEscolher, setAEscolher] = useState(false);
   const [aEscolherArma, setAEscolherArma] = useState(false);
   const [aEditarArma, setAEditarArma] = useState(null);   
-  const [aEditarItem, setAEditarItem] = useState(null);   
+  const [aEditarItem, setAEditarItem] = useState(null);
   const [itemParaAdicionar, setItemParaAdicionar] = useState(null);
   const [aviso, setAviso] = useState(null);
+  // "Componentes Ritualísticos de (Elemento)" é o mesmo item para os 4
+  // elementos — antes de o meter no inventário, pergunta-se qual (mesmo
+  // popup de escolha usado no elemento do Monstruoso).
+  const [aEscolherElementoComponente, setAEscolherElementoComponente] = useState(null);
   const catalogoArmas = ITENS.filter(ehArma);
   const catalogoItens = ITENS.filter((i) => !ehArma(i));
   const carga = calcCarga(personagem);
@@ -593,17 +822,17 @@ export function AbaInventario({ personagem, setPersonagem }) {
           <label>Crédito</label>
           <input type="text" readOnly value={cats.patente.credito} />
         </div>
-        <div className="campo" style={{ maxWidth: 240, marginBottom: 0 }}>
+        <div className="campo" style={{ maxWidth: 280, marginBottom: 0 }}>
           <label>Carga</label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <input
               type="text" readOnly
               className={carga.sobrecarregado ? 'mau' : ''}
               value={`${carga.usados} / ${carga.max}`}
               title={`5 espaços por ponto de Força · máximo absoluto ${carga.limiteAbsoluto}`}
-              style={{ width: '80px', textAlign: 'center' }}
+              style={{ width: 90, flexShrink: 0, textAlign: 'center' }}
             />
-            <span className="dica" style={{ fontSize: '11px', lineHeight: '1.2', textAlign: 'left' }}>
+            <span className="dica" style={{ whiteSpace: 'nowrap', fontSize: '11px', lineHeight: '1.2', textAlign: 'left' }}>
               {carga.dosItens} em itens · {carga.dasArmas} em armas
               {carga.bonus ? ` · +${carga.bonus} de equipamento` : ''}
             </span>
@@ -746,12 +975,63 @@ export function AbaInventario({ personagem, setPersonagem }) {
             </>
           )}
           onEscolher={(i) => {
-            setItemParaAdicionar({ item: i, quantidade: 1 });
+            if (ehArma(i)) {
+              armas.adicionar(armaDoItem(i));
+              setAviso(`${i.nome} foi para o separador Combate, já equipada.`);
+              setAEscolher(false);
+            } else if (i.id === 'componentes-ritualisticos-de-elemento') {
+              // Este item serve para os 4 elementos — pergunta qual antes de o
+              // meter no inventário, em vez de ficar com "(Elemento)" no nome.
+              setAEscolher(false);
+              setAEscolherElementoComponente(i);
+            } else {
+              setAEscolher(false);
+              setItemParaAdicionar({ item: i, quantidade: 1 });
+            }
           }}
           onFechar={() => setAEscolher(false)}
         />
       )}
 
+      {aEscolherElementoComponente && (
+        <div className="modal-fundo" style={{ zIndex: 100 }} onClick={(e) => e.target === e.currentTarget && setAEscolherElementoComponente(null)}>
+          <div className="modal" style={{ maxWidth: 440, textAlign: 'center' }}>
+            <div className="modal-topo">
+              <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>De que elemento são os Componentes?</h3>
+              <button className="fechar" onClick={() => setAEscolherElementoComponente(null)}>×</button>
+            </div>
+            <div className="modal-corpo">
+              <p style={{ color: 'var(--txt-dim)', fontSize: 14.5, marginBottom: 24 }}>
+                Componentes ritualísticos são específicos de um elemento (Sangue, Morte, Conhecimento ou Energia).
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                {ELEMENTOS_MONSTRUOSO.map((el) => (
+                  <button
+                    key={el} className="btn ghost"
+                    style={{ borderColor: COR_ELEMENTO[el], color: COR_ELEMENTO[el], padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+                    onClick={() => {
+                      const i = aEscolherElementoComponente;
+                      adicionar({
+                        nome: `Componentes Ritualísticos de ${el}`,
+                        categoria: categoriaRomana(i.categoria) ?? '',
+                        espacos: i.espacos ?? 1,
+                        cargaBonus: i.cargaBonus ?? 0,
+                        descricao: i.descricao || '',
+                        manual: false,
+                      });
+                      setAviso(null);
+                      setAEscolherElementoComponente(null);
+                    }}
+                  >
+                    <img src={`/img/sigilo-${el.toLowerCase()}.png`} alt={el} style={{ width: 46, height: 46, objectFit: 'contain', mixBlendMode: 'screen', marginBottom: 8 }} />
+                    <strong style={{ fontSize: 15 }}>{el.toUpperCase()}</strong>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {itemParaAdicionar && (
         <div className="modal-fundo" style={{ zIndex: 100 }} onClick={(e) => e.target === e.currentTarget && setItemParaAdicionar(null)}>
           <div className="modal" style={{ maxWidth: 420 }}>
