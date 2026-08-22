@@ -31,7 +31,7 @@ function InputNumeroScroll({ value, onChange, ...props }) {
   );
 }
 
-export default function BarraRecurso({ titulo, classe, atual, max, onChange, temp = 0, onTemp, maxManual, onMaxManualChange }) {
+export default function BarraRecurso({ titulo, classe, atual, max, onChange, temp = 0, onTemp, extra = 0, onExtraChange }) {
   const [aEditarTemp, setAEditarTemp] = useState(false);
   const [destravado, setDestravado] = useState(false);
   const [modal, setModal] = useState(null); // null | 'valor' | 'excedente'
@@ -39,16 +39,17 @@ export default function BarraRecurso({ titulo, classe, atual, max, onChange, tem
   const [excedente, setExcedente] = useState(0);
 
   const t = Math.max(0, Number(temp) || 0);
+  const ex = Number(extra) || 0;
   const valor = Math.max(0, Math.min(Number(atual ?? max ?? 0), Number(max || 0)));
   const pct = max > 0 ? (valor / max) * 100 : 0;
 
+  // O máximo em si (max, vindo de fora) É SEMPRE automático — Vigor/Presença,
+  // Trilha do Monstruoso, NEX, etc. "Destrancar" aqui não substitui isso por
+  // um valor preso; só soma/subtrai um bónus fixo (extra) por cima, que
+  // continua a acompanhar o automático para sempre (item, talento, maldição).
   function tirarUm() {
-    if (destravado && onMaxManualChange) {
-      const novoMax = Math.max(0, max - 1);
-      onMaxManualChange(novoMax);
-      if (valor > novoMax) {
-        onChange(novoMax);
-      }
+    if (destravado && onExtraChange) {
+      onExtraChange(ex - 1);
     } else {
       if (t > 0 && onTemp) onTemp(t - 1);
       else onChange(Math.max(0, valor - 1));
@@ -56,26 +57,18 @@ export default function BarraRecurso({ titulo, classe, atual, max, onChange, tem
   }
 
   function adicionarUm() {
-    if (destravado && onMaxManualChange) {
-      onMaxManualChange(max + 1);
+    if (destravado && onExtraChange) {
+      onExtraChange(ex + 1);
     } else {
       onChange(Math.max(0, Math.min(valor + 1, max)));
     }
   }
 
   function editarMaximo() {
-    if (!destravado || !onMaxManualChange) return;
-    const res = window.prompt(`Novo limite para ${titulo} (deixa vazio para repor o valor automático):`, max);
+    if (!destravado || !onExtraChange) return;
+    const res = window.prompt(`Bónus/penalidade fixa somada ao máximo automático de ${titulo} (0 = nenhum):`, ex);
     if (res === null) return;
-    if (res.trim() === '') {
-      onMaxManualChange(null);
-    } else {
-      const novoMax = Math.max(0, Number(res) || 0);
-      onMaxManualChange(novoMax);
-      if (valor > novoMax) {
-        onChange(novoMax);
-      }
-    }
+    onExtraChange(Math.trunc(Number(res) || 0));
   }
 
   /**
@@ -113,14 +106,14 @@ export default function BarraRecurso({ titulo, classe, atual, max, onChange, tem
         
         {/* Lado esquerdo (vazio ou com o botão de destrancar se houver) */}
         <div style={{ justifySelf: 'start' }}>
-          {onMaxManualChange && (
+          {onExtraChange && (
             <button
               type="button"
               onClick={() => setDestravado(!destravado)}
-              title={destravado ? "Bloquear limites" : "Desbloquear limites"}
+              title={destravado ? "Fechar ajuste de bónus" : "Ajustar bónus/penalidade fixa ao máximo (soma-se ao automático — não o substitui)"}
               style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', opacity: destravado ? 1 : 0.5, padding: 0 }}
             >
-              {destravado ? '🔓' : '🔒'}
+              {destravado ? '✎' : '±'}
             </button>
           )}
         </div>
@@ -161,7 +154,7 @@ export default function BarraRecurso({ titulo, classe, atual, max, onChange, tem
 
       <div className="linha-barra">
         <button type="button" className="extremo" onClick={() => { onChange(0); onTemp?.(0); }} title="Zerar">«</button>
-        <button type="button" onClick={tirarUm} title={destravado ? "Reduzir Limite Máximo" : "−1"} aria-label="Menos um">−</button>
+        <button type="button" onClick={tirarUm} title={destravado ? "Reduzir bónus fixo ao máximo" : "−1"} aria-label="Menos um">−</button>
         <div className="valor">
           <div className="preenchido" style={{ width: pct + '%' }} />
           {t > 0 && <div className="temporario" style={{ width: Math.min(100, (t / Math.max(1, max)) * 100) + '%' }} />}
@@ -174,14 +167,23 @@ export default function BarraRecurso({ titulo, classe, atual, max, onChange, tem
               {valor}
             </span> / <span
               onClick={editarMaximo}
-              style={{ cursor: destravado ? 'pointer' : 'default', textDecoration: destravado ? 'underline dotted' : 'none' }}
-              title={destravado ? "Clica para editar manualmente ou repor o automático" : ""}
+              style={{
+                cursor: destravado ? 'pointer' : 'default',
+                textDecoration: destravado ? 'underline dotted' : 'none',
+              }}
+              title={destravado ? 'Clica para somar/subtrair um bónus fixo ao máximo (o máximo em si continua sempre automático)' : ''}
             >
               {max}
-            </span> {t > 0 ? ` +${t}` : ''}
+            </span>
+            {ex !== 0 && (
+              <span style={{ color: 'var(--txt-fraco)', fontSize: '10px' }} title={`Máximo automático com um bónus fixo de ${ex > 0 ? '+' : ''}${ex} por cima`}>
+                {' '}({ex > 0 ? '+' : ''}{ex})
+              </span>
+            )}
+            {t > 0 ? ` +${t}` : ''}
           </span>
         </div>
-        <button type="button" onClick={adicionarUm} title={destravado ? "Aumentar Limite Máximo" : "+1"} aria-label="Mais um">+</button>
+        <button type="button" onClick={adicionarUm} title={destravado ? "Aumentar bónus fixo ao máximo" : "+1"} aria-label="Mais um">+</button>
         <button type="button" className="extremo" onClick={() => onChange(max)} title="Encher">»</button>
       </div>
 

@@ -8,8 +8,12 @@ import {
   efeitosDiarios, ativarHoje, desativarHoje, escolherElemento, limiteDrenagem,
   ataquesNaturaisAtivos, rituaisAtivos, escolhasNecessarias,
   escolherRitual, escolherPericiasConhecimento, resistenciaTextoAtual, consequenciasAtivas,
-  resumoPorPatamar, temComponentesDoElemento,
+  resumoPorPatamar, temComponentesDoElemento, periciasTreinadasAtivas,
 } from '../src/engine/monstruoso.js';
+import {
+  pvTempImediatoMorteAtual, deslocamentoEnergiaExtraAtual,
+  quantidadePericiasLivresConhecimento, TEXTOS_POR_PATAMAR,
+} from '../src/data/monstruoso.js';
 
 let passou = 0;
 function teste(nome, fn) {
@@ -697,6 +701,151 @@ teste('limiteDrenagem usa o atributo drenado (não o do elemento)', () => {
   const p = especialistaMonstruoso(40, 'Sangue');
   p.atributos.int = 3;
   assert.equal(limiteDrenagem(p, 40), 3);
+});
+
+// ------------------------------------------------------------------
+// Ronda de correções: Especialista Morte (PV temp. imediato aos 10%/99%,
+// texto dos 65%), upgrades de "Ser Apavorante" (99%: Morte/Conhecimento/
+// Energia), bónus genérico da drenagem de Conhecimento aplicado a testes
+// reais de Intelecto, e o bloqueio das perícias livres depois de escolhidas.
+// ------------------------------------------------------------------
+
+teste('Especialista Morte 10%: ativar a etapa rola +2d6 PV temporário IMEDIATO (distinto do +2d8/cena da drenagem 40%+)', () => {
+  const p = especialistaMonstruoso(10, 'Morte');
+  ativar(p);
+  assert.ok(p.pvTemp >= 2 && p.pvTemp <= 12, `pvTemp fora do intervalo 2d6: ${p.pvTemp}`);
+});
+
+teste('Especialista Morte 99%: o PV temporário imediato sobe de 2d6 para 4d6 ("Ser Apavorante" substitui "Ser Experimentado")', () => {
+  assert.deepEqual(pvTempImediatoMorteAtual(10), { dados: 2, faces: 6 });
+  assert.deepEqual(pvTempImediatoMorteAtual(40), { dados: 2, faces: 6 }); // não muda aos 40%/65%, só aos 99%
+  assert.deepEqual(pvTempImediatoMorteAtual(99), { dados: 4, faces: 6 });
+
+  const p = especialistaMonstruoso(99, 'Morte');
+  ativar(p);
+  assert.ok(p.pvTemp >= 4, `esperava pelo menos 4 (mínimo de 4d6), veio ${p.pvTemp}`);
+});
+
+teste('Especialista Morte 65%: o texto já não fala em "reviver" a pessoa — é uma visão das memórias dela, não uma ressurreição', () => {
+  const texto65 = TEXTOS_POR_PATAMAR.especialista.Morte.find((t) => t.patamar === 65).texto;
+  assert.match(texto65, /memórias/i);
+  assert.doesNotMatch(texto65, /reviver a última pessoa/i);
+});
+
+teste('Especialista Energia: deslocamento extra é +6m desde os 10%, sobe para +12m aos 99% (substitui, não soma)', () => {
+  assert.equal(deslocamentoEnergiaExtraAtual('especialista', 10), 6);
+  assert.equal(deslocamentoEnergiaExtraAtual('especialista', 65), 6);
+  assert.equal(deslocamentoEnergiaExtraAtual('especialista', 99), 12);
+  assert.equal(deslocamentoEnergiaExtraAtual('combatente', 99), 0); // só o Especialista tem isto
+
+  const p = especialistaMonstruoso(99, 'Energia');
+  ativar(p);
+  assert.equal(efeitosDiarios(p, 99).deslocamentoExtra, 12);
+});
+
+teste('Especialista Conhecimento: 2 perícias livres desde os 10%, sobe para 3 aos 99%', () => {
+  assert.equal(quantidadePericiasLivresConhecimento(10), 2);
+  assert.equal(quantidadePericiasLivresConhecimento(65), 2);
+  assert.equal(quantidadePericiasLivresConhecimento(99), 3);
+});
+
+teste('Especialista Conhecimento 99%: as perícias escolhidas aos 10% sobem de Treinado (+5) para Expert (+15)', () => {
+  const p = especialistaMonstruoso(99, 'Conhecimento');
+  Object.assign(p, escolherPericiasConhecimento(p, ['medicina', 'investigacao']).patch);
+  ativar(p);
+
+  const linhas99 = calcPericias(p);
+  const medicina99 = linhas99.find((l) => l.id === 'medicina');
+  assert.equal(medicina99.grau, 'expert');
+  assert.equal(medicina99.treino, 15);
+
+  // Ao patamar 40 (antes dos 99%), a mesma escolha fica só em Treinado (+5).
+  const p40 = especialistaMonstruoso(40, 'Conhecimento');
+  Object.assign(p40, escolherPericiasConhecimento(p40, ['medicina', 'investigacao']).patch);
+  ativar(p40);
+  const medicina40 = calcPericias(p40).find((l) => l.id === 'medicina');
+  assert.equal(medicina40.grau, 'treinado');
+  assert.equal(medicina40.treino, 5);
+});
+
+teste('Especialista Conhecimento 99%: não desce quem já é Veterano/Expert por progressão normal de NEX', () => {
+  const p = especialistaMonstruoso(99, 'Conhecimento');
+  Object.assign(p, escolherPericiasConhecimento(p, ['medicina', 'investigacao']).patch);
+  p.pericias = { medicina: { grau: 'veterano', outros: 0 } };
+  ativar(p);
+  const medicina = calcPericias(p).find((l) => l.id === 'medicina');
+  assert.equal(medicina.treino, 15); // veterano (10) < expert (15) -> ainda sobe
+});
+
+teste('periciasTreinadasAtivas: expertForcado só inclui as perícias livres do Especialista-Conhecimento, e só aos 99%', () => {
+  const p = especialistaMonstruoso(40, 'Conhecimento');
+  Object.assign(p, escolherPericiasConhecimento(p, ['medicina', 'investigacao']).patch);
+  ativar(p);
+  assert.equal(periciasTreinadasAtivas(p, 40).expertForcado.size, 0);
+
+  const p99 = especialistaMonstruoso(99, 'Conhecimento');
+  Object.assign(p99, escolherPericiasConhecimento(p99, ['medicina', 'investigacao']).patch);
+  ativar(p99);
+  const ef = periciasTreinadasAtivas(p99, 99);
+  assert.equal(ef.expertForcado.has('medicina'), true);
+  assert.equal(ef.expertForcado.has('investigacao'), true);
+  assert.equal(ef.expertForcado.has('ocultismo'), false);
+});
+
+teste('Especialista Conhecimento 40%+: o +1d6 "em testes baseados em Intelecto" da drenagem soma-se de facto à rolagem de perícias de Intelecto', () => {
+  const p = especialistaMonstruoso(40, 'Conhecimento');
+  ativar(p);
+  p.monstruosoDrenagem = 1; // base 1d6 + 1 ponto inexistido = 2d6
+
+  const linhas = calcPericias(p);
+  const medicina = linhas.find((l) => l.id === 'medicina'); // atr: int
+  const luta = linhas.find((l) => l.id === 'luta'); // atr: for — não deve levar o bónus
+
+  assert.deepEqual(medicina.dadosExtra, ['2d6']);
+  assert.match(medicina.dadosExtraDescricao, /Intelecto/);
+  assert.deepEqual(luta.dadosExtra, []);
+});
+
+teste('Especialista Conhecimento: sem a etapa ativa (ou sem drenagem), nenhuma perícia leva dadosExtra', () => {
+  const p = especialistaMonstruoso(40, 'Conhecimento'); // nunca ativado
+  const linhas = calcPericias(p);
+  assert.deepEqual(linhas.find((l) => l.id === 'medicina').dadosExtra, []);
+});
+
+teste('Especialista Morte: o PV máximo (fórmula soma Vigor) sobe quando o Vigor efetivo sobe aos 65%/99% — desde que o máximo não esteja travado à mão', () => {
+  const semTrilha = especialistaMonstruoso(65, 'Morte');
+  const pvSemTrilha = calcMaximos(semTrilha).pv; // etapa nunca ativada -> sem bónus de Vigor
+
+  const comTrilha = especialistaMonstruoso(65, 'Morte');
+  ativar(comTrilha); // Vigor efetivo sobe +1 (ver EFEITOS_POR_PATAMAR.especialista.Morte, patamar 65)
+  const pvComTrilha = calcMaximos(comTrilha).pv;
+  assert.ok(pvComTrilha > pvSemTrilha, `esperava o PV máximo subir com o Vigor da trilha: ${pvSemTrilha} -> ${pvComTrilha}`);
+
+  // Um "pvMaxManual" travado (o cadeado da barra de vida) IGNORA o automático
+  // de propósito — é o comportamento já testado para bloqueio/esquiva. Isto
+  // confirma que, se o máximo parecer "preso", a causa é esse travamento.
+  comTrilha.pvMaxManual = 50;
+  assert.equal(calcMaximos(comTrilha).pv, 50);
+});
+
+teste('Especialista Conhecimento 65%+: Detecção de Ameaças/Mergulho Mental aparecem como rituais da trilha, marcados "_semTeste" (poder de toque — só custa PE, sem teste de Ocultismo nem círculo)', () => {
+  const p = especialistaMonstruoso(65, 'Conhecimento');
+  ativar(p);
+  const rituais = rituaisAtivos(p, 65);
+  const nomes = rituais.map((r) => r.nome);
+  assert.ok(nomes.includes('Detecção de Ameaças'));
+  assert.ok(nomes.includes('Mergulho Mental'));
+
+  const deteccao = rituais.find((r) => r.nome === 'Detecção de Ameaças');
+  assert.equal(deteccao._semTeste, true);
+  assert.equal(deteccao._custoFixoPe, 3);
+  assert.equal(deteccao.custo, '3 PE');
+  assert.equal(deteccao.elemento, ''); // sem elemento -> não exige Componentes Ritualísticos
+
+  // Antes dos 65%, ainda não foram concedidos.
+  const p40 = especialistaMonstruoso(40, 'Conhecimento');
+  ativar(p40);
+  assert.equal(rituaisAtivos(p40, 40).some((r) => r.nome === 'Detecção de Ameaças'), false);
 });
 
 console.log(`\n${passou} testes ok`);

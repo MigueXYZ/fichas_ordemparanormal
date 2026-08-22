@@ -13,6 +13,7 @@ import RegrasOpcionais from './RegrasOpcionais.jsx';
 import { ajustarRecursos } from '../../engine/character.js';
 import { lerImagem } from '../../engine/armazenamento.js';
 import { rolarTeste } from '../../engine/dados.js';
+import { atributosEfetivos } from '../../engine/monstruoso.js';
 
 function InputNumeroScroll({ value, onChange, ...props }) {
   const ref = useRef(null);
@@ -171,6 +172,7 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
         <div>
           <RodaAtributos
             atributos={personagem.atributos}
+            efetivos={atributosEfetivos(personagem, nexUtil)}
             mini
             onRolar={(a, valor) => onRolar(rolarTeste({ nome: a.nome, dados: valor, bonus: 0, detalhe: a.sigla }))}
             onChange={(id, v) => {
@@ -235,7 +237,7 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
               titulo="VIDA" classe="barra-vida"
               atual={personagem.pvAtual ?? max.pv} max={max.pv} onChange={(v) => set({ pvAtual: v })}
               temp={personagem.pvTemp || 0} onTemp={(v) => set({ pvTemp: v })}
-              maxManual={personagem.pvMaxManual} onMaxManualChange={(v) => set({ pvMaxManual: v })}
+              extra={personagem.pvExtra} onExtraChange={(v) => set({ pvExtra: v })}
             />
             {max.semSanidade ? (
               <BarraRecurso
@@ -249,13 +251,13 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
                   titulo="SANIDADE" classe="barra-sanidade"
                   atual={personagem.sanAtual ?? max.san} max={max.san} onChange={(v) => set({ sanAtual: v })}
                   temp={personagem.sanTemp || 0} onTemp={(v) => set({ sanTemp: v })}
-                  maxManual={personagem.sanMaxManual} onMaxManualChange={(v) => set({ sanMaxManual: v })}
+                  extra={personagem.sanExtra} onExtraChange={(v) => set({ sanExtra: v })}
                 />
                 <BarraRecurso
                   titulo="ESFORÇO" classe="barra-esforco"
                   atual={personagem.peAtual ?? max.pe} max={max.pe} onChange={(v) => set({ peAtual: v })}
                   temp={personagem.peTemp || 0} onTemp={(v) => set({ peTemp: v })}
-                  maxManual={personagem.peMaxManual} onMaxManualChange={(v) => set({ peMaxManual: v })}
+                  extra={personagem.peExtra} onExtraChange={(v) => set({ peExtra: v })}
                 />
               </>
             )}

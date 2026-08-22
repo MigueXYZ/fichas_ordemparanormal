@@ -125,13 +125,17 @@ export default function TabelaPericias({ personagem, setPersonagem, onRolar }) {
                 <div className="nome-pericia">
                   <button
                     className="dado-btn"
-                    title={l.bloqueada ? 'Perícia somente treinada — sem treino não podes usar' : `Rolar ${l.nome}: ${l.dados}d20 ${l.bonus >= 0 ? '+' : '−'}${Math.abs(l.bonus)}`}
-                    onClick={() => onRolar(rolarTeste({ nome: l.nome, dados: l.dados, bonus: l.bonus }))}
+                    title={l.bloqueada ? 'Perícia somente treinada — sem treino não podes usar' : `Rolar ${l.nome}: ${l.dados}d20 ${l.bonus >= 0 ? '+' : '−'}${Math.abs(l.bonus)}${l.dadosExtra?.length ? ` + ${l.dadosExtra.join(' + ')} (${l.dadosExtraDescricao})` : ''}`}
+                    onClick={() => onRolar(rolarTeste({ nome: l.nome, dados: l.dados, bonus: l.bonus, dadosExtra: l.dadosExtra }))}
                   >
                     <IconeD20 />
                   </button>
                   {l.nome}
                   <span className="marca">{(l.treinada ? '*' : '') + (l.carga ? '+' : '')}</span>
+                  {/* O bónus de dado extra da Trilha do Monstruoso (+1d6/+2d6, etc.) já
+                      entra sozinho na rolagem (o dado dela junta-se ao resultado) e
+                      aparece no aviso do botão de rolar (passa o rato por cima) — não
+                      fica cá em cima como emblema, para nunca voltar a desalinhar a linha. */}
                 </div>
               </td>
               <td className="attr">
@@ -176,14 +180,13 @@ export default function TabelaPericias({ personagem, setPersonagem, onRolar }) {
               </td>
               <td>
                 <InputNumeroScroll
-                  value={l.outros}
-                  className={l.outros && l.monstruoso ? 'aviso-outros' : undefined}
+                  value={l.outros + l.monstruoso}
                   title={
-                    l.outros && l.monstruoso
-                      ? `Altera digitando ou com o scroll do rato. Atenção: já tens ${l.monstruoso >= 0 ? '+' : ''}${l.monstruoso} automático da Trilha do Monstruoso nesta perícia — se este valor manual for um resto de antes da automatização, os dois estão a somar-se.`
+                    l.monstruoso
+                      ? 'Altera digitando ou com o scroll do rato. Já inclui o bónus/penalidade automático da Trilha do Monstruoso de hoje — ao desativar a etapa, volta ao valor que estava aqui antes.'
                       : 'Altera digitando ou com o scroll do rato'
                   }
-                  onChange={(novo) => setPericia(l.id, { outros: novo })}
+                  onChange={(novo) => setPericia(l.id, { outros: (novo ?? 0) - l.monstruoso })}
                 />
               </td>
             </tr>

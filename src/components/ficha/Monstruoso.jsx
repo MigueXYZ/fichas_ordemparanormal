@@ -10,8 +10,6 @@
 // poder continua a vir de `data/classes/combatente.js` e
 // `data/extra/as07.js` — não duplicamos esse texto aqui.
 import React, { useState } from 'react';
-import combatente from '../../data/classes/combatente.js';
-import { TRILHAS_AS07 } from '../../data/extra/as07.js';
 import { PERICIAS } from '../../data/pericias.js';
 import { RITUAIS } from '../../data/rituais.js';
 import { nexEfetivo } from '../../engine/calc.js';
@@ -22,15 +20,10 @@ import {
   ativarHoje, desativarHoje, escolherElemento, limiteDrenagem, tudoPermanente,
   escolhasNecessarias, escolherRitual, escolherPericiasConhecimento, rituaisAtivos, resumoPorPatamar,
 } from '../../engine/monstruoso.js';
-import { ELEMENTOS_MONSTRUOSO, NOME_PODER_POR_PATAMAR, TRILHA_ID_POR_CLASSE, COR_ELEMENTO, DRENAGEM_ATRIBUTO } from '../../data/monstruoso.js';
+import { ELEMENTOS_MONSTRUOSO, NOME_PODER_POR_PATAMAR, COR_ELEMENTO, DRENAGEM_ATRIBUTO } from '../../data/monstruoso.js';
+import CabecalhoSeta from './CabecalhoSeta.jsx';
 
 const NOME_ATRIBUTO = { for: 'Força', agi: 'Agilidade', int: 'Intelecto', pre: 'Presença', vig: 'Vigor' };
-
-const TRILHA_TEXTO = {
-  combatente: combatente.trilhas.find((t) => t.id === TRILHA_ID_POR_CLASSE.combatente),
-  especialista: TRILHAS_AS07.find((t) => t.id === TRILHA_ID_POR_CLASSE.especialista),
-  ocultista: TRILHAS_AS07.find((t) => t.id === TRILHA_ID_POR_CLASSE.ocultista),
-};
 
 const IMG_ELEMENTO = {
   Sangue: '/img/sigilo-sangue.png', Morte: '/img/sigilo-morte.png',
@@ -145,7 +138,10 @@ export function MonstruosoBotao({ personagem, setPersonagem, onRolar }) {
           <div className="modal" style={{ maxWidth: 440, textAlign: 'center' }}>
             <div className="modal-topo">
               <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>Etapa Ritualística — {elemento}</h3>
-              <button className="fechar" onClick={() => setModal(null)}>×</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button type="button" onClick={() => setModal('confirmarMudarElemento')} title="Trocar de elemento (não é suposto — só para engano ou exceção do mestre)" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, color: 'var(--txt-fraco)' }}>✎</button>
+                <button className="fechar" onClick={() => setModal(null)}>×</button>
+              </div>
             </div>
             <div className="modal-corpo">
               <p style={{ color: 'var(--txt-dim)', fontSize: 14.5, marginBottom: 16 }}>
@@ -183,7 +179,10 @@ export function MonstruosoBotao({ personagem, setPersonagem, onRolar }) {
           <div className="modal" style={{ maxWidth: 400, textAlign: 'center' }}>
             <div className="modal-topo">
               <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>Desativar Etapa de Hoje</h3>
-              <button className="fechar" onClick={() => setModal(null)}>×</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button type="button" onClick={() => setModal('confirmarMudarElemento')} title="Trocar de elemento (não é suposto — só para engano ou exceção do mestre)" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, color: 'var(--txt-fraco)' }}>✎</button>
+                <button className="fechar" onClick={() => setModal(null)}>×</button>
+              </div>
             </div>
             <div className="modal-corpo">
               <p style={{ color: 'var(--txt-dim)', fontSize: 14.5, marginBottom: 24 }}>
@@ -199,67 +198,103 @@ export function MonstruosoBotao({ personagem, setPersonagem, onRolar }) {
           </div>
         </div>
       )}
+
+      {modal === 'confirmarMudarElemento' && (
+        <div className="modal-fundo" style={{ zIndex: 100 }}>
+          <div className="modal" style={{ maxWidth: 420, textAlign: 'center' }}>
+            <div className="modal-topo">
+              <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>Trocar de elemento?</h3>
+              <button className="fechar" onClick={() => setModal(ativo ? 'desativar' : 'ativar')}>×</button>
+            </div>
+            <div className="modal-corpo">
+              <p style={{ color: 'var(--txt-dim)', fontSize: 14.5, marginBottom: 22 }}>
+                A escolha do elemento da Trilha do Monstruoso é <strong>permanente</strong> — não é suposto voltar
+                atrás depois de a fazeres. Isto aqui é só para quando isso aconteceu por engano, ou o mestre
+                permitir uma exceção.
+              </p>
+              <div style={{ display: 'flex', gap: 14, justifyContent: 'center' }}>
+                <button className="btn ghost" onClick={() => setModal(ativo ? 'desativar' : 'ativar')}>Cancelar</button>
+                <button className="btn" style={{ borderColor: 'var(--sangue)', background: 'var(--sangue)' }} onClick={() => setModal('escolher')}>Sim, escolher outro elemento</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
 
-function TextoPoderOficial({ classe, elemento, patamar }) {
-  const [aberto, setAberto] = useState(false);
-  const trilha = TRILHA_TEXTO[classe];
-  if (!trilha) return null;
-  const poderes = trilha.poderes.filter((p) => p.nex <= patamar);
-  return (
-    <div style={{ marginTop: 10 }}>
-      <button type="button" className="btn ghost sm" onClick={() => setAberto((v) => !v)}>
-        {aberto ? 'Esconder' : 'Ver'} texto oficial ({trilha.livro})
-      </button>
-      {aberto && (
-        <div style={{ marginTop: 10, fontSize: 13, color: 'var(--txt-dim)', lineHeight: 1.55, maxHeight: 320, overflowY: 'auto', paddingRight: 6 }}>
-          {trilha.descricao && <p style={{ whiteSpace: 'pre-wrap', margin: '0 0 10px' }}>{trilha.descricao}</p>}
-          {trilha.especial && <p style={{ whiteSpace: 'pre-wrap', margin: '0 0 10px', fontStyle: 'italic' }}>{trilha.especial}</p>}
-          {trilha.nota && (
-            <div style={{ marginBottom: 14, padding: 8, border: '1px solid var(--linha)', borderRadius: 4 }}>
-              <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{trilha.nota}</p>
-            </div>
-          )}
-          {poderes.map((p) => (
-            <div key={p.nex} style={{ marginBottom: 14 }}>
-              <strong style={{ color: 'var(--txt)' }}>{p.nex}% — {p.nome}</strong>
-              <p style={{ whiteSpace: 'pre-wrap', margin: '4px 0 0' }}>{p.descricao}</p>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** Uma escolha permanente que a trilha pede (ritual à escolha, ou as 2 perícias livres). */
-function LinhaEscolha({ ganho, personagem, setPersonagem }) {
+/**
+ * Uma escolha permanente que a trilha pede (ritual à escolha, ou as
+ * perícias livres do Especialista-Conhecimento).
+ *
+ * As perícias livres NÃO podem ser trocadas depois de guardadas — o livro
+ * não dá essa opção, é uma escolha feita uma vez aos 10%. Aos 99% (`Ser
+ * Apavorante` substitui `Ser Experimentado`), abre-se uma 3ª vaga nova, que
+ * depois de escolhida também fica fixa; as 2 primeiras nunca se mexem.
+ */
+function LinhaEscolha({ ganho, personagem, setPersonagem, patamarAtualNum }) {
   const escolhas = personagem.monstruosoEscolhas || { periciasConhecimento: [], rituais: {} };
 
   if (ganho.tipo === 'pericias-livres') {
-    const [a, b] = escolhas.periciasConhecimento || [];
+    const guardadas = escolhas.periciasConhecimento || [];
+    const [a, b, c] = guardadas;
+    const feitaInicial = Boolean(a && b);
+    const alvo = patamarAtualNum >= 99 ? 3 : 2;
+    const nomeDe = (id) => PERICIAS.find((p) => p.id === id)?.nome || id;
+
     const [periciaA, setPericiaA] = useState(a || '');
     const [periciaB, setPericiaB] = useState(b || '');
-    const feita = Boolean(a && b);
-    function guardar() {
+    const [periciaC, setPericiaC] = useState(c || '');
+
+    function guardarIniciais() {
       setPersonagem((p) => ({ ...p, ...escolherPericiasConhecimento(p, [periciaA, periciaB]).patch }));
     }
+    function guardarTerceira() {
+      setPersonagem((p) => ({ ...p, ...escolherPericiasConhecimento(p, [a, b, periciaC]).patch }));
+    }
+
     return (
       <div style={{ padding: '8px 0', borderBottom: '1px solid var(--linha)' }}>
-        <div style={{ fontSize: 13, marginBottom: 6 }}>{ganho.patamar}% · Escolhe 2 perícias treinadas {feita ? '(já escolhidas — podes trocar)' : ''}</div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <select value={periciaA} onChange={(e) => setPericiaA(e.target.value)} style={{ flex: 1, fontSize: 12 }}>
-            <option value="">-- 1ª perícia --</option>
-            {PERICIAS.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
-          </select>
-          <select value={periciaB} onChange={(e) => setPericiaB(e.target.value)} style={{ flex: 1, fontSize: 12 }}>
-            <option value="">-- 2ª perícia --</option>
-            {PERICIAS.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
-          </select>
-          <button className="btn sm" disabled={!periciaA || !periciaB || periciaA === periciaB} onClick={guardar}>Guardar</button>
+        <div style={{ fontSize: 13, marginBottom: 6 }}>
+          {ganho.patamar}% · Escolhe {alvo} perícias treinadas{alvo > 2 ? ' (3ª desde os 99% — todas ficam em grau Expert)' : ''}
         </div>
+
+        {!feitaInicial && (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <select value={periciaA} onChange={(e) => setPericiaA(e.target.value)} style={{ flex: 1, fontSize: 12 }}>
+              <option value="">-- 1ª perícia --</option>
+              {PERICIAS.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </select>
+            <select value={periciaB} onChange={(e) => setPericiaB(e.target.value)} style={{ flex: 1, fontSize: 12 }}>
+              <option value="">-- 2ª perícia --</option>
+              {PERICIAS.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </select>
+            <button className="btn sm" disabled={!periciaA || !periciaB || periciaA === periciaB} onClick={guardarIniciais}>Guardar</button>
+          </div>
+        )}
+
+        {feitaInicial && (
+          <div style={{ fontSize: 12.5, color: 'var(--txt-dim)' }}>
+            Escolhidas (fixas — não podem ser trocadas): <strong style={{ color: 'var(--txt)' }}>{nomeDe(a)}</strong> e <strong style={{ color: 'var(--txt)' }}>{nomeDe(b)}</strong>
+          </div>
+        )}
+
+        {feitaInicial && alvo > 2 && !c && (
+          <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+            <select value={periciaC} onChange={(e) => setPericiaC(e.target.value)} style={{ flex: 1, fontSize: 12 }}>
+              <option value="">-- 3ª perícia (99%) --</option>
+              {PERICIAS.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </select>
+            <button className="btn sm" disabled={!periciaC} onClick={guardarTerceira}>Guardar</button>
+          </div>
+        )}
+
+        {feitaInicial && alvo > 2 && c && (
+          <div style={{ fontSize: 12.5, color: 'var(--txt-dim)', marginTop: 4 }}>
+            3ª (fixa, desde os 99%): <strong style={{ color: 'var(--txt)' }}>{nomeDe(c)}</strong>
+          </div>
+        )}
       </div>
     );
   }
@@ -287,6 +322,11 @@ function LinhaEscolha({ ganho, personagem, setPersonagem }) {
 
 /** Cartão principal — vai na aba Combate. Mostra só o que está ATIVO agora — nunca patamares futuros. */
 export function MonstruosoPainel({ personagem, setPersonagem, onRolar }) {
+  // Quais patamares o jogador já mexeu na seta (abriu/fechou à mão) — quem
+  // nunca mexeu segue a regra de omissão (só o patamar atual vem aberto).
+  // Guardamos isto como "está aberto?" só para os que já foram tocados.
+  const [alterados, setAlterados] = useState(() => new Map());
+
   const classe = classeMonstruosa(personagem);
   if (!classe) return null;
   const elemento = elementoAtual(personagem);
@@ -300,14 +340,41 @@ export function MonstruosoPainel({ personagem, setPersonagem, onRolar }) {
   const ativo = Boolean(personagem.monstruosoAtivoHoje) || permanente;
   const ef = efeitosDiarios(personagem, nex);
   const consequencias = consequenciasAtivas(nex);
+  const semSanidade = Boolean(personagem.regras?.semSanidade);
   const rituaisConcedidos = ativo ? rituaisAtivos(personagem, nex) : [];
   const escolhas = escolhasNecessarias(personagem, nex);
+  // Resumo por patamar: por omissão só o patamar ATUAL vem expandido — os
+  // anteriores ficam reduzidos a uma linha — mas TODOS têm a mesma setinha,
+  // incluindo o atual, e cada um abre/fecha por si sem perder informação
+  // nenhuma. Patamares ainda por desbloquear nem chegam a aparecer aqui.
   const blocos = ativo ? resumoPorPatamar(personagem, nex) : [];
+  const patamarMaisAlto = blocos.length ? blocos[blocos.length - 1].patamar : null;
 
-  function rolarBonusGenerico() {
-    if (!ef.testeBonusDadoGenerico) return;
-    const r = rolarExpressao(`${ef.testeBonusDadoGenerico.quantidade}d${ef.testeBonusDadoGenerico.faces}`);
-    if (r) onRolar(r);
+  // Setinha genérica (abre/fecha) — usada tanto nos blocos por patamar como
+  // na caixa de consequências permanentes. `chave` identifica cada bloco;
+  // `padrao` é o estado inicial antes de o jogador alguma vez clicar.
+  function aberto(chave, padrao) {
+    return alterados.has(chave) ? alterados.get(chave) : padrao;
+  }
+
+  function alternar(chave, padrao) {
+    setAlterados((prev) => {
+      const novo = new Map(prev);
+      novo.set(chave, !aberto(chave, padrao));
+      return novo;
+    });
+  }
+
+  function patamarAberto(p) {
+    return aberto(p, p === patamarMaisAlto);
+  }
+
+  function alternarPatamar(p) {
+    alternar(p, p === patamarMaisAlto);
+  }
+
+  function aplicarSanidadeMinima(valor) {
+    setPersonagem((p) => ({ ...p, sanAtual: valor }));
   }
 
   function concederPvTempCena() {
@@ -317,60 +384,103 @@ export function MonstruosoPainel({ personagem, setPersonagem, onRolar }) {
     setPersonagem((p) => ({ ...p, pvTemp: Number(p.pvTemp || 0) + (r ? r.total : 0) }));
   }
 
+  const cartaoAberto = aberto('cartao', true);
+
   return (
     <div style={{ border: `1px solid ${cor}`, borderRadius: 6, padding: 14, marginBottom: 16, background: 'rgba(0,0,0,0.4)' }}>
-      <h3 style={{ color: cor, margin: 0, textTransform: 'uppercase', fontSize: 16, letterSpacing: 1 }}>
+      <h3
+        onClick={() => alternar('cartao', true)}
+        style={{ color: cor, margin: 0, textTransform: 'uppercase', fontSize: 16, letterSpacing: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+      >
+        <span style={{ fontSize: 12, transform: cartaoAberto ? 'rotate(90deg)' : 'none', transition: 'transform .1s' }}>▶</span>
         {titulo} ({elemento})
       </h3>
 
+      {cartaoAberto && <>
+
       {consequencias.length > 0 && (
-        <div style={{ marginTop: 10, padding: 10, borderRadius: 4, border: '1px solid var(--sangue)', background: 'rgba(192,21,33,.08)' }}>
-          {consequencias.map((c, i) => (
-            <p key={i} style={{ margin: i ? '6px 0 0' : 0, fontSize: 12.5, color: 'var(--txt-dim)' }}>{c.nota}</p>
-          ))}
+        <div style={{ marginTop: 10 }}>
+          <CabecalhoSeta estaAberto={aberto('consequencias', true)} corSeta="var(--sangue-claro)" onClick={() => alternar('consequencias', true)}>
+            Consequências permanentes da trilha
+          </CabecalhoSeta>
+          {aberto('consequencias', true) && (
+            <div style={{ marginTop: 6, padding: 10, borderRadius: 4, border: '1px solid var(--sangue)', background: 'rgba(192,21,33,.08)' }}>
+              {consequencias.map((c, i) => {
+                const usaVariante = semSanidade && c.notaSemSanidade;
+                return (
+                  <p key={i} style={{ margin: i ? '6px 0 0' : 0, fontSize: 12.5, color: 'var(--txt-dim)' }}>
+                    {usaVariante ? c.notaSemSanidade : c.nota}
+                    {c.valor != null && !semSanidade && (
+                      <button
+                        className="btn ghost sm"
+                        style={{ marginLeft: 8, padding: '1px 8px', fontSize: 11, color: 'var(--txt)' }}
+                        title="Aplica a redução de facto, agora — a caixa de Sanidade passa a este valor"
+                        onClick={() => aplicarSanidadeMinima(c.valor)}
+                      >
+                        aplicar (Sanidade → {c.valor})
+                      </button>
+                    )}
+                  </p>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
-      {ativo && blocos.map((b) => (
-        <div key={b.patamar} style={{ marginTop: 12 }}>
-          <div style={{ fontSize: 12.5, textTransform: 'uppercase', letterSpacing: 0.5, color: cor }}>
-            {b.patamar}% — {b.titulo}
+      {ativo && blocos.map((b) => {
+        const atual = b.patamar === patamarMaisAlto;
+        const aberto = patamarAberto(b.patamar);
+        return (
+          <div key={b.patamar} style={{ marginTop: aberto ? 12 : 6 }}>
+            <CabecalhoSeta estaAberto={aberto} corSeta={cor} onClick={() => alternarPatamar(b.patamar)}>
+              {b.patamar}% — {b.titulo}{atual ? ' (atual)' : ''}
+            </CabecalhoSeta>
+            {aberto && b.linhas.length > 0 && (
+              <ul style={{ margin: '4px 0 0', paddingLeft: 18, color: 'var(--txt-dim)', fontSize: 13.5, lineHeight: 1.55 }}>
+                {b.linhas.map((linha, i) => <li key={i}>{linha}</li>)}
+              </ul>
+            )}
           </div>
-          {b.linhas.length > 0 && (
-            <ul style={{ margin: '4px 0 0', paddingLeft: 18, color: 'var(--txt-dim)', fontSize: 13.5, lineHeight: 1.55 }}>
-              {b.linhas.map((linha, i) => <li key={i}>{linha}</li>)}
-            </ul>
+        );
+      })}
+
+      {ativo && ((classe === 'especialista' && patamar >= 40) || rituaisConcedidos.length > 0) && (
+        <div style={{ marginTop: 10 }}>
+          <CabecalhoSeta estaAberto={aberto('extras', true)} corSeta={cor} onClick={() => alternar('extras', true)}>
+            Outros efeitos ativos
+          </CabecalhoSeta>
+          {aberto('extras', true) && (
+            <>
+              {classe === 'especialista' && patamar >= 40 && (
+                <ul style={{ margin: '6px 0 0', paddingLeft: 18, color: cor, fontSize: 13.5, lineHeight: 1.6 }}>
+                  {ef.danoExtra.length > 0 && <li>Dano extra nos ataques (com a drenagem de hoje): +{ef.danoExtra.join(' + ')} {elemento}</li>}
+                  {ef.resistenciaDano > 0 && elemento === 'Sangue' && <li>Resistência a dano {ef.resistenciaDano} (geral, qualquer tipo — já somada ao Bloqueio)</li>}
+                  {ef.turnosMorrendoExtra > 0 && <li>+{ef.turnosMorrendoExtra} turno(s) de tolerância a "morrendo" (com a drenagem de hoje)</li>}
+                  {ef.pvTempCena && (
+                    <li>
+                      PV temporários no início da cena (com a drenagem de hoje): {ef.pvTempCena.dados}d{ef.pvTempCena.faces}{' '}
+                      <button className="btn ghost sm" style={{ padding: '1px 8px', fontSize: 11, color: 'var(--txt)' }} onClick={concederPvTempCena}>conceder</button>
+                    </li>
+                  )}
+                  {ef.testeBonusDadoGenerico && (
+                    <li>
+                      +{ef.testeBonusDadoGenerico.quantidade}d{ef.testeBonusDadoGenerico.faces} {ef.testeBonusDadoGenerico.descricao} (com a drenagem de hoje — já entra sozinho nessas rolagens de perícia, na aba de Perícias)
+                    </li>
+                  )}
+                  <li style={{ color: 'var(--txt-fraco)' }}>Pontos drenados hoje: {Number(personagem.monstruosoDrenagem || 0)}</li>
+                </ul>
+              )}
+              {rituaisConcedidos.length > 0 && (
+                <ul style={{ margin: '6px 0 0', paddingLeft: 18, color: cor, fontSize: 13.5, lineHeight: 1.6 }}>
+                  {rituaisConcedidos.map((r) => (
+                    <li key={r._monstruosoId}>Ritual concedido: {r.nome}</li>
+                  ))}
+                </ul>
+              )}
+            </>
           )}
         </div>
-      ))}
-
-      {ativo && classe === 'especialista' && patamar >= 40 && (
-        <ul style={{ margin: '10px 0 0', paddingLeft: 18, color: cor, fontSize: 13.5, lineHeight: 1.6 }}>
-          {ef.danoExtra.length > 0 && <li>Dano extra nos ataques (com a drenagem de hoje): +{ef.danoExtra.join(' + ')} {elemento}</li>}
-          {ef.resistenciaDano > 0 && elemento === 'Sangue' && <li>Resistência a dano {ef.resistenciaDano} (geral, qualquer tipo — já somada ao Bloqueio)</li>}
-          {ef.turnosMorrendoExtra > 0 && <li>+{ef.turnosMorrendoExtra} turno(s) de tolerância a "morrendo" (com a drenagem de hoje)</li>}
-          {ef.pvTempCena && (
-            <li>
-              PV temporários no início da cena (com a drenagem de hoje): {ef.pvTempCena.dados}d{ef.pvTempCena.faces}{' '}
-              <button className="btn ghost sm" style={{ padding: '1px 8px', fontSize: 11, color: 'var(--txt)' }} onClick={concederPvTempCena}>conceder</button>
-            </li>
-          )}
-          {ef.testeBonusDadoGenerico && (
-            <li>
-              +{ef.testeBonusDadoGenerico.quantidade}d{ef.testeBonusDadoGenerico.faces} {ef.testeBonusDadoGenerico.descricao} (com a drenagem de hoje){' '}
-              <button className="btn ghost sm" style={{ padding: '1px 8px', fontSize: 11, color: 'var(--txt)' }} onClick={rolarBonusGenerico}>rolar</button>
-            </li>
-          )}
-          <li style={{ color: 'var(--txt-fraco)' }}>Pontos drenados hoje: {Number(personagem.monstruosoDrenagem || 0)}</li>
-        </ul>
-      )}
-
-      {ativo && rituaisConcedidos.length > 0 && (
-        <ul style={{ margin: '10px 0 0', paddingLeft: 18, color: cor, fontSize: 13.5, lineHeight: 1.6 }}>
-          {rituaisConcedidos.map((r) => (
-            <li key={r._monstruosoId}>Ritual concedido: {r.nome}</li>
-          ))}
-        </ul>
       )}
 
       {!ativo && (
@@ -381,16 +491,16 @@ export function MonstruosoPainel({ personagem, setPersonagem, onRolar }) {
 
       {escolhas.length > 0 && (
         <div style={{ marginTop: 14 }}>
-          <div style={{ fontSize: 12.5, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--txt-fraco)', marginBottom: 4 }}>
-            Escolhas da trilha (permanentes — não dependem da etapa de hoje)
-          </div>
-          {escolhas.map((g) => (
-            <LinhaEscolha key={g.id} ganho={g} personagem={personagem} setPersonagem={setPersonagem} />
+          <CabecalhoSeta estaAberto={aberto('escolhas', true)} corSeta={cor} onClick={() => alternar('escolhas', true)}>
+            Escolhas da trilha
+          </CabecalhoSeta>
+          {aberto('escolhas', true) && escolhas.map((g) => (
+            <LinhaEscolha key={g.id} ganho={g} personagem={personagem} setPersonagem={setPersonagem} patamarAtualNum={patamar} />
           ))}
         </div>
       )}
 
-      <TextoPoderOficial classe={classe} elemento={elemento} patamar={patamar} />
+      </>}
     </div>
   );
 }

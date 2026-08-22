@@ -3,6 +3,9 @@ import IconeD20 from './IconeD20.jsx';
 
 /** A conta que deu origem ao resultado, conforme o tipo de rolagem. */
 export function Dados({ r }) {
+  if (r.semTeste) {
+    return <span className="conta">poder de toque — sem teste de Ocultismo</span>;
+  }
   if (r.tipo === 'dano') {
     return (
       <span className="conta">

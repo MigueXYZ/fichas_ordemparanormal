@@ -16,6 +16,7 @@ function hora(t) {
 }
 
 function detalhe(r) {
+  if (r.semTeste) return 'sem teste — poder de toque da Trilha do Monstruoso';
   if (r.tipo === 'dano') {
     return `${r.expressao} [${r.rolagens.join(', ')}]${(r.extras || []).map((e) => ` + ${e.expr} [${e.rolagens.join(', ')}]`).join('')}${r.bonus ? ` ${r.bonus > 0 ? '+' : '−'} ${Math.abs(r.bonus)}` : ''}${r.critico ? ` · dados ×${r.multiplicador}` : ''}`;
   }

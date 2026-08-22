@@ -192,12 +192,63 @@ export const EFEITOS_DIARIOS_COMBATENTE = {
   },
 };
 
-/** Deslocamento: só a variante de Especialista dá +6m (Energia, desde 10%). */
+/**
+ * Deslocamento: só a variante de Especialista dá bónus (Energia). Começa em
+ * +6m aos 10% e, aos 99% ("Ser Apavorante" substitui "Ser Experimentado"),
+ * passa a +12m — não soma, substitui o valor anterior (mesmo padrão da
+ * "Ser Testado"/"Ser Apavorante" verificado nas p.81-84 do livro).
+ */
 export const DESLOCAMENTO_ENERGIA_EXTRA = {
-  combatente: 0,
-  especialista: 6,
-  ocultista: 0,
+  combatente: { 10: 0 },
+  especialista: { 10: 6, 99: 12 },
+  ocultista: { 10: 0 },
 };
+
+/** O valor de deslocamento extra em vigor num dado patamar (o mais alto já alcançado). */
+export function deslocamentoEnergiaExtraAtual(classe, patamar) {
+  const tabela = DESLOCAMENTO_ENERGIA_EXTRA[classe] || {};
+  let valor = 0;
+  for (const p of Object.keys(tabela).map(Number).sort((a, b) => a - b)) {
+    if (patamar >= p) valor = tabela[p];
+  }
+  return valor;
+}
+
+/**
+ * PV temporários IMEDIATOS do Especialista-Morte — distintos do "+2d8 PV
+ * temp. por CENA" da drenagem "Ser Testado" (40%+, ver `efeitosDrenagem` em
+ * engine/monstruoso.js). Este é rolado uma vez ao ativar a etapa de hoje
+ * ("no início da transformação"), começa em 2d6 aos 10% e sobe para 4d6 aos
+ * 99% ("Ser Apavorante" substitui "Ser Experimentado" — mesmo padrão de
+ * substituição confirmado nas p.81-84).
+ */
+export const PV_TEMP_IMEDIATO_MORTE = { 10: { dados: 2, faces: 6 }, 99: { dados: 4, faces: 6 } };
+
+/** A entrada de PV_TEMP_IMEDIATO_MORTE em vigor num dado patamar (a mais alta já alcançada), ou null. */
+export function pvTempImediatoMorteAtual(patamar) {
+  let atual = null;
+  for (const p of Object.keys(PV_TEMP_IMEDIATO_MORTE).map(Number).sort((a, b) => a - b)) {
+    if (patamar >= p) atual = PV_TEMP_IMEDIATO_MORTE[p];
+  }
+  return atual;
+}
+
+/**
+ * Quantas perícias livres o Especialista-Conhecimento escolhe no total —
+ * 2 desde os 10% ("Ser Experimentado"), sobe para 3 aos 99% ("Ser
+ * Apavorante" substitui). As 2 primeiras nunca perdem a escolha original ao
+ * subir de patamar — só se soma uma 3ª.
+ */
+export const PERICIAS_LIVRES_CONHECIMENTO_POR_PATAMAR = { 10: 2, 99: 3 };
+
+/** Quantas perícias livres estão desbloqueadas num dado patamar (a mais alta já alcançada). */
+export function quantidadePericiasLivresConhecimento(patamar) {
+  let n = 0;
+  for (const p of Object.keys(PERICIAS_LIVRES_CONHECIMENTO_POR_PATAMAR).map(Number).sort((a, b) => a - b)) {
+    if (patamar >= p) n = PERICIAS_LIVRES_CONHECIMENTO_POR_PATAMAR[p];
+  }
+  return n;
+}
 
 /**
  * Grande/Enorme (só Especialista, Sangue): +2 em testes de manobras / -2 em
@@ -304,6 +355,12 @@ export const EFEITOS_POR_PATAMAR = {
     Conhecimento: [
       { patamar: 10, tipo: 'pericias-livres', quantidade: 2 },
       { patamar: 65, tipo: 'atributo', atributo: 'int', delta: 1 },
+      // "Ação completa + 3 PE, tocando a cabeça (própria ou de outro) com o
+      // braço" — NÃO é uma conjuração normal (sem teste de Ocultismo, sem
+      // custo por círculo): por pedido explícito, aparecem na lista de
+      // rituais da personagem mas o botão "Conjurar" só desconta 3 PE.
+      { patamar: 65, tipo: 'ritual-toque', nome: 'Detecção de Ameaças', custoPe: 3 },
+      { patamar: 65, tipo: 'ritual-toque', nome: 'Mergulho Mental', custoPe: 3 },
       { patamar: 99, tipo: 'atributo', atributo: 'int', delta: 1 },
       { patamar: 99, tipo: 'ritual', nome: 'Controle Mental' }, // fixo — não é à escolha
     ],
@@ -387,19 +444,22 @@ export const TEXTOS_POR_PATAMAR = {
       { patamar: 65, texto: '1x/ronda, ao atacar com outra arma: gasta 1 PE para ataque desarmado extra com o braço.' },
     ],
     Morte: [
-      { patamar: 10, texto: '+2d6 PV temporários e ação padrão adicional por cena.' },
+      { patamar: 10, texto: '+2d6 PV temporários (rolados automaticamente ao ativar a etapa de hoje) e ação padrão adicional por cena.' },
       { patamar: 40, texto: 'Base: +1 turno de tolerância a "morrendo" e +2d8 PV temp. no início de cada cena (soma com a drenagem abaixo).' },
-      { patamar: 65, texto: 'Ao tocar um item pela 1ª vez: 3 PE para envelhecê-lo (50 de dano de Morte) ou reviver a última pessoa que o tocou (visão de 1 minuto).' },
+      { patamar: 65, texto: 'Ao tocar um item pela 1ª vez: 3 PE para envelhecê-lo (50 de dano de Morte) ou reviver as memórias da última pessoa que o tocou (visão nebulosa de 1 minuto do que ela fez enquanto esteve com o item — não é uma ressurreição).' },
+      { patamar: 99, texto: 'Os efeitos de Ser Experimentado mudam: +4d6 PV temporários (em vez de 2d6, rolados automaticamente ao ativar a etapa) e 2 ações padrão adicionais por cena (em vez de 1).' },
     ],
     Conhecimento: [
       { patamar: 40, texto: 'Base: +1d6 em testes baseados em Intelecto ao fazer o experimento (soma com a drenagem abaixo).' },
       { patamar: 65, texto: 'Ação completa + 3 PE, tocando a cabeça (própria ou de outro) com o braço: efeito de Detecção de Ameaças (própria) ou Mergulho Mental por 3 rondas (outro).' },
+      { patamar: 99, texto: 'Os efeitos de Ser Experimentado mudam: escolhes 3 perícias treinadas (em vez de 2) e todas ficam em grau Expert (em vez de Treinado).' },
     ],
     Energia: [
       { patamar: 10, texto: '1x/ronda, sacar item como ação livre (cumulativo com bandoleira).' },
       { patamar: 40, texto: 'Base: +1d6 em testes de ataque e +2 na Defesa ao fazer o experimento (soma com a drenagem abaixo).' },
       { patamar: 65, texto: 'Ação de movimento + 2 PE: atravessa superfícies sólidas até o fim da cena (+5 em testes relacionados, a critério do mestre).' },
       { patamar: 65, texto: 'Ação de interlúdio: acopla um item à mão do braço, usando-o sem ocupar a mão.' },
+      { patamar: 99, texto: 'Os efeitos de Ser Experimentado mudam: sacar item como ação livre passa a 3x/rodada (em vez de 1x) e o deslocamento extra passa a +12m (em vez de +6m).' },
     ],
   },
   ocultista: {
@@ -432,8 +492,15 @@ export const TEXTOS_POR_PATAMAR = {
  * o NEX indicado — não dependem da etapa de hoje estar ativa.
  */
 export const CONSEQUENCIAS = {
-  perturbado: { desde: 75, nota: 'Perturbado (permanente): a Ordem já não aceita o personagem — pode bani-lo e caçá-lo. Se ainda ajudar antigos colegas, perde acesso a equipamento da Ordem (equipamento inicial de missão de uma patente abaixo, conseguido por conta própria).' },
-  sanidadeMinima: { desde: 99, valor: 1, nota: 'Sanidade reduzida a 1. Sempre que for enlouquecer, fica confuso em vez de sofrer o efeito de insanidade normal. Se enlouquecer com 99% de NEX, torna-se permanentemente uma criatura do Outro Lado.' },
+  perturbado: { desde: 75, nota: 'Perturbado (permanente): as suas ações já não são aceites pela Ordem — ela vai bani-lo e pode chegar a caçá-lo. Se ainda ajudar antigos colegas, perde acesso a equipamento da Ordem (equipamento inicial de missão de uma patente abaixo, conseguido por conta própria).' },
+  sanidadeMinima: {
+    desde: 99,
+    valor: 1,
+    nota: 'Sanidade reduzida a 1. Sempre que for enlouquecer, fica confuso em vez de sofrer o efeito de insanidade normal. Se enlouquecer com 99% de NEX, torna-se permanentemente uma criatura do Outro Lado.',
+    // Regra opcional "Jogando sem Sanidade" (SaH p. 104): não há Sanidade
+    // para reduzir — o livro troca o efeito por este, ligado à Determinação.
+    notaSemSanidade: 'Com a regra opcional "Jogando sem Sanidade": está sempre perturbado e fica enlouquecendo (e confuso) sempre que perde 1 ponto de Determinação por qualquer efeito, exceto para pagar custos de habilidades e itens. Se enlouquecer com 99% de NEX, torna-se permanentemente uma criatura do Outro Lado.',
+  },
 };
 
 /**

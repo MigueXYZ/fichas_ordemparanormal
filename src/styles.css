@@ -187,6 +187,8 @@ h1, h2, h3, h4 { font-family: var(--display); font-weight: 400; letter-spacing: 
   cursor: pointer; transition: fill .15s;
 }
 .roda .atr-valor:hover { fill: var(--sangue-claro); }
+.roda .atr-valor.atr-buff { fill: #4ade80; text-shadow: 0 0 10px rgba(74,222,128,.5); }
+.roda .atr-valor.atr-debuff { fill: var(--sangue-claro); text-shadow: 0 0 10px rgba(192,21,33,.5); }
 .roda .atr-botao { cursor: pointer; }
 .roda .atr-botao circle { fill: #1a1214; stroke: var(--linha-forte); stroke-width: 3; transition: stroke .15s, fill .15s; }
 .roda .atr-botao text { fill: var(--txt-dim); font-family: var(--numeros); font-size: 34px; pointer-events: none; }
@@ -496,14 +498,14 @@ body.bate-forte .barra-recurso .preenchido::before {
 }
 .defesa-caixa button.num:hover { color: var(--sangue-claro); text-shadow: 0 0 14px rgba(232,50,63,.6); }
 .defesa-caixa input.num {
-  text-align: center; background: transparent; border: none;
-  border-bottom: 1px dashed var(--linha); /* mostra que dá para escrever */
+  text-align: center; background: transparent;
+  border: 1px solid var(--linha); border-radius: var(--raio); /* caixinha em vez de tracejado — não fica "partido" quando é 0 */
   -moz-appearance: textfield; appearance: textfield; cursor: text; min-height: 40px;
 }
 .defesa-caixa input.num::-webkit-outer-spin-button,
 .defesa-caixa input.num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.defesa-caixa input.num:hover { border-bottom-color: var(--linha-forte); }
-.defesa-caixa input.num:focus { outline: none; border-bottom-color: var(--sangue); color: var(--sangue-claro); }
+.defesa-caixa input.num:hover { border-color: var(--linha-forte); }
+.defesa-caixa input.num:focus { outline: none; border-color: var(--sangue); color: var(--sangue-claro); }
 .defesa-caixa input.num::placeholder { color: var(--txt-fraco); }
 .defesa-caixa .voltar-auto {
   background: none; border: none; padding: 0; margin-left: 4px; cursor: pointer;
@@ -536,7 +538,6 @@ body.bate-forte .barra-recurso .preenchido::before {
 .tabela-pericias tr.treinada .nome-pericia { color: var(--sangue-claro); }
 
 .tabela-pericias .attr, .tabela-pericias .bonus { text-align: center; color: var(--txt-dim); font-size: 15px; font-family: var(--numeros); white-space: nowrap; }
-.tabela-pericias input.aviso-outros { border-color: #f5a623; box-shadow: 0 0 0 1px rgba(245,166,35,.35); }
 .tabela-pericias td:first-child { width: 100%; }
 .tabela-pericias select {
   width: 58px;
