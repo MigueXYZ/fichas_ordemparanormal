@@ -61,7 +61,7 @@ export default function Overlay({ config, semDiagnostico = false }) {
       },
       setLigacao
     );
-  }, [config.modo, config.url, config.codigo]);
+  }, [config.codigo]);
 
   if (!estado) {
     return semDiagnostico ? null : (
@@ -70,8 +70,7 @@ export default function Overlay({ config, semDiagnostico = false }) {
         <div>
           <b>Overlay do Claudio</b>
           <div className="ov-detalhe">
-            sala <code>{config.codigo}</code> · modo <code>{config.modo}</code> · status: <b>{ligacao}</b>
-            {config.modo === 'remoto' ? ` · ${config.url}` : ''}
+            sala <code>{config.codigo}</code> · status: <b>{ligacao}</b>
           </div>
           <div className="ov-detalhe" style={{ marginTop: 4 }}>
             {ligacao === 'ligado'

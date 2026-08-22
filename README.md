@@ -36,9 +36,7 @@
 
 ### 📺 Overlay para OBS & Transmissão para o Mestre
 - Transmissão em tempo real das barras de PV, PS, PE, avatar do agente e rolagens recentes diretamente para a live ou tela do Mestre.
-- **Dois Modos de Transmissão:**
-  1. **P2P / WebRTC (Recomendado):** Funciona 100% no navegador (incluindo deploys como Vercel/Netlify), sem necessidade de servidor backend ativo.
-  2. **Servidor Local (Node.js / WebSocket):** Alternativa para redes locais ou servidores dedicados.
+- **100% P2P / WebRTC:** Conexão direta e descentralizada via PeerJS, sem necessidade de servidores intermediários. Funciona diretamente no navegador e em qualquer hospedagem estática (Vercel, Netlify, GitHub Pages).
 
 ### 📄 Exportação para PDF Oficial & Backup
 - **Exportação para PDF:** Preenchimento automático do modelo oficial da *Ficha Automática de Ordem Paranormal* usando `pdf-lib`.
@@ -79,29 +77,19 @@ A aplicação estará disponível em `http://localhost:5173`.
 | `npm run preview` | Executa um servidor local para testar a versão compilada em `dist/`. |
 | `npm test` | Executa os testes automatizados das regras e cálculos (`tests/calc.test.js`). |
 | `npm run verificar-roda` | Validação visual automatizada da roda de atributos (requer o `preview` em execução). |
-| `npm run overlay` | Inicia o servidor local de WebSockets para o overlay em `http://localhost:7777`. |
 
 ---
 
 ## 🎥 Configuração do Overlay no OBS
 
-### Opção 1: Modo P2P (Recomendado / Vercel / WebRTC)
 1. Na ficha do personagem, clique no botão **Overlay** no topo da tela.
-2. Selecione o modo **P2P / Vercel** e clique em **Ligar**.
-3. Clique em **Copiar Link** (ou compartilhe o código gerado).
+2. Certifique-se de que a transmissão está **Ligada**.
+3. Clique em **Copiar Link** (ou gere um novo código de sala).
 4. No OBS Studio:
    - Adicione uma nova fonte: **+ → Navegador (Browser)**.
    - Cole o link copiado no campo **URL**.
    - Defina a resolução como **1920×1080**.
    - Marque a opção *Desativar fonte quando invisível* se desejar.
-
-### Opção 2: Modo Servidor Local (Node.js)
-1. Execute no terminal:
-   ```bash
-   npm run overlay
-   ```
-2. Na aplicação, acesse **Overlay** → modo **Servidor Node** → clique em **Ligar** e copie o link.
-3. No OBS Studio, adicione como fonte de **Navegador** com o link gerado (`http://localhost:7777/overlay.html?...`).
 
 ---
 
@@ -110,7 +98,6 @@ A aplicação estará disponível em `http://localhost:5173`.
 ```
 fichas_ordemparanormal/
 ├── public/                # Recursos estáticos públicos
-├── servidor/              # Servidor WebSocket standalone para o overlay
 ├── src/
 │   ├── components/        # Componentes de UI em React
 │   │   ├── ficha/         # Abas, recursos, perícias, inventário, armas, condições
@@ -119,7 +106,7 @@ fichas_ordemparanormal/
 │   │   └── extra/         # Conteúdos dos Arquivos Secretos (AS01 a AS07)
 │   ├── engine/            # Mecânicas de regras, cálculos, dados, áudio e storage
 │   ├── export/            # Exportador da ficha oficial para PDF (pdf-lib)
-│   ├── overlay/           # Comunicação e lógica do overlay (P2P e WebSocket)
+│   ├── overlay/           # Lógica do overlay e comunicação WebRTC P2P (PeerJS)
 │   ├── App.jsx            # Componente raiz da aplicação
 │   └── main.jsx           # Ponto de entrada do React
 ├── tests/                 # Testes unitários e visuais
@@ -137,4 +124,5 @@ fichas_ordemparanormal/
 - **[PeerJS](https://peerjs.com/)** — Conexões WebRTC P2P em tempo real
 - **[pdf-lib](https://pdf-lib.js.org/)** — Manipulação e preenchimento de campos de formulário PDF
 - **CSS puro & Canvas** — Tematização estilizada baseada no universo de Ordem Paranormal
+
 

@@ -69,7 +69,6 @@ export default function App() {
       rolagem: ultima,
     };
     const corpo = JSON.stringify(estado);
-    if (corpo === ultimoEnvio.current && configOverlay.modo !== 'p2p') return undefined;
 
     clearTimeout(relogioOverlay.current);
     relogioOverlay.current = setTimeout(async () => {
