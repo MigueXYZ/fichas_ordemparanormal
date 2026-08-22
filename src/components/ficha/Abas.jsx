@@ -11,7 +11,7 @@ import { novoAtaque, novoItem, novaHabilidade, novoRitual } from '../../engine/c
 import { rolarAtaqueCompleto, rolarDano, rolarTeste } from '../../engine/dados.js';
 import { estatisticasArma, interpretarCritico, armaDoItem, ehArma, formulaTeste } from '../../engine/armas.js';
 import { precoDoRitual } from '../../engine/rituais.js';
-import { ataquesNaturaisAtivos, rituaisAtivos, temComponentesDoElemento } from '../../engine/monstruoso.js';
+import { ataquesNaturaisAtivos, rituaisAtivos, temComponentesDoElemento, classeMonstruosa, elementoAtual, patamarAtual } from '../../engine/monstruoso.js';
 import { ELEMENTOS_MONSTRUOSO, COR_ELEMENTO } from '../../data/monstruoso.js';
 import EditorArma from './EditorArma.jsx';
 import { calcPericias } from '../../engine/calc.js';
@@ -77,9 +77,22 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
   // Armas naturais concedidas pela Trilha do Monstruoso (ex.: Mordida) só
   // existem enquanto a etapa de hoje está ativa — aparecem/desaparecem
   // sozinhas nesta lista, não são editáveis nem removíveis à mão.
-  const naturais = ataquesNaturaisAtivos(personagem, nexEfetivo(personagem));
+  const nex = nexEfetivo(personagem);
+  const naturais = ataquesNaturaisAtivos(personagem, nex);
   const lista = [...listaPropria, ...naturais];
   const [acertos, setAcertos] = useState({});
+
+  // Combatente Sangue 99% ("Ser Aterrorizante"): sempre que causa dano com a
+  // mordida, recupera 5 PV (x2 em crítico) — automático, sem botão.
+  const recuperaComMordida = classeMonstruosa(personagem) === 'combatente'
+    && elementoAtual(personagem) === 'Sangue' && patamarAtual(nex) >= 99;
+
+  function recuperarPvMordida(critico) {
+    if (!recuperaComMordida) return;
+    const max = calcMaximos(personagem);
+    const cura = critico ? 10 : 5;
+    setPersonagem((p) => ({ ...p, pvAtual: Math.min(max.pv, Number(p.pvAtual ?? max.pv) + cura) }));
+  }
 
   function atacar(a, i) {
     const e = estatisticasArma(personagem, a);
@@ -91,6 +104,19 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
     });
     setAcertos({ ...acertos, [i]: r });
     onRolar(r);
+    if (a.nome === 'Mordida (Monstruoso)' && r.dano) recuperarPvMordida(r.dano.critico);
+  }
+
+  // Combatente Sangue 65% ("Ser Assustador"): 1x/ronda, ao usar Agredir com
+  // outra arma, gasta 1 PE para um ataque corpo a corpo extra com a mordida
+  // (o "1x/ronda" não é imposto pela ficha — fica a cargo da mesa, como
+  // outros limites por cena/ronda que já não são impostos noutros pontos).
+  function atacarComPe(a, i) {
+    const max = calcMaximos(personagem);
+    const peAtual = Number(personagem.peAtual ?? max.pe);
+    if (peAtual < 1) return;
+    setPersonagem((p) => ({ ...p, peAtual: Number(p.peAtual ?? max.pe) - 1 }));
+    atacar(a, i);
   }
 
   function danificar(a, i) {
@@ -101,7 +127,10 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
       dano: e.dano, bonus: e.bonusDano, extras: e.extras,
       critico, multiplicador: e.multiplicador,
     });
-    if (r) onRolar(r);
+    if (r) {
+      onRolar(r);
+      if (a.nome === 'Mordida (Monstruoso)') recuperarPvMordida(r.critico);
+    }
     else onRolar({ id: String(Math.random()), tipo: 'dano', nome: 'Dano inválido', rolagens: [], bonus: 0, total: 0 });
   }
 
@@ -165,6 +194,16 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
                       </button>
                     )}
                     <button className="btn sm" disabled={!equipado} title={equipado ? '' : 'Equipa a arma primeiro'} onClick={() => atacar(a, i)}>Atacar</button>
+                    {a.nome === 'Mordida (Monstruoso)' && (
+                      <button
+                        className="btn sm ghost"
+                        disabled={!equipado || Number(personagem.peAtual ?? calcMaximos(personagem).pe) < 1}
+                        title="Ser Assustador (65%) — 1x/ronda, ao usar Agredir com outra arma: gasta 1 PE por um ataque corpo a corpo extra com a mordida"
+                        onClick={() => atacarComPe(a, i)}
+                      >
+                        Ataque extra (1 PE)
+                      </button>
+                    )}
                     <button
                       className={'btn sm' + (acerto?.critico ? '' : ' ghost')}
                       disabled={!acerto || !equipado}
@@ -240,7 +279,10 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
 
   function conjurar(r) {
     const custo = Number(String(r.custo).replace(/\D/g, '')) || 0;
-    if (custo > atual || !temComponente(r)) return;
+    // "Enquanto estiver transformado... não pode... conjurar rituais"
+    // (Forma Monstruosa) — bloqueia qualquer conjuração, incluindo repetir
+    // este ritual, enquanto a transformação estiver ativa.
+    if (custo > atual || !temComponente(r) || personagem.formaMonstruosaAtiva) return;
 
     // Poder de toque da Trilha do Monstruoso (Especialista-Conhecimento
     // 65%+: Detecção de Ameaças/Mergulho Mental) — só desconta o PE fixo,
@@ -280,6 +322,14 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
         patch.sanAtual = Math.max(0, Math.min(patch.sanAtual ?? mentalAtual, maximoMental - 1));
       }
     }
+    // Forma Monstruosa garante mesmo os efeitos do livro ao ser conjurada:
+    // 30 PV temporários e a transformação fica ativa (liga o +5 em ataque/
+    // dano corpo a corpo em armas.js e bloqueia conjurar outros rituais,
+    // até terminares a transformação à mão).
+    if (r.nome === 'Forma Monstruosa') {
+      patch.pvTemp = Number(personagem.pvTemp || 0) + 30;
+      patch.formaMonstruosaAtiva = true;
+    }
     setPersonagem({ ...personagem, ...patch });
 
     const nomeMental = usaPd ? 'Determinação' : 'Sanidade';
@@ -296,6 +346,40 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
     onRolar({ ...teste, tipo: 'ritual', nome: r.nome || 'Ritual', detalhe: `${circulo}º círculo`, notas, sofreu: perdeSan });
   }
 
+  // Combatente Sangue 99% ("Ser Aterrorizante"): sempre que sofre dano, teste
+  // de Vontade DT 10+dano — falhar obriga a próxima ação padrão a ser
+  // conjurar Forma Monstruosa, por isso ao falhar aqui já se conjura sozinho.
+  const [modalVontade, setModalVontade] = useState(null); // ritual (r) ou null
+  const [danoRascunho, setDanoRascunho] = useState(0);
+
+  function abrirModalVontade(r) {
+    setDanoRascunho(0);
+    setModalVontade(r);
+  }
+
+  function confirmarTesteVontade() {
+    const r = modalVontade;
+    setModalVontade(null);
+    if (!r) return;
+    const dano = Math.max(0, Math.trunc(Number(danoRascunho) || 0));
+    const dt = 10 + dano;
+    const von = calcPericias(personagem).find((x) => x.id === 'vontade') || { dados: 0, bonus: 0 };
+    const teste = rolarTeste({ nome: 'Vontade — resistir à Forma Monstruosa', dados: von.dados, bonus: von.bonus });
+    const passou = teste.total >= dt;
+    onRolar({
+      ...teste, tipo: 'teste',
+      notas: [`DT ${dt} (10 + ${dano} de dano)`, passou ? 'Resistiu — continua em si' : 'Falhou — a próxima ação padrão tem de ser conjurar Forma Monstruosa'],
+      sofreu: !passou,
+    });
+    if (!passou) conjurar(r);
+  }
+
+  // Termina a transformação à mão (o livro não dá um gatilho automático de
+  // fim de cena) — desliga o +5 corpo a corpo e volta a permitir conjurar.
+  function terminarTransformacao() {
+    setPersonagem((p) => ({ ...p, formaMonstruosaAtiva: false }));
+  }
+
   return (
     <div className="rituais-combate">
       <div className="rotulo-lista">Rituais · {usaPd ? `${atual} PD` : `${atual} PE`} disponíveis{dt ? ` · DT ${dt}` : ''}</div>
@@ -305,7 +389,8 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
           const circulo = Number(r.circulo) || 1;
           const podeGastar = custo <= atual;
           const componenteOk = temComponente(r);
-          const podeConjurar = podeGastar && componenteOk;
+          const transformado = Boolean(personagem.formaMonstruosaAtiva);
+          const podeConjurar = podeGastar && componenteOk && !transformado;
           const nomeElemento = ELEMENTOS.find((e) => e.id === r.elemento)?.nome || r.elemento;
           return (
             <div className={'bloco ritual el-' + (r.elemento || 'variavel')} key={r._monstruosoId || i}>
@@ -335,24 +420,72 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
                     )}
                   </div>
                 </div>
-                <button
-                  className="btn sm"
-                  disabled={!podeConjurar}
-                  title={
-                    !podeGastar ? 'Não tens pontos que cheguem'
-                    : !componenteOk ? `Precisas de "Componentes Ritualísticos de ${nomeElemento}" no inventário — os de outro elemento não servem`
-                    : r._semTeste ? `Gasta ${custo} ${usaPd ? 'PD' : 'PE'} — sem teste de Ocultismo (poder de toque)`
-                    : `Gasta ${custo} ${usaPd ? 'PD' : 'PE'} e faz o teste de Ocultismo`
-                  }
-                  onClick={() => conjurar(r)}
-                >
-                  Conjurar
-                </button>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  {r.nome === 'Forma Monstruosa' && r._monstruoso && (
+                    <button
+                      className="btn sm ghost"
+                      title="Sempre que sofres dano: teste de Vontade DT 10+dano — se falhares, conjura este ritual automaticamente"
+                      onClick={() => abrirModalVontade(r)}
+                    >
+                      Teste de Vontade
+                    </button>
+                  )}
+                  {r.nome === 'Forma Monstruosa' && transformado ? (
+                    <button
+                      className="btn sm"
+                      style={{ borderColor: 'var(--sangue)', background: 'var(--sangue)' }}
+                      title="Termina a transformação — desliga o +5 em ataque/dano corpo a corpo e volta a poder conjurar rituais"
+                      onClick={terminarTransformacao}
+                    >
+                      Terminar transformação
+                    </button>
+                  ) : (
+                    <button
+                      className="btn sm"
+                      disabled={!podeConjurar}
+                      title={
+                        transformado ? 'Transformado pela Forma Monstruosa — não podes conjurar rituais'
+                        : !podeGastar ? 'Não tens pontos que cheguem'
+                        : !componenteOk ? `Precisas de "Componentes Ritualísticos de ${nomeElemento}" no inventário — os de outro elemento não servem`
+                        : r._semTeste ? `Gasta ${custo} ${usaPd ? 'PD' : 'PE'} — sem teste de Ocultismo (poder de toque)`
+                        : `Gasta ${custo} ${usaPd ? 'PD' : 'PE'} e faz o teste de Ocultismo`
+                      }
+                      onClick={() => conjurar(r)}
+                    >
+                      Conjurar
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           );
         })}
       </div>
+
+      {modalVontade && (
+        <div className="modal-fundo" style={{ zIndex: 100 }} onClick={(e) => e.target === e.currentTarget && setModalVontade(null)}>
+          <div className="modal" style={{ maxWidth: 380, textAlign: 'center' }}>
+            <div className="modal-topo">
+              <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>Teste de Vontade — Forma Monstruosa</h3>
+              <button className="fechar" onClick={() => setModalVontade(null)}>×</button>
+            </div>
+            <div className="modal-corpo">
+              <p style={{ color: 'var(--txt-dim)', fontSize: 14.5, marginBottom: 20 }}>
+                Quanto dano sofreste agora? A DT do teste de Vontade é 10 + esse dano — se falhares, o ritual é conjurado automaticamente.
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center', marginBottom: 22 }}>
+                <button type="button" className="btn ghost sm" onClick={() => setDanoRascunho((v) => Math.max(0, (Number(v) || 0) - 1))}>−</button>
+                <strong style={{ fontSize: 22, minWidth: 48, textAlign: 'center', fontFamily: 'var(--numeros)' }}>{danoRascunho}</strong>
+                <button type="button" className="btn ghost sm" onClick={() => setDanoRascunho((v) => (Number(v) || 0) + 1)}>+</button>
+              </div>
+              <div style={{ display: 'flex', gap: 14, justifyContent: 'center' }}>
+                <button className="btn ghost" onClick={() => setModalVontade(null)}>Cancelar</button>
+                <button className="btn" style={{ borderColor: 'var(--sangue)', background: 'var(--sangue)' }} onClick={confirmarTesteVontade}>Confirmar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

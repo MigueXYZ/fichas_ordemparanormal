@@ -77,17 +77,21 @@ export function estatisticasArma(personagem, arma) {
     .filter((d) => !d.corpoACorpoApenas || corpoACorpo)
     .map((d) => `${d.quantidade}d${d.faces}`);
 
+  // Ritual Forma Monstruosa (enquanto transformado): "+5 em testes de
+  // ataque e rolagens de dano corpo a corpo" — flag ligada/desligada ao
+  // conjurar/terminar a transformação em RituaisEmCombate (Abas.jsx).
+  const bonusFormaMonstruosa = personagem.formaMonstruosaAtiva && corpoACorpo ? 5 : 0;
+
   return {
     pericia: p,
     dados,
     atributoTeste: agilAtiva ? 'agi' : p.attr,
     atributoDano,
     agilAtiva,
-    tipoDano: arma.tipoDano || arma.tipo || null,
-    bonusAtaque: p.bonus + (Number(arma.bonus) || 0) + mods.ataque,
+    bonusAtaque: p.bonus + (Number(arma.bonus) || 0) + mods.ataque + bonusFormaMonstruosa,
     dadosExtraAtaque,
     dano: somarDados(arma.dano, mods.dadosDano),
-    bonusDano: bonusAtributoDano + mods.dano,
+    bonusDano: bonusAtributoDano + mods.dano + bonusFormaMonstruosa,
     margem: Math.max(2, critico.margem - mods.margem),
     multiplicador: critico.multiplicador,
     // O dano extra da Trilha do Monstruoso é marcado `elemental` para a
@@ -96,7 +100,7 @@ export function estatisticasArma(personagem, arma) {
     extras: [
       ...(arma.danoExtra || []),
       ...mods.danoExtra,
-      ...conds.monstruoso.danoExtra.map((expr) => ({ expr, elemental: true, tipoDano: 'Sangue' })),
+      ...conds.monstruoso.danoExtra.map((expr) => ({ expr, elemental: true })),
     ],
     alcance: mods.alcance || arma.alcance,
     espacos: (Number(arma.espacos) || 0) + mods.espacos,
