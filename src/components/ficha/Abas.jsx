@@ -8,16 +8,15 @@ import { ORIGENS_POR_ID } from '../../data/origens.js';
 import { calcCarga, calcItensPorCategoria, nexEfetivo, calcMaximos } from '../../engine/calc.js';
 import { PATENTES, PATENTES_POR_ID, CATEGORIAS, categoriaRomana } from '../../data/patentes.js';
 import { novoAtaque, novoItem, novaHabilidade, novoRitual } from '../../engine/character.js';
-import { rolarExpressao, rolarAtaqueCompleto, rolarDano, rolarTeste } from '../../engine/dados.js';
+import { rolarAtaqueCompleto, rolarDano, rolarTeste } from '../../engine/dados.js';
 import { estatisticasArma, interpretarCritico, armaDoItem, ehArma, formulaTeste } from '../../engine/armas.js';
 import { precoDoRitual } from '../../engine/rituais.js';
-import { ataquesNaturaisAtivos, rituaisAtivos, temComponentesDoElemento } from '../../engine/monstruoso.js';
+import { ataquesNaturaisAtivos, rituaisAtivos, temComponentesDoElemento, classeMonstruosa, elementoAtual, patamarAtual } from '../../engine/monstruoso.js';
 import { ELEMENTOS_MONSTRUOSO, COR_ELEMENTO } from '../../data/monstruoso.js';
 import EditorArma from './EditorArma.jsx';
 import { calcPericias } from '../../engine/calc.js';
 import IconeD20 from '../IconeD20.jsx';
 import CabecalhoSeta from './CabecalhoSeta.jsx';
-import { obterInfoTipoDano } from '../ExibirDano.jsx';
 
 const NOME_ATRIBUTO = { for: 'Força', agi: 'Agilidade', int: 'Intelecto', pre: 'Presença', vig: 'Vigor' };
 import Seletor from './Seletor.jsx';
@@ -79,15 +78,21 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
   // Armas naturais concedidas pela Trilha do Monstruoso (ex.: Mordida) só
   // existem enquanto a etapa de hoje está ativa — aparecem/desaparecem
   // sozinhas nesta lista, não são editáveis nem removíveis à mão.
-  const naturais = ataquesNaturaisAtivos(personagem, nexEfetivo(personagem));
+  const nex = nexEfetivo(personagem);
+  const naturais = ataquesNaturaisAtivos(personagem, nex);
   const lista = [...listaPropria, ...naturais];
-  const [expr, setExpr] = useState('');
   const [acertos, setAcertos] = useState({});
-  const [aEditarArma, setAEditarArma] = useState(null);
 
-  function rolar() {
-    const r = rolarExpressao(expr);
-    if (r) onRolar(r);
+  // Combatente Sangue 99% ("Ser Aterrorizante"): sempre que causa dano com a
+  // mordida, recupera 5 PV (x2 em crítico) — automático, sem botão.
+  const recuperaComMordida = classeMonstruosa(personagem) === 'combatente'
+    && elementoAtual(personagem) === 'Sangue' && patamarAtual(nex) >= 99;
+
+  function recuperarPvMordida(critico) {
+    if (!recuperaComMordida) return;
+    const max = calcMaximos(personagem);
+    const cura = critico ? 10 : 5;
+    setPersonagem((p) => ({ ...p, pvAtual: Math.min(max.pv, Number(p.pvAtual ?? max.pv) + cura) }));
   }
 
   function atacar(a, i) {
@@ -95,11 +100,24 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
     const r = rolarAtaqueCompleto({
       nome: a.nome || 'Ataque',
       dados: e.dados, bonusAtaque: e.bonusAtaque, margem: e.margem,
-      dano: e.dano, tipoDano: e.tipoDano, bonusDano: e.bonusDano, extras: e.extras, multiplicador: e.multiplicador,
+      dano: e.dano, bonusDano: e.bonusDano, extras: e.extras, multiplicador: e.multiplicador,
       dadosExtraAtaque: e.dadosExtraAtaque,
     });
     setAcertos({ ...acertos, [i]: r });
     onRolar(r);
+    if (a.nome === 'Mordida (Monstruoso)' && r.dano) recuperarPvMordida(r.dano.critico);
+  }
+
+  // Combatente Sangue 65% ("Ser Assustador"): 1x/ronda, ao usar Agredir com
+  // outra arma, gasta 1 PE para um ataque corpo a corpo extra com a mordida
+  // (o "1x/ronda" não é imposto pela ficha — fica a cargo da mesa, como
+  // outros limites por cena/ronda que já não são impostos noutros pontos).
+  function atacarComPe(a, i) {
+    const max = calcMaximos(personagem);
+    const peAtual = Number(personagem.peAtual ?? max.pe);
+    if (peAtual < 1) return;
+    setPersonagem((p) => ({ ...p, peAtual: Number(p.peAtual ?? max.pe) - 1 }));
+    atacar(a, i);
   }
 
   function danificar(a, i) {
@@ -107,24 +125,18 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
     const critico = Boolean(acertos[i]?.critico);
     const r = rolarDano({
       nome: `${a.nome || 'Ataque'} — dano`,
-      dano: e.dano, tipoDano: e.tipoDano, bonus: e.bonusDano, extras: e.extras,
+      dano: e.dano, bonus: e.bonusDano, extras: e.extras,
       critico, multiplicador: e.multiplicador,
     });
-    if (r) onRolar(r);
+    if (r) {
+      onRolar(r);
+      if (a.nome === 'Mordida (Monstruoso)') recuperarPvMordida(r.critico);
+    }
     else onRolar({ id: String(Math.random()), tipo: 'dano', nome: 'Dano inválido', rolagens: [], bonus: 0, total: 0 });
   }
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
-        <input
-          type="text" placeholder="Rolar dados (ex.: 2d20+3)" value={expr}
-          onChange={(e) => setExpr(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && rolar()}
-          style={{ flex: 1, minWidth: 170 }}
-        />
-        <button className="btn ghost" onClick={rolar}>Rolar</button>
-      </div>
-
       {lista.length === 0 ? (
         <div className="painel-vazio">Sem armas. Escolhe-as no separador Inventário.</div>
       ) : (
@@ -160,15 +172,10 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
                       <span title="Ocupa este espaço na carga, esteja na mão ou guardada">{Number(a.espacos) || 0} esp.</span>
                       {e.extras.map((x, i) => {
                         const expr = typeof x === 'string' ? x : x.expr;
-                        const tipo = typeof x === 'object' ? (x.tipoDano || (x.elemental ? 'Sangue' : '')) : '';
-                        const info = obterInfoTipoDano(tipo);
+                        const elemental = typeof x === 'object' && x !== null && x.elemental;
                         return (
-                          <span
-                            key={`${expr}-${i}`}
-                            style={info.cor ? { color: info.cor } : undefined}
-                            title={tipo ? `Dano extra de ${tipo}` : undefined}
-                          >
-                            +{expr}{info.abrev ? ` ${info.abrev}` : ''}
+                          <span key={`${expr}-${i}`} style={elemental ? { color: 'var(--sangue-claro)' } : undefined} title={elemental ? 'Dano da Trilha do Monstruoso' : undefined}>
+                            +{expr}
                           </span>
                         );
                       })}
@@ -177,27 +184,27 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
                   </div>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                     {!a._monstruoso && (
-                      <>
-                        <button
-                          type="button"
-                          className="btn ghost sm"
-                          title="Editar detalhes e dano extra da arma"
-                          onClick={() => setAEditarArma({ indice: i, arma: a })}
-                        >
-                          Editar
-                        </button>
-                        <button
-                          type="button"
-                          className={'toggle-equipar' + (equipado ? ' equipado' : '')}
-                          onClick={() => editar(i, { equipado: !equipado })}
-                          title={equipado ? 'Está na mão. Carrega para a guardar.' : 'Está guardada. Carrega para a equipar.'}
-                        >
-                          <span className="bolinha" />
-                          {equipado ? 'Equipada' : 'Guardada'}
-                        </button>
-                      </>
+                      <button
+                        type="button"
+                        className={'toggle-equipar' + (equipado ? ' equipado' : '')}
+                        onClick={() => editar(i, { equipado: !equipado })}
+                        title={equipado ? 'Está na mão. Carrega para a guardar.' : 'Está guardada. Carrega para a equipar.'}
+                      >
+                        <span className="bolinha" />
+                        {equipado ? 'Equipada' : 'Guardada'}
+                      </button>
                     )}
                     <button className="btn sm" disabled={!equipado} title={equipado ? '' : 'Equipa a arma primeiro'} onClick={() => atacar(a, i)}>Atacar</button>
+                    {a.nome === 'Mordida (Monstruoso)' && (
+                      <button
+                        className="btn sm ghost"
+                        disabled={!equipado || Number(personagem.peAtual ?? calcMaximos(personagem).pe) < 1}
+                        title="Ser Assustador (65%) — 1x/ronda, ao usar Agredir com outra arma: gasta 1 PE por um ataque corpo a corpo extra com a mordida"
+                        onClick={() => atacarComPe(a, i)}
+                      >
+                        Ataque extra (1 PE)
+                      </button>
+                    )}
                     <button
                       className={'btn sm' + (acerto?.critico ? '' : ' ghost')}
                       disabled={!acerto || !equipado}
@@ -257,17 +264,6 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
       )}
 
       <RituaisEmCombate personagem={personagem} setPersonagem={setPersonagem} onRolar={onRolar} />
-
-      {aEditarArma !== null && (
-        <EditorArma
-          arma={aEditarArma.arma}
-          aoFechar={() => setAEditarArma(null)}
-          aoGuardar={(nova) => {
-            editar(aEditarArma.indice, nova);
-            setAEditarArma(null);
-          }}
-        />
-      )}
     </div>
   );
 }
@@ -297,7 +293,10 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
 
   function conjurar(r) {
     const custo = Number(String(r.custo).replace(/\D/g, '')) || 0;
-    if (custo > atual || !temComponente(r)) return;
+    // "Enquanto estiver transformado... não pode... conjurar rituais"
+    // (Forma Monstruosa) — bloqueia qualquer conjuração, incluindo repetir
+    // este ritual, enquanto a transformação estiver ativa.
+    if (custo > atual || !temComponente(r) || personagem.formaMonstruosaAtiva) return;
 
     // Poder de toque da Trilha do Monstruoso (Especialista-Conhecimento
     // 65%+: Detecção de Ameaças/Mergulho Mental) — só desconta o PE fixo,
@@ -337,6 +336,14 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
         patch.sanAtual = Math.max(0, Math.min(patch.sanAtual ?? mentalAtual, maximoMental - 1));
       }
     }
+    // Forma Monstruosa garante mesmo os efeitos do livro ao ser conjurada:
+    // 30 PV temporários e a transformação fica ativa (liga o +5 em ataque/
+    // dano corpo a corpo em armas.js e bloqueia conjurar outros rituais,
+    // até terminares a transformação à mão).
+    if (r.nome === 'Forma Monstruosa') {
+      patch.pvTemp = Number(personagem.pvTemp || 0) + 30;
+      patch.formaMonstruosaAtiva = true;
+    }
     setPersonagem({ ...personagem, ...patch });
 
     const nomeMental = usaPd ? 'Determinação' : 'Sanidade';
@@ -353,19 +360,38 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
     onRolar({ ...teste, tipo: 'ritual', nome: r.nome || 'Ritual', detalhe: `${circulo}º círculo`, notas, sofreu: perdeSan });
   }
 
-  function rolarDanoRitual(r) {
-    const desc = r.descricao || '';
-    const m = desc.match(/(\d+d\d+(?:\s*[+-]\s*\d+)?)\s*(?:pontos\s+de\s+dano\s*(?:de\s+)?([a-zA-Záàãâéêíóôõúç]+)?|de\s+dano\s*(?:de\s+)?([a-zA-Záàãâéêíóôõúç]+)?)/i);
-    const danoExpr = r.dano || (m ? m[1].replace(/\s/g, '') : null);
-    const tipo = r.tipoDano || (m ? (m[2] || m[3]) : null) || r.elemento || 'Ritual';
-    if (danoExpr) {
-      const res = rolarDano({
-        nome: `${r.nome || 'Ritual'} — dano`,
-        dano: danoExpr,
-        tipoDano: tipo,
-      });
-      if (res) onRolar(res);
-    }
+  // Combatente Sangue 99% ("Ser Aterrorizante"): sempre que sofre dano, teste
+  // de Vontade DT 10+dano — falhar obriga a próxima ação padrão a ser
+  // conjurar Forma Monstruosa, por isso ao falhar aqui já se conjura sozinho.
+  const [modalVontade, setModalVontade] = useState(null); // ritual (r) ou null
+  const [danoRascunho, setDanoRascunho] = useState(0);
+
+  function abrirModalVontade(r) {
+    setDanoRascunho(0);
+    setModalVontade(r);
+  }
+
+  function confirmarTesteVontade() {
+    const r = modalVontade;
+    setModalVontade(null);
+    if (!r) return;
+    const dano = Math.max(0, Math.trunc(Number(danoRascunho) || 0));
+    const dt = 10 + dano;
+    const von = calcPericias(personagem).find((x) => x.id === 'vontade') || { dados: 0, bonus: 0 };
+    const teste = rolarTeste({ nome: 'Vontade — resistir à Forma Monstruosa', dados: von.dados, bonus: von.bonus });
+    const passou = teste.total >= dt;
+    onRolar({
+      ...teste, tipo: 'teste',
+      notas: [`DT ${dt} (10 + ${dano} de dano)`, passou ? 'Resistiu — continua em si' : 'Falhou — a próxima ação padrão tem de ser conjurar Forma Monstruosa'],
+      sofreu: !passou,
+    });
+    if (!passou) conjurar(r);
+  }
+
+  // Termina a transformação à mão (o livro não dá um gatilho automático de
+  // fim de cena) — desliga o +5 corpo a corpo e volta a permitir conjurar.
+  function terminarTransformacao() {
+    setPersonagem((p) => ({ ...p, formaMonstruosaAtiva: false }));
   }
 
   return (
@@ -377,12 +403,9 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
           const circulo = Number(r.circulo) || 1;
           const podeGastar = custo <= atual;
           const componenteOk = temComponente(r);
-          const podeConjurar = podeGastar && componenteOk;
+          const transformado = Boolean(personagem.formaMonstruosaAtiva);
+          const podeConjurar = podeGastar && componenteOk && !transformado;
           const nomeElemento = ELEMENTOS.find((e) => e.id === r.elemento)?.nome || r.elemento;
-          const desc = r.descricao || '';
-          const m = desc.match(/(\d+d\d+(?:\s*[+-]\s*\d+)?)\s*(?:pontos\s+de\s+dano\s*(?:de\s+)?([a-zA-Záàãâéêíóôõúç]+)?|de\s+dano\s*(?:de\s+)?([a-zA-Záàãâéêíóôõúç]+)?)/i);
-          const danoExpr = r.dano || (m ? m[1].replace(/\s/g, '') : null);
-
           return (
             <div className={'bloco ritual el-' + (r.elemento || 'variavel')} key={r._monstruosoId || i}>
               <div className="topo">
@@ -411,35 +434,72 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
                     )}
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {danoExpr && (
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  {r.nome === 'Forma Monstruosa' && r._monstruoso && (
                     <button
                       className="btn sm ghost"
-                      title={`Rolar dano do ritual (${danoExpr})`}
-                      onClick={() => rolarDanoRitual(r)}
+                      title="Sempre que sofres dano: teste de Vontade DT 10+dano — se falhares, conjura este ritual automaticamente"
+                      onClick={() => abrirModalVontade(r)}
                     >
-                      Dano ({danoExpr})
+                      Teste de Vontade
                     </button>
                   )}
-                  <button
-                    className="btn sm"
-                    disabled={!podeConjurar}
-                    title={
-                      !podeGastar ? 'Não tens pontos que cheguem'
-                      : !componenteOk ? `Precisas de "Componentes Ritualísticos de ${nomeElemento}" no inventário — os de outro elemento não servem`
-                      : r._semTeste ? `Gasta ${custo} ${usaPd ? 'PD' : 'PE'} — sem teste de Ocultismo (poder de toque)`
-                      : `Gasta ${custo} ${usaPd ? 'PD' : 'PE'} e faz o teste de Ocultismo`
-                    }
-                    onClick={() => conjurar(r)}
-                  >
-                    Conjurar
-                  </button>
+                  {r.nome === 'Forma Monstruosa' && transformado ? (
+                    <button
+                      className="btn sm"
+                      style={{ borderColor: 'var(--sangue)', background: 'var(--sangue)' }}
+                      title="Termina a transformação — desliga o +5 em ataque/dano corpo a corpo e volta a poder conjurar rituais"
+                      onClick={terminarTransformacao}
+                    >
+                      Terminar transformação
+                    </button>
+                  ) : (
+                    <button
+                      className="btn sm"
+                      disabled={!podeConjurar}
+                      title={
+                        transformado ? 'Transformado pela Forma Monstruosa — não podes conjurar rituais'
+                        : !podeGastar ? 'Não tens pontos que cheguem'
+                        : !componenteOk ? `Precisas de "Componentes Ritualísticos de ${nomeElemento}" no inventário — os de outro elemento não servem`
+                        : r._semTeste ? `Gasta ${custo} ${usaPd ? 'PD' : 'PE'} — sem teste de Ocultismo (poder de toque)`
+                        : `Gasta ${custo} ${usaPd ? 'PD' : 'PE'} e faz o teste de Ocultismo`
+                      }
+                      onClick={() => conjurar(r)}
+                    >
+                      Conjurar
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
           );
         })}
       </div>
+
+      {modalVontade && (
+        <div className="modal-fundo" style={{ zIndex: 100 }} onClick={(e) => e.target === e.currentTarget && setModalVontade(null)}>
+          <div className="modal" style={{ maxWidth: 380, textAlign: 'center' }}>
+            <div className="modal-topo">
+              <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>Teste de Vontade — Forma Monstruosa</h3>
+              <button className="fechar" onClick={() => setModalVontade(null)}>×</button>
+            </div>
+            <div className="modal-corpo">
+              <p style={{ color: 'var(--txt-dim)', fontSize: 14.5, marginBottom: 20 }}>
+                Quanto dano sofreste agora? A DT do teste de Vontade é 10 + esse dano — se falhares, o ritual é conjurado automaticamente.
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center', marginBottom: 22 }}>
+                <button type="button" className="btn ghost sm" onClick={() => setDanoRascunho((v) => Math.max(0, (Number(v) || 0) - 1))}>−</button>
+                <strong style={{ fontSize: 22, minWidth: 48, textAlign: 'center', fontFamily: 'var(--numeros)' }}>{danoRascunho}</strong>
+                <button type="button" className="btn ghost sm" onClick={() => setDanoRascunho((v) => (Number(v) || 0) + 1)}>+</button>
+              </div>
+              <div style={{ display: 'flex', gap: 14, justifyContent: 'center' }}>
+                <button className="btn ghost" onClick={() => setModalVontade(null)}>Cancelar</button>
+                <button className="btn" style={{ borderColor: 'var(--sangue)', background: 'var(--sangue)' }} onClick={confirmarTesteVontade}>Confirmar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -469,13 +529,7 @@ export function AbaHabilidades({ personagem, setPersonagem }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 14 }}>
-        <button
-          type="button"
-          className={'btn ghost' + (aEscolher ? ' ativo' : '')}
-          onClick={() => setAEscolher((v) => !v)}
-        >
-          Poderes do Catálogo
-        </button>
+        <button className="btn ghost" onClick={() => setAEscolher(true)}>Do catálogo</button>
         <button className="btn" onClick={() => adicionar(novaHabilidade())}>Nova Habilidade</button>
       </div>
 
@@ -599,13 +653,7 @@ export function AbaRituais({ personagem, setPersonagem }) {
         </div>
         <span className="pill">Círculo máximo em NEX {nexEfetivo(personagem)}%: {circuloMax}º</span>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            type="button"
-            className={'btn ghost' + (aEscolher ? ' ativo' : '')}
-            onClick={() => setAEscolher((v) => !v)}
-          >
-            Rituais do Catálogo
-          </button>
+          <button className="btn ghost" onClick={() => setAEscolher(true)}>Do catálogo</button>
           <button className="btn" onClick={novoRitualEmBranco}>Novo Ritual</button>
         </div>
       </div>
@@ -804,14 +852,12 @@ export function AbaInventario({ personagem, setPersonagem }) {
   const [aEscolherArma, setAEscolherArma] = useState(false);
   const [aEditarArma, setAEditarArma] = useState(null);   
   const [aEditarItem, setAEditarItem] = useState(null);
-  const [itemParaAdicionar, setItemParaAdicionar] = useState(null);
   const [aviso, setAviso] = useState(null);
   // "Componentes Ritualísticos de (Elemento)" é o mesmo item para os 4
   // elementos — antes de o meter no inventário, pergunta-se qual (mesmo
   // popup de escolha usado no elemento do Monstruoso).
   const [aEscolherElementoComponente, setAEscolherElementoComponente] = useState(null);
   const catalogoArmas = ITENS.filter(ehArma);
-  const catalogoItens = ITENS.filter((i) => !ehArma(i));
   const carga = calcCarga(personagem);
   const cats = calcItensPorCategoria(personagem);
   const set = (patch) => setPersonagem({ ...personagem, ...patch });
@@ -844,9 +890,9 @@ export function AbaInventario({ personagem, setPersonagem }) {
               className={carga.sobrecarregado ? 'mau' : ''}
               value={`${carga.usados} / ${carga.max}`}
               title={`5 espaços por ponto de Força · máximo absoluto ${carga.limiteAbsoluto}`}
-              style={{ width: 90, flexShrink: 0, textAlign: 'center' }}
+              style={{ width: 90, flexShrink: 0 }}
             />
-            <span className="dica" style={{ whiteSpace: 'nowrap', fontSize: '11px', lineHeight: '1.2', textAlign: 'left' }}>
+            <span className="dica" style={{ whiteSpace: 'nowrap' }}>
               {carga.dosItens} em itens · {carga.dasArmas} em armas
               {carga.bonus ? ` · +${carga.bonus} de equipamento` : ''}
             </span>
@@ -873,37 +919,12 @@ export function AbaInventario({ personagem, setPersonagem }) {
         <div className="aviso"><strong>Acima da patente:</strong> tens mais itens do que a Ordem te libera nesta missão.</div>
       )}
 
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'space-between', alignItems: 'center', margin: '14px 0', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            className={'btn ghost' + (aEscolherArma ? ' ativo' : '')}
-            onClick={() => {
-              setAEscolherArma((v) => !v);
-              setAEscolher(false);
-            }}
-          >
-            Armas do Catálogo
-          </button>
-          <button
-            type="button"
-            className={'btn ghost' + (aEscolher ? ' ativo' : '')}
-            onClick={() => {
-              setAEscolher((v) => !v);
-              setAEscolherArma(false);
-            }}
-          >
-            Itens do Catálogo
-          </button>
-        </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" className="btn" onClick={() => setAEditarArma('nova')}>
-            Nova Arma
-          </button>
-          <button type="button" className="btn" onClick={() => adicionar({ ...novoItem(), manual: true })}>
-            Novo Item
-          </button>
-        </div>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', margin: '14px 0', flexWrap: 'wrap' }}>
+        <button className="btn ghost" onClick={() => setAEscolherArma(true)}>Armas do catálogo</button>
+        <button className="btn ghost" onClick={() => setAEditarArma('nova')}>Nova arma</button>
+        <span style={{ flex: 1 }} />
+        <button className="btn ghost" onClick={() => setAEscolher(true)}>Do catálogo</button>
+        <button className="btn" onClick={() => adicionar({ ...novoItem(), manual: true })}>Novo Item</button>
       </div>
 
       {aEscolherArma && (
@@ -967,11 +988,11 @@ export function AbaInventario({ personagem, setPersonagem }) {
 
       {aEscolher && (
         <Seletor
-          titulo={`Itens (${catalogoItens.length})`}
-          itens={catalogoItens}
+          titulo={`Itens (${ITENS.length})`}
+          itens={ITENS}
           filtros={[
-            { id: 'tipo', label: 'Todos os tipos', valorDe: (i) => i.tipo, opcoes: TIPOS_ITEM.filter((t) => t.id !== 'arma').map((t) => ({ valor: t.id, label: t.nome })) },
-            { id: 'categoria', label: 'Todas as categorias', valorDe: (i) => categoriaRomana(i.categoria), opcoes: CATEGORIAS.map((c) => ({ value: c, label: `Categoria ${c}` })) },
+            { id: 'tipo', label: 'Todos os tipos', valorDe: (i) => i.tipo, opcoes: TIPOS_ITEM.map((t) => ({ valor: t.id, label: t.nome })) },
+            { id: 'categoria', label: 'Todas as categorias', valorDe: (i) => categoriaRomana(i.categoria), opcoes: CATEGORIAS.map((c) => ({ valor: c, label: `Categoria ${c}` })) },
           ]}
           aoProcurar={(i, t) => i.nome.toLowerCase().includes(t) || (i.descricao || '').toLowerCase().includes(t)}
           render={(i) => (
@@ -982,7 +1003,7 @@ export function AbaInventario({ personagem, setPersonagem }) {
                   TIPOS_ITEM.find((t) => t.id === i.tipo)?.nome,
                   categoriaRomana(i.categoria) ? `Cat. ${categoriaRomana(i.categoria)}` : null,
                   i.espacos != null ? `${i.espacos} esp.` : null,
-                  i.defesa ? `Defesa +${i.defesa}` : null, i.elemento,
+                  i.dano, i.defesa ? `Defesa +${i.defesa}` : null, i.elemento,
                 ].filter(Boolean).join(' · ')}
               </span>
               <span className="corte">{i.descricao}</span>
@@ -999,8 +1020,16 @@ export function AbaInventario({ personagem, setPersonagem }) {
               setAEscolher(false);
               setAEscolherElementoComponente(i);
             } else {
+              adicionar({
+                nome: i.nome,
+                categoria: categoriaRomana(i.categoria) ?? '',
+                espacos: i.espacos ?? 1,
+                cargaBonus: i.cargaBonus ?? 0,
+                descricao: i.descricao || '',
+                manual: false
+              });
+              setAviso(null);
               setAEscolher(false);
-              setItemParaAdicionar({ item: i, quantidade: 1 });
             }
           }}
           onFechar={() => setAEscolher(false)}
@@ -1046,97 +1075,6 @@ export function AbaInventario({ personagem, setPersonagem }) {
           </div>
         </div>
       )}
-      {itemParaAdicionar && (
-        <div className="modal-fundo" style={{ zIndex: 100 }} onClick={(e) => e.target === e.currentTarget && setItemParaAdicionar(null)}>
-          <div className="modal" style={{ maxWidth: 420 }}>
-            <div className="modal-topo">
-              <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>Adicionar ao Inventário</h3>
-              <button className="fechar" onClick={() => setItemParaAdicionar(null)}>×</button>
-            </div>
-            <div className="modal-corpo">
-              <div style={{ marginBottom: 14 }}>
-                <b style={{ fontSize: '19px', display: 'block', marginBottom: 4 }}>{itemParaAdicionar.item.nome}</b>
-                <div style={{ fontSize: '13px', color: 'var(--sangue-claro)', marginBottom: 8 }}>
-                  {[
-                    TIPOS_ITEM.find((t) => t.id === itemParaAdicionar.item.tipo)?.nome,
-                    categoriaRomana(itemParaAdicionar.item.categoria) ? `Cat. ${categoriaRomana(itemParaAdicionar.item.categoria)}` : null,
-                    itemParaAdicionar.item.espacos != null ? `${itemParaAdicionar.item.espacos} esp. cada` : null,
-                    itemParaAdicionar.item.defesa ? `Defesa +${itemParaAdicionar.item.defesa}` : null,
-                  ].filter(Boolean).join(' · ')}
-                </div>
-                {itemParaAdicionar.item.descricao && (
-                  <div style={{ fontSize: '13.5px', color: 'var(--txt-dim)', lineHeight: '1.4', maxHeight: 80, overflowY: 'auto' }}>
-                    {itemParaAdicionar.item.descricao}
-                  </div>
-                )}
-              </div>
-
-              <div className="campo" style={{ marginTop: 16 }}>
-                <label>Quantidade</label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div className="controle-quantidade">
-                    <button
-                      type="button"
-                      className="btn-qtd"
-                      disabled={itemParaAdicionar.quantidade <= 1}
-                      onClick={() => setItemParaAdicionar((prev) => ({ ...prev, quantidade: Math.max(1, prev.quantidade - 1) }))}
-                    >
-                      −
-                    </button>
-                    <input
-                      type="number"
-                      className="input-qtd"
-                      min="1"
-                      value={itemParaAdicionar.quantidade}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value, 10);
-                        setItemParaAdicionar((prev) => ({ ...prev, quantidade: isNaN(val) || val < 1 ? 1 : val }));
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className="btn-qtd"
-                      onClick={() => setItemParaAdicionar((prev) => ({ ...prev, quantidade: prev.quantidade + 1 }))}
-                    >
-                      +
-                    </button>
-                  </div>
-                  <span style={{ fontSize: '13px', color: 'var(--txt-dim)' }}>
-                    Total: <b>{(itemParaAdicionar.item.espacos ?? 1) * itemParaAdicionar.quantidade}</b> {((itemParaAdicionar.item.espacos ?? 1) * itemParaAdicionar.quantidade) === 1 ? 'espaço' : 'espaços'}
-                  </span>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
-                <button type="button" className="btn ghost" onClick={() => setItemParaAdicionar(null)}>Cancelar</button>
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={() => {
-                    const { item, quantidade } = itemParaAdicionar;
-                    const espacosBase = item.espacos ?? 1;
-                    const cargaBonusBase = item.cargaBonus ?? 0;
-                    adicionar({
-                      nome: quantidade > 1 ? `${quantidade}x ${item.nome}` : item.nome,
-                      categoria: categoriaRomana(item.categoria) ?? '',
-                      espacos: espacosBase * quantidade,
-                      cargaBonus: cargaBonusBase * quantidade,
-                      descricao: item.descricao || '',
-                      quantidade,
-                      manual: false,
-                    });
-                    setItemParaAdicionar(null);
-                    setAEscolher(false);
-                    setAviso(null);
-                  }}
-                >
-                  Adicionar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {aviso && <div className="aviso"><strong>Arma:</strong> {aviso}</div>}
 
@@ -1175,30 +1113,18 @@ export function AbaInventario({ personagem, setPersonagem }) {
             <div className="rotulo-lista">Itens ({carga.dosItens} espaços)</div>
             <ul>
               {lista.map((it, i) => {
+                const ehManual = it.manual === true;
+                const ehUltimo = i === lista.length - 1;
                 return (
-                  <li key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '12px 14px', borderBottom: '1px solid var(--linha)', flexWrap: 'wrap' }}>
+                  <li key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '12px 14px', borderBottom: ehUltimo ? 'none' : '1px solid var(--linha)', flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 150 }}>
                       <span className="nome" style={{ fontSize: '18px', fontWeight: 'bold' }}>{it.nome || 'Sem nome'}</span>
                       <span className="estado" style={{ color: 'var(--txt-dim)', fontSize: '14px' }}>CAT. {it.categoria || '0'}</span>
                       <span className="esp" style={{ color: 'var(--txt-dim)', fontSize: '14px' }}>{Number(it.espacos) || 0} esp.</span>
                     </div>
                     {it.descricao && (
-                      <div
-                        title={it.descricao}
-                        style={{
-                          width: '100%',
-                          fontSize: '14px',
-                          color: 'var(--txt-dim)',
-                          marginTop: 4,
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          lineHeight: '1.4',
-                        }}
-                      >
-                        {it.descricao}
+                      <div style={{ width: '100%' }}>
+                        <TextoExpandivel texto={it.descricao} />
                       </div>
                     )}
                     <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>

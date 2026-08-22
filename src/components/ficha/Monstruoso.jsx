@@ -12,13 +12,14 @@
 import React, { useState } from 'react';
 import { PERICIAS } from '../../data/pericias.js';
 import { RITUAIS } from '../../data/rituais.js';
-import { nexEfetivo } from '../../engine/calc.js';
+import { nexEfetivo, calcMaximos } from '../../engine/calc.js';
 import { ajustarRecursos } from '../../engine/character.js';
 import { rolarExpressao } from '../../engine/dados.js';
 import {
   classeMonstruosa, patamarAtual, elementoAtual, efeitosDiarios, nomePoderAtual, consequenciasAtivas,
   ativarHoje, desativarHoje, escolherElemento, limiteDrenagem, tudoPermanente,
   escolhasNecessarias, escolherRitual, escolherPericiasConhecimento, rituaisAtivos, resumoPorPatamar,
+  atributosEfetivos,
 } from '../../engine/monstruoso.js';
 import { ELEMENTOS_MONSTRUOSO, NOME_PODER_POR_PATAMAR, COR_ELEMENTO, DRENAGEM_ATRIBUTO } from '../../data/monstruoso.js';
 import CabecalhoSeta from './CabecalhoSeta.jsx';
@@ -384,6 +385,56 @@ export function MonstruosoPainel({ personagem, setPersonagem, onRolar }) {
     setPersonagem((p) => ({ ...p, pvTemp: Number(p.pvTemp || 0) + (r ? r.total : 0) }));
   }
 
+  // Combatente-Sangue 40% (Ser Macabro): Ação de movimento + 1 ou mais PE
+  // (limitado pela Força) — recupera 1d8 PV por PE gasto. Popup no estilo
+  // dos outros modais da ficha (não o prompt feio do browser).
+  const [peModalAberto, setPeModalAberto] = useState(false);
+  const [peRascunho, setPeRascunho] = useState(1);
+
+  function limitePeRecuperarVida() {
+    const max = calcMaximos(personagem);
+    const peAtual = Number(personagem.peAtual ?? max.pe);
+    const forca = atributosEfetivos(personagem, nex).for;
+    return Math.max(0, Math.min(peAtual, forca));
+  }
+
+  function abrirModalPe() {
+    const limite = limitePeRecuperarVida();
+    if (limite <= 0) return;
+    setPeRascunho(1);
+    setPeModalAberto(true);
+  }
+
+  function confirmarGastarPe() {
+    const limite = limitePeRecuperarVida();
+    const n = Math.max(0, Math.min(limite, Math.trunc(Number(peRascunho) || 0)));
+    setPeModalAberto(false);
+    if (n <= 0) return;
+    const max = calcMaximos(personagem);
+    const r = rolarExpressao(`${n}d8`);
+    if (r) onRolar(r);
+    const cura = r ? r.total : 0;
+    setPersonagem((p) => ({
+      ...p,
+      peAtual: Number(p.peAtual ?? max.pe) - n,
+      pvAtual: Math.min(max.pv, Number(p.pvAtual ?? max.pv) + cura),
+    }));
+  }
+
+  // Combatente-Sangue 65% (Ser Assustador): 50% de chance de ignorar o dano
+  // adicional de um crítico ou ataque furtivo — 1d2, 1 falha e 2 sucesso.
+  function rolarChanceIgnorarDano() {
+    const r = rolarExpressao('1d2');
+    if (!r) return;
+    const sucesso = r.total >= 2;
+    onRolar({
+      ...r,
+      nome: 'Ser Assustador — ignorar dano adicional',
+      notas: [sucesso ? 'Sucesso (2) — ignora o dano adicional do crítico/ataque furtivo' : 'Falha (1) — sofre o dano adicional normalmente'],
+      sofreu: !sucesso,
+    });
+  }
+
   const cartaoAberto = aberto('cartao', true);
 
   return (
@@ -440,6 +491,26 @@ export function MonstruosoPainel({ personagem, setPersonagem, onRolar }) {
               <ul style={{ margin: '4px 0 0', paddingLeft: 18, color: 'var(--txt-dim)', fontSize: 13.5, lineHeight: 1.55 }}>
                 {b.linhas.map((linha, i) => <li key={i}>{linha}</li>)}
               </ul>
+            )}
+            {aberto && classe === 'combatente' && elemento === 'Sangue' && b.patamar === 40 && (
+              <button
+                className="btn ghost sm"
+                style={{ marginTop: 8 }}
+                title="Ser Macabro (40%) — Ação de movimento + 1 ou mais PE (limitado pela Força): recupera 1d8 PV por PE gasto"
+                onClick={abrirModalPe}
+              >
+                Gastar PE para recuperar vida
+              </button>
+            )}
+            {aberto && classe === 'combatente' && elemento === 'Sangue' && b.patamar === 65 && (
+              <button
+                className="btn ghost sm"
+                style={{ marginTop: 8 }}
+                title="Ser Assustador (65%) — 50% de chance de ignorar o dano adicional de um crítico ou ataque furtivo"
+                onClick={rolarChanceIgnorarDano}
+              >
+                Rolar 1d2 (ignorar dano adicional)
+              </button>
             )}
           </div>
         );
@@ -501,6 +572,31 @@ export function MonstruosoPainel({ personagem, setPersonagem, onRolar }) {
       )}
 
       </>}
+
+      {peModalAberto && (
+        <div className="modal-fundo" style={{ zIndex: 100 }} onClick={(e) => e.target === e.currentTarget && setPeModalAberto(false)}>
+          <div className="modal" style={{ maxWidth: 380, textAlign: 'center' }}>
+            <div className="modal-topo">
+              <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>Ser Macabro — gastar PE</h3>
+              <button className="fechar" onClick={() => setPeModalAberto(false)}>×</button>
+            </div>
+            <div className="modal-corpo">
+              <p style={{ color: 'var(--txt-dim)', fontSize: 14.5, marginBottom: 20 }}>
+                Quantos PE queres gastar? Recuperas 1d8 PV por PE gasto (máx. {limitePeRecuperarVida()}, limitado pela Força).
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center', marginBottom: 22 }}>
+                <button type="button" className="btn ghost sm" onClick={() => setPeRascunho((v) => Math.max(1, (Number(v) || 0) - 1))}>−</button>
+                <strong style={{ fontSize: 22, minWidth: 40, textAlign: 'center', fontFamily: 'var(--numeros)' }}>{peRascunho}</strong>
+                <button type="button" className="btn ghost sm" onClick={() => setPeRascunho((v) => Math.min(limitePeRecuperarVida(), (Number(v) || 0) + 1))}>+</button>
+              </div>
+              <div style={{ display: 'flex', gap: 14, justifyContent: 'center' }}>
+                <button className="btn ghost" onClick={() => setPeModalAberto(false)}>Cancelar</button>
+                <button className="btn" style={{ borderColor: cor, background: cor }} onClick={confirmarGastarPe}>Confirmar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

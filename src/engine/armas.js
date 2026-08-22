@@ -64,6 +64,11 @@ export function estatisticasArma(personagem, arma) {
     .filter((d) => !d.corpoACorpoApenas || corpoACorpo)
     .map((d) => `${d.quantidade}d${d.faces}`);
 
+  // Ritual Forma Monstruosa (enquanto transformado): "+5 em testes de
+  // ataque e rolagens de dano corpo a corpo" — flag ligada/desligada ao
+  // conjurar/terminar a transformação em RituaisEmCombate (Abas.jsx).
+  const bonusFormaMonstruosa = personagem.formaMonstruosaAtiva && corpoACorpo ? 5 : 0;
+
   const alcanceBase = ALCANCES.indexOf(arma.alcance);
   const saltosAlcance = (mods.lista.reduce((t, m) => t + (m.efeitos.alcanceCategoria || 0), 0)) + maldicoes.alcanceCategoria;
   const alcanceFinal = alcanceBase >= 0 && saltosAlcance
@@ -84,11 +89,10 @@ export function estatisticasArma(personagem, arma) {
     atributoTeste,
     atributoDano,
     agilAtiva,
-    tipoDano: arma.tipoDano || arma.tipo || null,
-    bonusAtaque: p.bonus + (Number(arma.bonus) || 0) + mods.ataque,
+    bonusAtaque: p.bonus + (Number(arma.bonus) || 0) + mods.ataque + bonusFormaMonstruosa,
     dadosExtraAtaque,
     dano: somarDados(arma.dano, mods.dadosDano + maldicoes.dadosDano),
-    bonusDano: bonusAtributoDano + mods.dano,
+    bonusDano: bonusAtributoDano + mods.dano + bonusFormaMonstruosa,
     margem: Math.max(2, critico.margem - mods.margem - maldicoes.margemExtra),
     multiplicador: critico.multiplicador,
     extras,
