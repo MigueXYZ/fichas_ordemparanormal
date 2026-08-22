@@ -1,8 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { GRAUS_TREINO } from '../../data/pericias.js';
 import { ATRIBUTOS } from '../../data/atributos.js';
 import { calcPericias } from '../../engine/calc.js';
-import { rolarTeste } from '../../engine/dados.js';
+import { rolarTeste, rolarExpressao } from '../../engine/dados.js';
 import IconeD20 from '../IconeD20.jsx';
 
 function InputNumeroScroll({ value, onChange, ...props }) {
@@ -64,6 +64,17 @@ function SelectScroll({ value, onChange, onScrollStep, children, ...props }) {
 
 export default function TabelaPericias({ personagem, setPersonagem, onRolar }) {
   const linhas = calcPericias(personagem);
+  const [roladorAberto, setRoladorAberto] = useState(false);
+  const [exprLivre, setExprLivre] = useState('');
+
+  function rolarDadoLivre(expr) {
+    const texto = expr || exprLivre;
+    const r = rolarExpressao(texto);
+    if (r) {
+      onRolar(r);
+      if (!expr) setExprLivre('');
+    }
+  }
 
   function setPericia(id, patch) {
     setPersonagem({
@@ -107,7 +118,56 @@ export default function TabelaPericias({ personagem, setPersonagem, onRolar }) {
         }
       `}</style>
 
-      <div className="titulo-seccao">Perícias</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <div className="titulo-seccao" style={{ margin: 0 }}>Perícias</div>
+        <button
+          type="button"
+          className={'btn sm' + (roladorAberto ? '' : ' ghost')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '3px 10px', height: 28 }}
+          onClick={() => setRoladorAberto((v) => !v)}
+          title="Abrir rolador de dados livre"
+        >
+          <IconeD20 style={{ width: 14, height: 14, color: 'currentColor' }} />
+          <span>Rolar Dados</span>
+        </button>
+      </div>
+
+      {roladorAberto && (
+        <div className="rolador-livre-caixa">
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <input
+              type="text"
+              placeholder="Fórmula (ex.: 2d20+5, 1d100, 3d6)"
+              value={exprLivre}
+              onChange={(e) => setExprLivre(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && rolarDadoLivre()}
+              style={{ flex: 1, minWidth: 120, fontSize: 13, height: 32 }}
+              autoFocus
+            />
+            <button
+              type="button"
+              className="btn sm"
+              onClick={() => rolarDadoLivre()}
+              style={{ height: 32, padding: '0 12px' }}
+            >
+              Rolar
+            </button>
+          </div>
+          <div className="rolador-livre-atalhos">
+            {['1d20', '2d20', '1d100', '1d12', '1d10', '1d8', '1d6', '1d4'].map((d) => (
+              <button
+                key={d}
+                type="button"
+                className="btn ghost sm atalho-dado"
+                onClick={() => rolarDadoLivre(d)}
+              >
+                {d}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <table className="tabela-pericias">
         <thead>
           <tr>
