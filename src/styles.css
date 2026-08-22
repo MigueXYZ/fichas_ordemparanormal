@@ -1286,14 +1286,33 @@ body.bate-forte .barra-recurso .preenchido::before {
 
 /* ------------------------------------------------- espaço do token */
 .espaco-token {
-  position: fixed; left: 26px; bottom: 96px; z-index: 3;
-  width: 232px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  position: fixed;
+  left: 0;
+  top: 60px;
+  bottom: 0;
+  width: calc((100vw - 1240px) / 2);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.espaco-token-conteudo {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  max-width: 100%;
 }
 
 /* sem token: só o contorno do modelo, esbatido */
 .espaco-token .modelo {
   display: block; position: relative; cursor: pointer;
-  width: 220px; height: min(62vh, 560px);
+  width: min(220px, 85%); height: min(62vh, 560px);
   opacity: .16; transition: opacity .3s ease;
 }
 .espaco-token .modelo:hover { opacity: .4; }
@@ -1301,8 +1320,8 @@ body.bate-forte .barra-recurso .preenchido::before {
 .espaco-token .modelo .figura {
   display: block; width: 100%; height: 100%;
   background: var(--txt);
-  -webkit-mask: url('/img/token-modelo.png') bottom center / contain no-repeat;
-  mask: url('/img/token-modelo.png') bottom center / contain no-repeat;
+  -webkit-mask: url('/img/token-modelo.png') center / contain no-repeat;
+  mask: url('/img/token-modelo.png') center / contain no-repeat;
   transform: scaleX(-1);   /* o modelo passa a olhar para a ficha */
 }
 .espaco-token .dica-token {
@@ -1314,15 +1333,16 @@ body.bate-forte .barra-recurso .preenchido::before {
 
 /* com token: a imagem e mais nada */
 .espaco-token .token-img {
-  display: block; max-width: 210px; width: auto;
-  height: min(56vh, 520px); object-fit: contain; object-position: bottom;
+  display: block; max-width: min(250px, 85%); width: auto;
+  max-height: min(65vh, 580px); object-fit: contain; object-position: center;
   filter: drop-shadow(0 10px 22px rgba(0,0,0,.8));
 }
 .espaco-token .acoes-token {
-  position: absolute; top: 0; right: -6px; display: flex; flex-direction: column; gap: 6px;
+  position: absolute; top: 0; right: -10px; display: flex; flex-direction: column; gap: 6px;
   opacity: 0; transform: translateX(6px); transition: opacity .2s, transform .2s;
 }
-.espaco-token:hover .acoes-token { opacity: 1; transform: none; }
+.espaco-token:hover .acoes-token,
+.espaco-token-conteudo:hover .acoes-token { opacity: 1; transform: none; }
 .espaco-token .acao-token {
   width: 28px; height: 28px; border-radius: 50%; padding: 0;
   display: grid; place-items: center; cursor: pointer;
