@@ -1156,6 +1156,20 @@ body.bate-forte .barra-recurso .preenchido::before {
 .bloco.arma.guardada { opacity: .62; }
 .bloco.arma.guardada:hover { opacity: 1; }
 
+/* botões de ação do inventário em grelha 2x2 */
+.grelha-botoes-inventario {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 16px 0;
+}
+.grelha-botoes-inventario .btn {
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+  padding: 10px 14px;
+}
+
 /* lista de armas dentro do inventário */
 .armas-carregadas {
   border: 1px solid var(--linha); border-radius: var(--raio); background: var(--bg-2);

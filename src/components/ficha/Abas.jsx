@@ -529,7 +529,7 @@ export function AbaHabilidades({ personagem, setPersonagem }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 14 }}>
-        <button className="btn ghost" onClick={() => setAEscolher(true)}>Do catálogo</button>
+        <button className="btn ghost" onClick={() => setAEscolher((v) => !v)}>Do catálogo</button>
         <button className="btn" onClick={() => adicionar(novaHabilidade())}>Nova Habilidade</button>
       </div>
 
@@ -653,7 +653,7 @@ export function AbaRituais({ personagem, setPersonagem }) {
         </div>
         <span className="pill">Círculo máximo em NEX {nexEfetivo(personagem)}%: {circuloMax}º</span>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn ghost" onClick={() => setAEscolher(true)}>Do catálogo</button>
+          <button className="btn ghost" onClick={() => setAEscolher((v) => !v)}>Do catálogo</button>
           <button className="btn" onClick={novoRitualEmBranco}>Novo Ritual</button>
         </div>
       </div>
@@ -858,6 +858,7 @@ export function AbaInventario({ personagem, setPersonagem }) {
   // popup de escolha usado no elemento do Monstruoso).
   const [aEscolherElementoComponente, setAEscolherElementoComponente] = useState(null);
   const catalogoArmas = ITENS.filter(ehArma);
+  const catalogoItens = ITENS.filter((i) => !ehArma(i));
   const carga = calcCarga(personagem);
   const cats = calcItensPorCategoria(personagem);
   const set = (patch) => setPersonagem({ ...personagem, ...patch });
@@ -919,12 +920,11 @@ export function AbaInventario({ personagem, setPersonagem }) {
         <div className="aviso"><strong>Acima da patente:</strong> tens mais itens do que a Ordem te libera nesta missão.</div>
       )}
 
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', margin: '14px 0', flexWrap: 'wrap' }}>
-        <button className="btn ghost" onClick={() => setAEscolherArma(true)}>Armas do catálogo</button>
-        <button className="btn ghost" onClick={() => setAEditarArma('nova')}>Nova arma</button>
-        <span style={{ flex: 1 }} />
-        <button className="btn ghost" onClick={() => setAEscolher(true)}>Do catálogo</button>
-        <button className="btn" onClick={() => adicionar({ ...novoItem(), manual: true })}>Novo Item</button>
+      <div className="grelha-botoes-inventario">
+        <button type="button" className="btn ghost" onClick={() => setAEscolherArma((v) => !v)}>Armas do catálogo</button>
+        <button type="button" className="btn" onClick={() => setAEditarArma((v) => (v === 'nova' ? null : 'nova'))}>Nova arma</button>
+        <button type="button" className="btn ghost" onClick={() => setAEscolher((v) => !v)}>Itens do catálogo</button>
+        <button type="button" className="btn" onClick={() => adicionar({ ...novoItem(), manual: true })}>Novo Item</button>
       </div>
 
       {aEscolherArma && (
@@ -988,10 +988,10 @@ export function AbaInventario({ personagem, setPersonagem }) {
 
       {aEscolher && (
         <Seletor
-          titulo={`Itens (${ITENS.length})`}
-          itens={ITENS}
+          titulo={`Itens (${catalogoItens.length})`}
+          itens={catalogoItens}
           filtros={[
-            { id: 'tipo', label: 'Todos os tipos', valorDe: (i) => i.tipo, opcoes: TIPOS_ITEM.map((t) => ({ valor: t.id, label: t.nome })) },
+            { id: 'tipo', label: 'Todos os tipos', valorDe: (i) => i.tipo, opcoes: TIPOS_ITEM.filter((t) => t.id !== 'arma').map((t) => ({ valor: t.id, label: t.nome })) },
             { id: 'categoria', label: 'Todas as categorias', valorDe: (i) => categoriaRomana(i.categoria), opcoes: CATEGORIAS.map((c) => ({ valor: c, label: `Categoria ${c}` })) },
           ]}
           aoProcurar={(i, t) => i.nome.toLowerCase().includes(t) || (i.descricao || '').toLowerCase().includes(t)}
@@ -1003,18 +1003,14 @@ export function AbaInventario({ personagem, setPersonagem }) {
                   TIPOS_ITEM.find((t) => t.id === i.tipo)?.nome,
                   categoriaRomana(i.categoria) ? `Cat. ${categoriaRomana(i.categoria)}` : null,
                   i.espacos != null ? `${i.espacos} esp.` : null,
-                  i.dano, i.defesa ? `Defesa +${i.defesa}` : null, i.elemento,
+                  i.defesa ? `Defesa +${i.defesa}` : null, i.elemento,
                 ].filter(Boolean).join(' · ')}
               </span>
               <span className="corte">{i.descricao}</span>
             </>
           )}
           onEscolher={(i) => {
-            if (ehArma(i)) {
-              armas.adicionar(armaDoItem(i));
-              setAviso(`${i.nome} foi para o separador Combate, já equipada.`);
-              setAEscolher(false);
-            } else if (i.id === 'componentes-ritualisticos-de-elemento') {
+            if (i.id === 'componentes-ritualisticos-de-elemento') {
               // Este item serve para os 4 elementos — pergunta qual antes de o
               // meter no inventário, em vez de ficar com "(Elemento)" no nome.
               setAEscolher(false);
@@ -1077,33 +1073,6 @@ export function AbaInventario({ personagem, setPersonagem }) {
       )}
 
       {aviso && <div className="aviso"><strong>Arma:</strong> {aviso}</div>}
-
-      {(personagem.ataques || []).length > 0 && (
-        <div className="armas-carregadas">
-          <div className="rotulo-lista">Armas ({carga.dasArmas} espaços)</div>
-          <ul>
-            {(personagem.ataques || []).map((a, i) => {
-              const equipado = a.equipado !== false;
-              return (
-                <li key={i}>
-                  <button
-                    type="button"
-                    className={'ponto botao' + (equipado ? ' equipado' : '')}
-                    title={equipado ? 'Equipada — carrega para guardar' : 'Guardada — carrega para equipar'}
-                    onClick={() => armas.editar(i, { equipado: !equipado })}
-                  />
-                  <span className="nome" style={{ fontSize: '18px', fontWeight: 'bold' }}>{a.nome || 'Sem nome'}</span>
-                  <span className="estado">{equipado ? 'equipada' : 'guardada'}</span>
-                  <span className="esp">{Number(a.espacos) || 0} esp.</span>
-                  <button className="btn ghost sm" onClick={() => setAEditarArma({ indice: i, arma: a })}>Editar</button>
-                  <button className="btn danger sm" onClick={() => armas.remover(i)}>Remover</button>
-                </li>
-              );
-            })}
-          </ul>
-          <div className="dica">Usam-se no separador Combate. Uma arma pesa na carga esteja equipada ou guardada.</div>
-        </div>
-      )}
 
       {lista.length === 0 ? (
         <div className="painel-vazio">Inventário vazio</div>
