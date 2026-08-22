@@ -25,28 +25,30 @@ export default function EspacoToken({ token, aoMudarToken }) {
 
   return (
     <div className={'espaco-token' + (token ? ' com-token' : '')}>
-      {token ? (
-        <>
-          <img className="token-img" src={token} alt="Token do agente" />
-          <div className="acoes-token">
-            <label className="acao-token" title="Trocar o token">
-              <span>+</span>
-              <input type="file" accept="image/*,image/gif" onChange={escolher} />
-            </label>
-            <button type="button" className="acao-token" title="Tirar o token" onClick={() => aoMudarToken(null)}>
-              ✕
-            </button>
-          </div>
-        </>
-      ) : (
-        <label className="modelo" title="Carregar o token do agente">
-          <span className="figura" aria-hidden="true" />
-          <span className="dica-token">Token do agente</span>
-          <input type="file" accept="image/*,image/gif" onChange={escolher} />
-        </label>
-      )}
+      <div className="espaco-token-conteudo">
+        {token ? (
+          <>
+            <img className="token-img" src={token} alt="Token do agente" />
+            <div className="acoes-token">
+              <label className="acao-token" title="Trocar o token">
+                <span>+</span>
+                <input type="file" accept="image/*,image/gif" onChange={escolher} />
+              </label>
+              <button type="button" className="acao-token" title="Tirar o token" onClick={() => aoMudarToken(null)}>
+                ✕
+              </button>
+            </div>
+          </>
+        ) : (
+          <label className="modelo" title="Carregar o token do agente">
+            <span className="figura" aria-hidden="true" />
+            <span className="dica-token">Token do agente</span>
+            <input type="file" accept="image/*,image/gif" onChange={escolher} />
+          </label>
+        )}
 
-      {erro && <div className="erro-token">{erro}</div>}
+        {erro && <div className="erro-token">{erro}</div>}
+      </div>
     </div>
   );
 }
