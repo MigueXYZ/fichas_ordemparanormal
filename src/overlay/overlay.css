@@ -2,7 +2,7 @@
    Overlay para OBS
    ============================================================ */
 
-html, body.corpo-overlay, #overlay { height: 100%; background: transparent !important; }
+body.corpo-overlay, #overlay { height: 100%; background: transparent !important; }
 body.corpo-overlay { margin: 0; overflow: hidden; }
 body.corpo-overlay::before, body.corpo-overlay::after { display: none !important; }
 
@@ -112,12 +112,33 @@ body.corpo-overlay::before, body.corpo-overlay::after { display: none !important
 .ov-rolagem .conta { font-size: 13px; color: var(--txt-dim); }
 .ov-rolagem .conta .melhor { color: var(--txt); font-weight: 700; }
 .ov-r-total { font-family: var(--numeros); font-weight: 700; font-size: 34px; line-height: 1; }
-.ov-rolagem.critico .ov-r-total { color: var(--ok); text-shadow: 0 0 16px rgba(74,222,128,.5); }
 .ov-r-dano {
   border-left: 1px solid var(--linha-forte); padding-left: 12px; text-align: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
 .ov-r-dano span { display: block; font-size: 9.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--sangue-claro); }
 .ov-r-dano b { font-family: var(--numeros); font-size: 26px; }
+.ov-r-dano .dano-separado {
+  font-family: var(--numeros);
+  font-size: 17px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  white-space: nowrap;
+}
+.ov-r-dano .dano-tipo-tag {
+  font-family: var(--corpo);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: normal;
+}
+.ov-r-dano .dano-total-destaque {
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(255,255,255,0.4);
+}
 
 /* ------------------------------------------------ à espera */
 .ov-espera {
@@ -128,3 +149,139 @@ body.corpo-overlay::before, body.corpo-overlay::after { display: none !important
 .ov-espera b { color: var(--txt); font-family: var(--display); font-size: 20px; }
 .ov-detalhe { font-size: 12.5px; }
 .ov-detalhe code { color: var(--sangue-claro); }
+
+/* ------------------------------------------------ Layout Livre & Barras de Progresso */
+.ov-canvas-livre {
+  position: absolute; inset: 0;
+  width: 1280px; height: 720px;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.ov-widget-absoluto {
+  position: absolute;
+  top: 0; left: 0;
+  transform-origin: top left;
+  pointer-events: auto;
+}
+
+/* Barras de progresso estilizadas para recursos */
+.ov-barra-progresso {
+  display: flex; flex-direction: column; gap: 3px; min-width: 240px;
+}
+.ov-barra-topo {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 12px; font-weight: bold; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--cor, #fff); text-shadow: 0 2px 4px #000;
+}
+.ov-barra-rotulo { font-family: var(--display); font-size: 14px; }
+.ov-barra-valores { font-family: var(--numeros); font-size: 18px; }
+.ov-barra-valores i { font-style: normal; font-size: 13px; opacity: 0.7; }
+.ov-barra-valores .ov-temp,
+.ov-temp {
+  color: #fbbf24;
+  font-size: 15px;
+  margin-left: 6px;
+  font-weight: bold;
+  text-shadow: 0 0 8px rgba(251, 191, 36, 0.7);
+}
+.ov-barra-trilho {
+  width: 100%; height: 12px;
+  background: rgba(10, 6, 8, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.8) inset;
+}
+.ov-barra-preenchimento {
+  height: 100%;
+  background: var(--cor, var(--sangue));
+  border-radius: 2px;
+  transition: width 0.3s ease-out;
+  box-shadow: 0 0 10px var(--cor);
+}
+.ov-barra-temp {
+  position: absolute;
+  top: 0; bottom: 0;
+  background: repeating-linear-gradient(
+    -45deg,
+    #fbbf24,
+    #fbbf24 4px,
+    #d97706 4px,
+    #d97706 8px
+  );
+  border-radius: 2px;
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.8);
+  transition: width 0.3s ease-out, left 0.3s ease-out;
+  z-index: 2;
+}
+.ov-barra-pv   { --cor: #f04653; }
+.ov-barra-san  { --cor: #ad74f0; }
+.ov-barra-pe   { --cor: #f5a636; }
+.ov-barra-pd   { --cor: #3fd0bb; }
+
+/* ------------------------------------------------ Editor de Layout */
+.editor-fundo {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(5, 3, 4, 0.95);
+  display: flex; flex-direction: column;
+  backdrop-filter: blur(8px);
+}
+.editor-topo {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 24px; background: #120b0d; border-bottom: 1px solid var(--linha);
+  gap: 16px; flex-wrap: wrap; z-index: 10;
+}
+.editor-topo-titulo { font-family: var(--display); font-size: 20px; color: var(--txt); }
+.editor-area-canvas {
+  flex: 1; position: relative; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  background: #080405 radial-gradient(circle at center, rgba(192, 21, 33, 0.04) 0%, transparent 70%);
+}
+.editor-canvas-container {
+  width: 1280px; height: 720px; position: relative;
+  background: rgba(14, 9, 11, 0.6);
+  border: 2px dashed rgba(192, 21, 33, 0.4);
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
+  user-select: none;
+}
+.editor-grid-guias {
+  position: absolute; inset: 0; pointer-events: none;
+  background-size: 80px 80px;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+}
+.editor-widget-caixa {
+  position: absolute;
+  top: 0; left: 0;
+  cursor: grab;
+  border: 1px solid transparent;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  padding: 4px;
+}
+.editor-widget-caixa:hover {
+  border-color: rgba(240, 70, 83, 0.5);
+  background: rgba(240, 70, 83, 0.05);
+}
+.editor-widget-caixa.selecionado {
+  border-color: #f04653;
+  box-shadow: 0 0 0 1px #f04653, 0 0 18px rgba(240, 70, 83, 0.35);
+  background: rgba(240, 70, 83, 0.08);
+  cursor: grabbing;
+}
+.editor-widget-tag {
+  position: absolute; top: -20px; left: 0;
+  background: #f04653; color: #fff;
+  font-size: 10px; font-weight: bold; letter-spacing: 0.05em;
+  padding: 1px 6px; border-radius: 2px;
+  white-space: nowrap; pointer-events: none;
+  text-transform: uppercase;
+}
+.editor-inspetor {
+  position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+  background: #181013; border: 1px solid var(--linha-forte); border-radius: 8px;
+  padding: 10px 18px; display: flex; align-items: center; gap: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 20;
+}

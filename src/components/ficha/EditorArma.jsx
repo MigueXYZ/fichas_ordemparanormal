@@ -5,6 +5,7 @@ import { TIPOS_DANO } from '../../data/itens.js';
 import { CATEGORIAS } from '../../data/patentes.js';
 import { MODIFICACOES_ARMA, ALCANCES, aplicarModificacoes } from '../../data/modificacoesArma.js';
 import { lerImagem } from '../../engine/armazenamento.js';
+import { obterInfoTipoDano } from '../ExibirDano.jsx';
 
 const MULTIPLICADORES = [2, 3, 4];
 
@@ -17,6 +18,8 @@ export default function EditorArma({ arma, aoGuardar, aoFechar }) {
   });
   const set = (patch) => setA({ ...a, ...patch });
   const mods = aplicarModificacoes(a);
+  const [novoExtraExpr, setNovoExtraExpr] = useState('');
+  const [novoExtraTipo, setNovoExtraTipo] = useState('');
   const [erroImagem, setErroImagem] = useState(null);
   const ficheiro = useRef(null);
 
@@ -35,6 +38,27 @@ export default function EditorArma({ arma, aoGuardar, aoFechar }) {
   function alternarMod(id) {
     const lista = a.modificacoes || [];
     set({ modificacoes: lista.includes(id) ? lista.filter((x) => x !== id) : [...lista, id] });
+  }
+
+  function adicionarDanoExtra() {
+    if (!novoExtraExpr.trim()) return;
+    const m = novoExtraExpr.trim().match(/^(\d*d\d+(?:[+-]\d+)?)(?:\s+([a-zA-Záàãâéêíóôõúç]+))?/i);
+    const expr = m ? m[1] : novoExtraExpr.trim();
+    const tipo = novoExtraTipo || (m ? m[2] : '') || '';
+    const item = { expr, tipoDano: tipo || '' };
+    set({ danoExtra: [...(a.danoExtra || []), item] });
+    setNovoExtraExpr('');
+  }
+
+  function guardarFinal() {
+    let danoExtraFinal = [...(a.danoExtra || [])];
+    if (novoExtraExpr.trim()) {
+      const m = novoExtraExpr.trim().match(/^(\d*d\d+(?:[+-]\d+)?)(?:\s+([a-zA-Záàãâéêíóôõúç]+))?/i);
+      const expr = m ? m[1] : novoExtraExpr.trim();
+      const tipo = novoExtraTipo || (m ? m[2] : '') || '';
+      danoExtraFinal.push({ expr, tipoDano: tipo || '' });
+    }
+    aoGuardar({ ...a, danoExtra: danoExtraFinal });
   }
 
   return (
@@ -123,24 +147,81 @@ export default function EditorArma({ arma, aoGuardar, aoFechar }) {
           <div className="campo">
             <label>Dano extra</label>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              {(a.danoExtra || []).map((d, i) => (
-                <span key={i} className="pill" style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-                  {d}
-                  <button
-                    className="fechar" style={{ fontSize: 12 }}
-                    onClick={() => set({ danoExtra: a.danoExtra.filter((_, j) => j !== i) })}
-                  >✕</button>
-                </span>
-              ))}
+              {(a.danoExtra || []).map((d, i) => {
+                const expr = typeof d === 'string' ? d : d?.expr;
+                const tipo = typeof d === 'object' ? d?.tipoDano : '';
+                const info = obterInfoTipoDano(tipo);
+                return (
+                  <span
+                    key={i}
+                    className="pill"
+                    style={{
+                      display: 'inline-flex',
+                      gap: 6,
+                      alignItems: 'center',
+                      borderColor: info.cor ? info.cor : undefined,
+                      color: info.cor ? info.cor : undefined,
+                    }}
+                  >
+                    <span>+{expr}{info.abrev ? ` ${info.abrev}` : ''}</span>
+                    <button
+                      type="button"
+                      className="fechar"
+                      style={{ fontSize: 12, color: 'inherit' }}
+                      onClick={() => set({ danoExtra: a.danoExtra.filter((_, j) => j !== i) })}
+                    >
+                      ✕
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
               <input
-                type="text" placeholder="ex.: 2d6 e Enter" style={{ maxWidth: 160 }}
+                type="text"
+                placeholder="Dano (ex.: 1d6)"
+                value={novoExtraExpr}
+                onChange={(e) => setNovoExtraExpr(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key !== 'Enter' || !e.target.value.trim()) return;
-                  e.preventDefault();
-                  set({ danoExtra: [...(a.danoExtra || []), e.target.value.trim()] });
-                  e.target.value = '';
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    adicionarDanoExtra();
+                  }
                 }}
+                style={{ maxWidth: 140 }}
               />
+              <select
+                value={novoExtraTipo}
+                onChange={(e) => setNovoExtraTipo(e.target.value)}
+                style={{ maxWidth: 170 }}
+              >
+                <option value="">Tipo (Padrão/Físico)</option>
+                <optgroup label="Elementos Paranormais">
+                  <option value="Sangue">🩸 Sangue</option>
+                  <option value="Morte">💀 Morte</option>
+                  <option value="Energia">⚡ Energia</option>
+                  <option value="Conhecimento">👁️ Conhecimento</option>
+                  <option value="Medo">🕯️ Medo</option>
+                </optgroup>
+                <optgroup label="Físico & Outros">
+                  <option value="Balístico">Balístico</option>
+                  <option value="Corte">Corte</option>
+                  <option value="Impacto">Impacto</option>
+                  <option value="Perfuração">Perfuração</option>
+                  <option value="Fogo">Fogo</option>
+                  <option value="Eletricidade">Eletricidade</option>
+                  <option value="Químico">Químico</option>
+                  <option value="Mental">Mental</option>
+                </optgroup>
+              </select>
+              <button
+                type="button"
+                className="btn sm ghost"
+                onClick={adicionarDanoExtra}
+              >
+                + Adicionar
+              </button>
             </div>
             <span className="dica">Dados extra não são multiplicados num acerto crítico.</span>
           </div>
@@ -195,7 +276,7 @@ export default function EditorArma({ arma, aoGuardar, aoFechar }) {
 
         <div className="modal-acoes">
           <button className="btn ghost" onClick={aoFechar}>Cancelar</button>
-          <button className="btn" onClick={() => aoGuardar(a)}>Guardar</button>
+          <button className="btn" onClick={guardarFinal}>Guardar</button>
         </div>
       </div>
     </div>

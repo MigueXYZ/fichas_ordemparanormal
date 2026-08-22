@@ -50,27 +50,90 @@ export function rolarTeste({ nome, dados, bonus = 0, detalhe = '', dadosExtra = 
   };
 }
 
-/** Parser de expressões tipo "2d20+3", "1d12", "d6-1". */
+/** Parser de expressões tipo "2d20+3", "1d12", "d6-1" ou "2d8 Balistico + 1d6 Sangue". */
 export function rolarExpressao(expr) {
-  const limpo = String(expr).replace(/\s/g, '').toLowerCase();
-  const m = limpo.match(/^(\d*)d(\d+)([+-]\d+)?$/);
-  if (!m) return null;
-  const qtd = Math.min(Math.max(Number(m[1] || 1), 1), 50);
-  const faces = Number(m[2]);
-  const mod = Number(m[3] || 0);
-  const rolagens = Array.from({ length: qtd }, () => 1 + Math.floor(Math.random() * faces));
-  const soma = rolagens.reduce((a, b) => a + b, 0);
+  const texto = String(expr || '').trim();
+  if (!texto) return null;
+
+  // Se for apenas uma rolagem simples padrão de dados (ex: "2d20+3", "1d12", "d6-1")
+  const mSimples = texto.replace(/\s/g, '').toLowerCase().match(/^(\d*)d(\d+)([+-]\d+)?$/);
+  if (mSimples) {
+    const qtd = Math.min(Math.max(Number(mSimples[1] || 1), 1), 50);
+    const faces = Number(mSimples[2]);
+    const mod = Number(mSimples[3] || 0);
+    const rolagens = Array.from({ length: qtd }, () => 1 + Math.floor(Math.random() * faces));
+    const soma = rolagens.reduce((a, b) => a + b, 0);
+    return {
+      id: id(),
+      tipo: 'expressao',
+      nome: texto,
+      detalhe: '',
+      rolagens,
+      escolhido: null,
+      bonus: mod,
+      total: soma + mod,
+      critico: faces === 20 && rolagens.includes(20),
+      falhaCritica: faces === 20 && rolagens.every((r) => r === 1),
+    };
+  }
+
+  // Verificar se é uma expressão composta com tipos de dano (ex: "2d8 Balistico + 1d6 Sangue")
+  const tokens = texto.split(/(?=[+-])/);
+  const partes = [];
+  let totalGeral = 0;
+  let teveDado = false;
+
+  for (let token of tokens) {
+    token = token.trim();
+    if (!token) continue;
+    const sinal = token.startsWith('-') ? -1 : 1;
+    const limpo = token.replace(/^[+-]\s*/, '').trim();
+
+    const mDado = limpo.match(/^(\d*)d(\d+)(?:\s*([+-]\s*\d+))?(?:\s+([a-zA-ZáàãâéêíóôõúçÁÀÃÂÉÊÍÓÔÕÚÇ]+))?/i);
+    if (mDado) {
+      teveDado = true;
+      const qtd = Math.min(Math.max(Number(mDado[1] || 1), 1), 50);
+      const faces = Number(mDado[2]);
+      const mod = Number(mDado[3] ? mDado[3].replace(/\s/g, '') : 0);
+      const tipo = mDado[4] || null;
+      const rolagens = Array.from({ length: qtd }, () => 1 + Math.floor(Math.random() * faces));
+      const soma = (rolagens.reduce((a, b) => a + b, 0) + mod) * sinal;
+      totalGeral += soma;
+      partes.push({
+        tipoDano: tipo,
+        expressao: `${qtd}d${faces}${mod ? (mod > 0 ? `+${mod}` : mod) : ''}`,
+        rolagens,
+        bonus: mod,
+        total: soma,
+      });
+    } else {
+      const mNum = limpo.match(/^(\d+)(?:\s+([a-zA-ZáàãâéêíóôõúçÁÀÃÂÉÊÍÓÔÕÚÇ]+))?/i);
+      if (mNum) {
+        const val = Number(mNum[1]) * sinal;
+        const tipo = mNum[2] || null;
+        totalGeral += val;
+        partes.push({
+          tipoDano: tipo,
+          expressao: String(val),
+          rolagens: [],
+          bonus: val,
+          total: val,
+        });
+      }
+    }
+  }
+
+  if (!teveDado && partes.length === 0) return null;
+
   return {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-    tipo: 'expressao',
-    nome: limpo,
+    id: id(),
+    tipo: partes.some((p) => Boolean(p.tipoDano)) || partes.length > 1 ? 'dano' : 'expressao',
+    nome: texto,
     detalhe: '',
-    rolagens,
-    escolhido: null,
-    bonus: mod,
-    total: soma + mod,
-    critico: faces === 20 && rolagens.includes(20),
-    falhaCritica: faces === 20 && rolagens.every((r) => r === 1),
+    partes,
+    total: totalGeral,
+    critico: false,
+    falhaCritica: false,
   };
 }
 
@@ -94,10 +157,6 @@ export function rolarAtaque({ nome, dados, bonus = 0, margem = 20, dadosExtra = 
  * Rolagem de dano. Num acerto crítico só os dados da arma são multiplicados —
  * bónus numéricos e dados extras não (Livro Base, cap. 4).
  */
-/**
- * Algumas armas trazem duas hipóteses de dano ("1d4/1d6", por ser usada com uma
- * ou com as duas mãos). Ficamos com a primeira que der para rolar.
- */
 function primeiraExpressaoValida(dano) {
   const partes = String(dano || '').split('/');
   for (const parte of partes) {
@@ -107,15 +166,7 @@ function primeiraExpressaoValida(dano) {
   return null;
 }
 
-/**
- * `extras` (opcional): cada entrada é uma expressão tipo "1d8" (dano fixo
- * somado ao dano da arma) OU `{ expr: "1d8", elemental: true }` — marca-se
- * `elemental` quando o dado vem da Trilha do Monstruoso (ex.: o dano extra
- * "de Sangue" da drenagem), para a interface conseguir colorir só essa
- * parte da conta a vermelho e mostrar quanto do total é dano elemental. O
- * TOTAL continua um só número — não se separa em dois danos.
- */
-export function rolarDano({ nome, dano, bonus = 0, extras = [], critico = false, multiplicador = 2 }) {
+export function rolarDano({ nome, dano, tipoDano = null, bonus = 0, extras = [], critico = false, multiplicador = 2 }) {
   const m = primeiraExpressaoValida(dano);
   if (!m) return null;
   const vezes = critico ? Math.max(1, Number(multiplicador) || 2) : 1;
@@ -124,29 +175,54 @@ export function rolarDano({ nome, dano, bonus = 0, extras = [], critico = false,
   const fixo = Number(m[3] || 0) + (Number(bonus) || 0);
 
   const rolagens = Array.from({ length: qtd }, () => 1 + Math.floor(Math.random() * faces));
-  let total = rolagens.reduce((a, b) => a + b, 0) + fixo;
+  const subtotalBase = rolagens.reduce((a, b) => a + b, 0) + fixo;
+  let total = subtotalBase;
+
+  const partes = [];
+  partes.push({
+    tipoDano: tipoDano || null,
+    expressao: `${qtd}d${faces}${fixo ? (fixo > 0 ? `+${fixo}` : fixo) : ''}`,
+    rolagens,
+    bonus: fixo,
+    total: subtotalBase,
+    elemental: Boolean(tipoDano && ['sangue', 'morte', 'energia', 'conhecimento', 'medo'].includes(tipoDano.toLowerCase())),
+  });
 
   const detalhesExtra = [];
   for (const e of extras) {
     const expr = typeof e === 'string' ? e : e?.expr;
     const elemental = typeof e === 'object' && e !== null ? Boolean(e.elemental) : false;
-    const me = String(expr).replace(/\s/g, '').toLowerCase().match(/^(\d*)d(\d+)$/);
+    const eTipo = typeof e === 'object' ? (e.tipoDano || (elemental ? 'Sangue' : null)) : null;
+    const me = String(expr).replace(/\s/g, '').toLowerCase().match(/^(\d*)d(\d+)([+-]\d+)?$/);
     if (!me) continue;
-    const rs = Array.from({ length: Math.min(Number(me[1] || 1), 30) }, () => 1 + Math.floor(Math.random() * Number(me[2])));
-    const soma = rs.reduce((a, b) => a + b, 0);
+    const eqtd = Math.min(Number(me[1] || 1), 30);
+    const efaces = Number(me[2]);
+    const efixo = Number(me[3] || 0);
+    const rs = Array.from({ length: eqtd }, () => 1 + Math.floor(Math.random() * efaces));
+    const soma = rs.reduce((a, b) => a + b, 0) + efixo;
     total += soma;
-    detalhesExtra.push({ expr, rolagens: rs, soma, elemental });
+    detalhesExtra.push({ expr, rolagens: rs, soma, elemental, tipoDano: eTipo });
+    partes.push({
+      tipoDano: eTipo || (elemental ? 'Sangue' : null),
+      expressao: expr,
+      rolagens: rs,
+      bonus: efixo,
+      total: soma,
+      elemental: Boolean(elemental || (eTipo && ['sangue', 'morte', 'energia', 'conhecimento', 'medo'].includes(eTipo.toLowerCase()))),
+    });
   }
 
   return {
     id: id(),
     tipo: 'dano',
     nome,
+    tipoDano,
     critico,
     multiplicador: vezes,
     expressao: `${qtd}d${faces}`,
     rolagens,
     extras: detalhesExtra,
+    partes,
     bonus: fixo,
     total,
     falhaCritica: false,
@@ -157,11 +233,11 @@ export function rolarDano({ nome, dano, bonus = 0, extras = [], critico = false,
  * Um ataque é uma coisa só: o teste de acerto e, colado a ele, o dano.
  * O resultado leva o dano em `.dano` para o cartão mostrar as duas secções.
  */
-export function rolarAtaqueCompleto({ nome, dados, bonusAtaque = 0, margem = 20, dano, bonusDano = 0, extras = [], multiplicador = 2, dadosExtraAtaque = [] }) {
+export function rolarAtaqueCompleto({ nome, dados, bonusAtaque = 0, margem = 20, dano, tipoDano = null, bonusDano = 0, extras = [], multiplicador = 2, dadosExtraAtaque = [] }) {
   const acerto = rolarAtaque({ nome, dados, bonus: bonusAtaque, margem, dadosExtra: dadosExtraAtaque });
   const golpe = rolarDano({
     nome: `${nome} — dano`,
-    dano, bonus: bonusDano, extras,
+    dano, tipoDano, bonus: bonusDano, extras,
     critico: acerto.critico, multiplicador,
   });
   return { ...acerto, dano: golpe };

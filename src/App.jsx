@@ -7,13 +7,17 @@ import Fundo from './components/Fundo.jsx';
 import EspacoToken from './components/EspacoToken.jsx';
 import HistoricoRolagens from './components/HistoricoRolagens.jsx';
 import PainelOverlay from './components/PainelOverlay.jsx';
+import EditorOverlay from './components/EditorOverlay.jsx';
 import FichaAmeaca from './components/ficha/FichaAmeaca.jsx';
+import ModalDefinicoes from './components/ModalDefinicoes.jsx';
+import { IconeOBS, IconeHistorico, IconeEngrenagem } from './components/Icones.jsx';
 import { personagemVazio } from './engine/character.js';
 import { descarregarPdf } from './export/pdf.js';
 import { guardarAgente, exportarJson, novoId } from './engine/armazenamento.js';
 import { tocarRolagem, alternarSom, somLigado, alternarCoracao, coracaoLigado } from './engine/som.js';
 import { calcMaximos } from './engine/calc.js';
 import { lerConfig, guardarConfig, publicar } from './overlay/transporte.js';
+import { lerLayout, guardarLayout } from './overlay/layoutConfig.js';
 
 export default function App() {
   const [vista, setVista] = useState('inicio'); // inicio | wizard | ficha
@@ -39,16 +43,19 @@ export default function App() {
   const [som, setSom] = useState(somLigado);
   const [coracao, setCoracao] = useState(coracaoLigado);
   const [verHistorico, setVerHistorico] = useState(false);
+  const [verDefinicoes, setVerDefinicoes] = useState(false);
 
   // ---- overlay para o OBS ----
   const [configOverlay, setConfigOverlay] = useState(lerConfig);
+  const [layoutOverlay, setLayoutOverlay] = useState(lerLayout);
   const [verOverlay, setVerOverlay] = useState(false);
+  const [verEditorOverlay, setVerEditorOverlay] = useState(false);
   const [estadoEnvio, setEstadoEnvio] = useState(null);
   const ultimoEnvio = useRef('');
   const relogioOverlay = useRef(null);
 
   useEffect(() => {
-    if (!configOverlay.ligado || !personagem || personagem.tipo === 'ameaca') {
+    if (!configOverlay.ligado || !personagem) {
       publicar({ ligado: false }, null);
       return undefined;
     }
@@ -56,20 +63,20 @@ export default function App() {
     const ultima = rolagens[rolagens.length - 1] || null;
     const estado = {
       nome: personagem.nome || 'Agente',
-      legenda: [personagem.patente, personagem.regras?.nivelSeparado
+      subtitulo: [personagem.classe, personagem.patente, personagem.origem, personagem.regrasOpcionais?.nivel
         ? `Nível ${personagem.nivel ?? 1} · NEX ${personagem.nex}%`
         : `NEX ${personagem.nex}%`].filter(Boolean).join(' · '),
       token: personagem.token || null,
       imagem: personagem.imagem || null,
       pv: { atual: personagem.pvAtual ?? max.pv, max: max.pv, temp: personagem.pvTemp || 0 },
-      san: max.semSanidade ? null : { atual: personagem.sanAtual ?? max.san, max: max.san },
+      san: max.semSanidade ? null : { atual: personagem.sanAtual ?? max.san, max: max.san, temp: personagem.sanTemp || 0 },
       pe: max.semSanidade ? null : { atual: personagem.peAtual ?? max.pe, max: max.pe, temp: personagem.peTemp || 0 },
       pd: max.semSanidade ? { atual: personagem.pdAtual ?? max.pd, max: max.pd, temp: personagem.pdTemp || 0 } : null,
       condicoes: personagem.condicoes || [],
       rolagem: ultima,
+      layout: layoutOverlay,
     };
     const corpo = JSON.stringify(estado);
-    if (corpo === ultimoEnvio.current && configOverlay.modo !== 'p2p') return undefined;
 
     clearTimeout(relogioOverlay.current);
     relogioOverlay.current = setTimeout(async () => {
@@ -78,7 +85,7 @@ export default function App() {
       setEstadoEnvio(r.ok ? { quando: Date.now() } : { erro: r.erro });
     }, 150);
     return () => clearTimeout(relogioOverlay.current);
-  }, [personagem, rolagens, configOverlay]);
+  }, [personagem, rolagens, configOverlay, layoutOverlay]);
 
   const mudarOverlay = useCallback((novo) => {
     setConfigOverlay(guardarConfig(novo));
@@ -140,42 +147,80 @@ export default function App() {
         />
       )}
       <div className="topbar">
-        <h1>Claudio <span className="marca-sub">· Ordem Paranormal</span></h1>
-        <div className="acoes">
-          <button
-            className="btn ghost sm" title={som ? 'Desligar som dos dados' : 'Ligar som dos dados'}
-            onClick={() => setSom(alternarSom())}
-          >
-            {som ? '♪ dados' : '♪ mudo'}
-          </button>
-          <button
-            className={'btn ghost sm' + (coracao ? ' a-bater' : '')}
-            title={coracao ? 'Desligar o batimento cardíaco' : 'Ligar o batimento cardíaco'}
-            onClick={() => setCoracao(alternarCoracao())}
-          >
-            {coracao ? '♥' : '♡'}
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <h1 onClick={voltarAoInicio} title="Voltar ao início">
+            Claudio <span className="marca-sub">· Ordem Paranormal</span>
+          </h1>
           {vista !== 'inicio' && (
+            <button className="btn ghost sm btn-nav-agentes" onClick={voltarAoInicio} title="Voltar à lista de agentes">
+              ← Agentes
+            </button>
+          )}
+          {vista === 'wizard' && personagem?.classeId && (
+            <button className="btn ghost sm" onClick={() => setVista('ficha')}>
+              Ver ficha
+            </button>
+          )}
+        </div>
+
+        <div className="acoes">
+          {vista !== 'inicio' ? (
             <>
-              {guardadoEm && <span className="pill">guardado</span>}
-              <button className="btn ghost sm" onClick={voltarAoInicio}>Agentes</button>
-              {vista === 'ficha' && personagem?.tipo !== 'ameaca' && (
-                <button className="btn ghost sm" onClick={() => setVista('wizard')}>Criação</button>
+              {guardadoEm && (
+                <span className="pill guardado-pill" title="Guardado automaticamente">
+                  <span className="ponto-verde" /> guardado
+                </span>
               )}
-              {vista === 'wizard' && personagem?.classeId && <button className="btn ghost sm" onClick={() => setVista('ficha')}>Ver ficha</button>}
-              <button className="btn ghost sm" onClick={() => setVerHistorico(true)}>
-                Histórico{personagem?.historico?.length ? ` (${personagem.historico.length})` : ''}
+
+              {/* Botão Overlay com símbolo OBS */}
+              <button
+                className={'btn ghost sm btn-overlay-topbar' + (configOverlay.ligado ? ' a-transmitir' : '')}
+                onClick={() => setVerOverlay(true)}
+                title={configOverlay.ligado ? 'Overlay OBS ativo (a transmitir)' : 'Configurar Overlay para OBS'}
+              >
+                <IconeOBS size={16} />
+                <span>Overlay</span>
+                {configOverlay.ligado && <span className="ponto-live" />}
+              </button>
+
+              {/* Botão de Histórico */}
+              <button
+                className="btn ghost sm btn-historico-topbar"
+                onClick={() => setVerHistorico(true)}
+                title="Histórico de rolagens"
+              >
+                <IconeHistorico size={16} />
+                <span className="texto-btn-historico">Histórico</span>
+                {Boolean(personagem?.historico?.length) && (
+                  <span className="badge-contagem">{personagem.historico.length}</span>
+                )}
+              </button>
+
+              {/* Botão Definições / Opções do Personagem */}
+              <button
+                className="btn ghost sm btn-def-topbar"
+                onClick={() => setVerDefinicoes(true)}
+                title="Definições e Exportação (PDF, JSON, Criação, Áudio)"
+                aria-label="Definições do agente"
+              >
+                <IconeEngrenagem size={17} />
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                className="btn ghost sm"
+                title={som ? 'Desligar som dos dados' : 'Ligar som dos dados'}
+                onClick={() => setSom(alternarSom())}
+              >
+                {som ? '♪ dados' : '♪ mudo'}
               </button>
               <button
-                className={'btn ghost sm' + (configOverlay.ligado ? ' a-transmitir' : '')}
-                onClick={() => setVerOverlay(true)}
-                title="Overlay para OBS"
+                className={'btn ghost sm' + (coracao ? ' a-bater' : '')}
+                title={coracao ? 'Desligar o batimento cardíaco' : 'Ligar o batimento cardíaco'}
+                onClick={() => setCoracao(alternarCoracao())}
               >
-                Overlay{configOverlay.ligado ? ' •' : ''}
-              </button>
-              <button className="btn ghost sm" onClick={() => exportarJson(personagem)}>JSON</button>
-              <button className="btn sm" onClick={exportarPdf} disabled={aExportar}>
-                {aExportar ? 'A gerar…' : 'Exportar PDF'}
+                {coracao ? '♥' : '♡'}
               </button>
             </>
           )}
@@ -195,6 +240,24 @@ export default function App() {
         <Ficha personagem={personagem} setPersonagem={setPersonagem} onRolar={rolar} />
       )}
 
+      {verDefinicoes && (
+        <ModalDefinicoes
+          personagem={personagem}
+          som={som}
+          aoAlternarSom={() => setSom(alternarSom())}
+          coracao={coracao}
+          aoAlternarCoracao={() => setCoracao(alternarCoracao())}
+          aoExportarPdf={exportarPdf}
+          aExportar={aExportar}
+          aoExportarJson={exportarJson}
+          aoAbrirCriacao={() => {
+            setVerDefinicoes(false);
+            setVista('wizard');
+          }}
+          aoFechar={() => setVerDefinicoes(false)}
+        />
+      )}
+
       {verHistorico && (
         <HistoricoRolagens
           historico={personagem?.historico || []}
@@ -209,6 +272,23 @@ export default function App() {
           aoMudar={mudarOverlay}
           estadoEnvio={estadoEnvio}
           aoFechar={() => setVerOverlay(false)}
+          aoAbrirEditor={() => {
+            setVerOverlay(false);
+            setVerEditorOverlay(true);
+          }}
+        />
+      )}
+
+      {verEditorOverlay && (
+        <EditorOverlay
+          layoutInicial={layoutOverlay}
+          personagem={personagem}
+          aoGuardar={(novo) => {
+            guardarLayout(novo);
+            setLayoutOverlay(novo);
+            setVerEditorOverlay(false);
+          }}
+          aoFechar={() => setVerEditorOverlay(false)}
         />
       )}
 
