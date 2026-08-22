@@ -195,16 +195,18 @@ export function rolarDano({ nome, dano, tipoDano = null, bonus = 0, extras = [],
     const eTipo = typeof e === 'object' ? (e.tipoDano || (elemental ? 'Sangue' : null)) : null;
     const me = String(expr).replace(/\s/g, '').toLowerCase().match(/^(\d*)d(\d+)([+-]\d+)?$/);
     if (!me) continue;
-    const eqtd = Math.min(Number(me[1] || 1), 30);
+    const multExtra = (typeof e === 'object' && e?.multiplicaCritico && critico) ? vezes : 1;
+    const eqtd = Math.min((Number(me[1] || 1)) * multExtra, 30);
     const efaces = Number(me[2]);
-    const efixo = Number(me[3] || 0);
+    const efixo = (Number(me[3] || 0)) * multExtra;
     const rs = Array.from({ length: eqtd }, () => 1 + Math.floor(Math.random() * efaces));
     const soma = rs.reduce((a, b) => a + b, 0) + efixo;
     total += soma;
-    detalhesExtra.push({ expr, rolagens: rs, soma, elemental, tipoDano: eTipo });
+    const exprFinal = `${eqtd}d${efaces}${efixo ? (efixo > 0 ? `+${efixo}` : efixo) : ''}`;
+    detalhesExtra.push({ expr: exprFinal, rolagens: rs, soma, elemental, tipoDano: eTipo });
     partes.push({
       tipoDano: eTipo || (elemental ? 'Sangue' : null),
-      expressao: expr,
+      expressao: exprFinal,
       rolagens: rs,
       bonus: efixo,
       total: soma,

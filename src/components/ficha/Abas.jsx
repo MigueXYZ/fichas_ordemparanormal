@@ -232,9 +232,22 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
                   </div>
                 )}
 
-                {(a.modificacoes || []).length > 0 && (
+                {((a.modificacoes || []).length > 0 || (a.maldicoes || []).length > 0) && (
                   <div className="resumo-mods">
-                    {e.mods.lista.map((m) => <span key={m.id} className="pill" title={m.texto}>{m.nome}</span>)}
+                    {(e.mods?.lista || []).map((m) => <span key={m.id} className="pill" title={m.texto}>{m.nome}</span>)}
+                    {(e.maldicoes?.lista || []).map((m) => (
+                      <span
+                        key={m.id}
+                        className="pill"
+                        title={m.texto}
+                        style={{
+                          borderColor: m.elemento === 'conhecimento' ? '#f5a636' : m.elemento === 'energia' ? '#9933ff' : m.elemento === 'morte' ? '#82738c' : '#f04653',
+                          color: m.elemento === 'conhecimento' ? '#f5a636' : m.elemento === 'energia' ? '#c084fc' : m.elemento === 'morte' ? '#d6d3d1' : '#f87171',
+                        }}
+                      >
+                        {m.nome}
+                      </span>
+                    ))}
                   </div>
                 )}
               </div>

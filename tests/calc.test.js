@@ -823,4 +823,105 @@ teste('aplicarDescansoPleno restaura 100% e limpa temporários', async () => {
   assert.deepEqual(patch.condicoes, []);
 });
 
+console.log('\nMaldições para Armas (US #81)');
+
+teste('maldições de armas - Lancinante soma 1d8 Sangue e multiplica no crítico', async () => {
+  const { estatisticasArma } = await import('../src/engine/armas.js');
+  const { rolarDano } = await import('../src/engine/dados.js');
+
+  const personagem = {
+    atributos: { AGI: 2, FOR: 2, INT: 1, PRE: 1, VIG: 1 },
+    pericias: [{ id: 'luta', grau: 1 }],
+  };
+
+  const arma = {
+    nome: 'Espada Lancinante',
+    tipo: 'corpo-a-corpo',
+    pericia: 'luta',
+    dano: '1d8',
+    margem: 19,
+    multiplicador: 3,
+    atributoDano: 'for',
+    maldicoes: ['lancinante'],
+  };
+
+  const est = estatisticasArma(personagem, arma);
+  assert.equal(est.maldicoes.categoriaExtra, 2); // 1 maldição = +II categoria
+  
+  // Dano normal
+  const danoNormal = rolarDano({
+    dano: est.dano,
+    bonus: est.bonusDano,
+    extras: est.extras,
+    critico: false,
+    multiplicador: est.multiplicador,
+  });
+
+  // Em acerto normal, Lancinante tem 1d8 de Sangue
+  const parteLancinanteNormal = danoNormal.partes.find((p) => p.tipoDano === 'Sangue');
+  assert.ok(parteLancinanteNormal);
+  assert.equal(parteLancinanteNormal.rolagens.length, 1);
+
+  // Em crítico x3, Lancinante multiplica para 3d8 de Sangue
+  const danoCritico = rolarDano({
+    dano: est.dano,
+    bonus: est.bonusDano,
+    extras: est.extras,
+    critico: true,
+    multiplicador: est.multiplicador,
+  });
+
+  const parteLancinanteCrit = danoCritico.partes.find((p) => p.tipoDano === 'Sangue');
+  assert.ok(parteLancinanteCrit);
+  assert.equal(parteLancinanteCrit.rolagens.length, 3); // 1d8 x 3 = 3d8
+});
+
+teste('maldições de armas - Predadora duplica a margem de ameaça', async () => {
+  const { estatisticasArma } = await import('../src/engine/armas.js');
+
+  const personagem = { atributos: { AGI: 3, FOR: 1, INT: 1, PRE: 1, VIG: 1 } };
+  
+  // Fuzil de caça (margem base 19, alcance Médio)
+  const fuzil = {
+    nome: 'Fuzil de Caça Predador',
+    tipo: 'fogo',
+    pericia: 'pontaria',
+    dano: '2d8',
+    margem: 19,
+    multiplicador: 3,
+    alcance: 'Médio',
+    maldicoes: ['predadora'],
+  };
+
+  const est = estatisticasArma(personagem, fuzil);
+  // Margem 19 duplicada: amplitude 2 vira amplitude 4 -> margem 17
+  assert.equal(est.margem, 17);
+  // Alcance Médio sobe para Longo
+  assert.equal(est.alcance, 'Longo');
+});
+
+teste('maldições de armas - Empuxo e Erosiva', async () => {
+  const { estatisticasArma } = await import('../src/engine/armas.js');
+
+  const personagem = { atributos: { FOR: 3, AGI: 1, INT: 1, PRE: 1, VIG: 1 } };
+
+  const machado = {
+    nome: 'Machado Voraz',
+    tipo: 'corpo-a-corpo',
+    pericia: 'luta',
+    dano: '1d8',
+    maldicoes: ['empuxo', 'erosiva'],
+  };
+
+  const est = estatisticasArma(personagem, machado);
+  // Empuxo: +1 dado de dano em corpo a corpo (1d8 -> 2d8)
+  assert.equal(est.dano, '2d8');
+  // Erosiva: adiciona extra de 1d8 Morte
+  const extraErosiva = est.extras.find((e) => e.tipoDano === 'Morte');
+  assert.ok(extraErosiva);
+  assert.equal(extraErosiva.expr, '1d8');
+  // 2 maldições = +IV categoria
+  assert.equal(est.maldicoes.categoriaExtra, 4);
+});
+
 console.log(`\n${passou} testes ok`);
