@@ -1052,23 +1052,37 @@ body.bate-forte .barra-recurso .preenchido::before {
 
 /* ------------------------------------------------- espaço do token */
 .espaco-token {
-  position: fixed; left: 26px; bottom: 96px; z-index: 3;
-  width: 232px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  position: fixed;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: calc((100vw - 1240px) / 2);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
 }
 
 /* sem token: só o contorno do modelo, esbatido */
 .espaco-token .modelo {
-  display: block; position: relative; cursor: pointer;
-  width: 220px; height: min(62vh, 560px);
-  opacity: .16; transition: opacity .3s ease;
+  display: block;
+  position: relative;
+  cursor: pointer;
+  pointer-events: auto;
+  width: min(240px, 90%);
+  height: min(65vh, 600px);
+  opacity: .16;
+  transition: opacity .3s ease;
 }
 .espaco-token .modelo:hover { opacity: .4; }
 .espaco-token .modelo input { display: none; }
 .espaco-token .modelo .figura {
   display: block; width: 100%; height: 100%;
   background: var(--txt);
-  -webkit-mask: url('/img/token-modelo.png') bottom center / contain no-repeat;
-  mask: url('/img/token-modelo.png') bottom center / contain no-repeat;
+  -webkit-mask: url('/img/token-modelo.png') center center / contain no-repeat;
+  mask: url('/img/token-modelo.png') center center / contain no-repeat;
   transform: scaleX(-1);   /* o modelo passa a olhar para a ficha */
 }
 .espaco-token .dica-token {
@@ -1079,13 +1093,25 @@ body.bate-forte .barra-recurso .preenchido::before {
 .espaco-token .modelo:hover .dica-token { opacity: 1; }
 
 /* com token: a imagem e mais nada */
+.espaco-token.com-token {
+  pointer-events: none;
+}
 .espaco-token .token-img {
-  display: block; max-width: 210px; width: auto;
-  height: min(56vh, 520px); object-fit: contain; object-position: bottom;
+  display: block;
+  pointer-events: auto;
+  max-width: min(240px, 90%);
+  width: auto;
+  max-height: min(65vh, 580px);
+  object-fit: contain;
+  object-position: center;
   filter: drop-shadow(0 10px 22px rgba(0,0,0,.8));
 }
 .espaco-token .acoes-token {
-  position: absolute; top: 0; right: -6px; display: flex; flex-direction: column; gap: 6px;
+  position: absolute;
+  top: 8%;
+  right: calc(50% - 130px);
+  display: flex; flex-direction: column; gap: 6px;
+  pointer-events: auto;
   opacity: 0; transform: translateX(6px); transition: opacity .2s, transform .2s;
 }
 .espaco-token:hover .acoes-token { opacity: 1; transform: none; }
@@ -1106,7 +1132,7 @@ body.bate-forte .barra-recurso .preenchido::before {
 /* O token vive na margem que já existe — a ficha continua centrada, sem empurrões.
    Por isso só aparece quando a margem dá mesmo para ele. */
 .espaco-token { display: none; }
-@media (min-width: 1700px) { .espaco-token { display: flex; } }
+@media (min-width: 1680px) { .espaco-token { display: flex; } }
 @media (prefers-reduced-motion: reduce) { .pedestal .holofote { animation: none; } }
 
 .miniatura-arma {
