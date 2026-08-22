@@ -20,6 +20,7 @@ export function personagemVazio() {
     regras: { ...REGRAS_POR_OMISSAO },
     exposicao: {},          // escolhas das alterações por NEX (regra opcional)
     patente: '',
+    tags: [],
     imagem: null,
     token: null,            // imagem do agente, na margem esquerda
 

@@ -1,7 +1,8 @@
 import React from 'react';
+import EditorTags from '../EditorTags.jsx';
 
 export default function StepToquesFinais({ personagem, atualizar, onFinalizar, podeFinalizar }) {
-  const d = personagem.descricao;
+  const d = personagem.descricao || {};
   const setDesc = (campo, valor) => atualizar({ descricao: { ...d, [campo]: valor } });
 
   return (
@@ -25,6 +26,13 @@ export default function StepToquesFinais({ personagem, atualizar, onFinalizar, p
           <label>Jogador</label>
           <input type="text" value={personagem.jogador} onChange={(e) => atualizar({ jogador: e.target.value })} placeholder="Nome do jogador" />
         </div>
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <EditorTags
+          tags={personagem.tags || []}
+          onChange={(novasTags) => atualizar({ tags: novasTags })}
+        />
       </div>
 
       <div className="campo">

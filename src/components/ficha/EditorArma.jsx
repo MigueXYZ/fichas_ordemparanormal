@@ -4,20 +4,22 @@ import { ATRIBUTOS } from '../../data/atributos.js';
 import { TIPOS_DANO } from '../../data/itens.js';
 import { CATEGORIAS } from '../../data/patentes.js';
 import { MODIFICACOES_ARMA, ALCANCES, aplicarModificacoes } from '../../data/modificacoesArma.js';
+import { MALDICOES_ARMAS, ELEMENTOS_MALDICAO, aplicarMaldicoesArma } from '../../data/maldicoes.js';
 import { lerImagem } from '../../engine/armazenamento.js';
 import { obterInfoTipoDano } from '../ExibirDano.jsx';
 
 const MULTIPLICADORES = [2, 3, 4];
 
-/** Janela de edição de uma arma/ataque, com modificações do livro. */
+/** Janela de edição de uma arma/ataque, com modificações e maldições do livro. */
 export default function EditorArma({ arma, aoGuardar, aoFechar }) {
   const [a, setA] = useState({
     nome: '', dano: '', margem: 20, multiplicador: 2, bonus: 0, tipo: '', alcance: '',
-    pericia: 'luta', atributoDano: '', espacos: '', categoria: '', agil: false, danoExtra: [], modificacoes: [], notas: '',
+    pericia: 'luta', atributoDano: '', espacos: '', categoria: '', agil: false, danoExtra: [], modificacoes: [], maldicoes: [], notas: '',
     ...arma,
   });
   const set = (patch) => setA({ ...a, ...patch });
   const mods = aplicarModificacoes(a);
+  const maldicoes = aplicarMaldicoesArma(a, Number(a.margem) || 20);
   const [novoExtraExpr, setNovoExtraExpr] = useState('');
   const [novoExtraTipo, setNovoExtraTipo] = useState('');
   const [erroImagem, setErroImagem] = useState(null);
@@ -38,6 +40,11 @@ export default function EditorArma({ arma, aoGuardar, aoFechar }) {
   function alternarMod(id) {
     const lista = a.modificacoes || [];
     set({ modificacoes: lista.includes(id) ? lista.filter((x) => x !== id) : [...lista, id] });
+  }
+
+  function alternarMaldicao(id) {
+    const lista = a.maldicoes || [];
+    set({ maldicoes: lista.includes(id) ? lista.filter((x) => x !== id) : [...lista, id] });
   }
 
   function adicionarDanoExtra() {
@@ -251,6 +258,54 @@ export default function EditorArma({ arma, aoGuardar, aoFechar }) {
                 {mods.espacos ? <span className="pill">espaços {mods.espacos}</span> : null}
                 {mods.danoExtra.map((d) => <span key={d} className="pill">dano extra {d}</span>)}
                 <span className="pill">categoria +{mods.categoriaExtra}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="campo">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label>Maldições (Itens Amaldiçoados)</label>
+              <span className="dica" style={{ color: 'var(--txt-dim)' }}>Preço: –2 SAN em falhas do elemento</span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+              {Object.values(ELEMENTOS_MALDICAO).filter((el) => el.id !== 'medo').map((elem) => {
+                const maldicoesElem = MALDICOES_ARMAS.filter((m) => m.elemento === elem.id);
+                return (
+                  <div key={elem.id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <span style={{ fontSize: 11, fontWeight: 'bold', color: elem.cor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      {elem.nome}
+                    </span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {maldicoesElem.map((m) => {
+                        const ativa = (a.maldicoes || []).includes(m.id);
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            title={m.texto}
+                            className={'btn sm' + (ativa ? '' : ' ghost')}
+                            style={ativa ? { borderColor: elem.cor, color: elem.cor, background: 'rgba(255,255,255,0.06)' } : undefined}
+                            onClick={() => alternarMaldicao(m.id)}
+                          >
+                            {m.nome}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {maldicoes.lista.length > 0 && (
+              <div className="resumo-mods" style={{ marginTop: 8 }}>
+                {maldicoes.margemExtra ? <span className="pill">margem duplicada (+{maldicoes.margemExtra})</span> : null}
+                {maldicoes.dadosDano ? <span className="pill">+{maldicoes.dadosDano} dado de dano (arremesso)</span> : null}
+                {maldicoes.danoCriticoMultiplicavel ? <span className="pill" style={{ color: '#f04653' }}>crítico +{maldicoes.danoCriticoMultiplicavel.valor} {maldicoes.danoCriticoMultiplicavel.tipo}</span> : null}
+                {maldicoes.danosExtras.map((d) => <span key={d.valor + d.tipo} className="pill" style={{ color: '#a855f7' }}>+{d.valor} {d.tipo}</span>)}
+                {maldicoes.defesa ? <span className="pill">defesa +{maldicoes.defesa}</span> : null}
+                <span className="pill" style={{ color: 'var(--txt-dim)' }}>categoria +{maldicoes.categoriaExtra} (amaldiçoada)</span>
               </div>
             )}
           </div>
