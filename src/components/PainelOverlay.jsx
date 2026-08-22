@@ -4,7 +4,7 @@ import { urlDoOverlay, novoCodigoSala, obterHostP2P } from '../overlay/transport
 /**
  * Definições do overlay para o OBS e para partilhar com o Mestre.
  */
-export default function PainelOverlay({ config, aoMudar, estadoEnvio, aoFechar }) {
+export default function PainelOverlay({ config, aoMudar, estadoEnvio, aoFechar, aoAbrirEditor }) {
   const [copiado, setCopiado] = useState(false);
   const [espectadores, setEspectadores] = useState(0);
   const link = urlDoOverlay(config);
@@ -77,7 +77,7 @@ export default function PainelOverlay({ config, aoMudar, estadoEnvio, aoFechar }
               <button className="btn ghost sm" onClick={copiar}>{copiado ? 'Copiado!' : 'Copiar Link'}</button>
             </div>
             <span className="dica">
-              Pode ser aberto no navegador do Mestre ou colado no OBS (1920×1080).
+              Pode ser aberto no navegador do Mestre ou colado no OBS (1280×720).
               Adiciona <code>&amp;limpo=1</code> ao link para ocultar diagnósticos.
             </span>
           </div>
@@ -87,6 +87,17 @@ export default function PainelOverlay({ config, aoMudar, estadoEnvio, aoFechar }
               <strong>Status P2P:</strong> {espectadores > 0 ? `🟢 ${espectadores} ${espectadores === 1 ? 'espectador conectado' : 'espectadores conectados'}` : '🟡 Transmissão ligada (à espera de conexões no link)'}
             </div>
           )}
+
+          <div style={{ marginTop: 12 }}>
+            <button
+              type="button"
+              className="btn ghost"
+              style={{ width: '100%', borderColor: 'var(--sangue-claro)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}
+              onClick={aoAbrirEditor}
+            >
+              <span>🎨</span> <b>Editar Layout do Overlay (720p)</b>
+            </button>
+          </div>
 
           {estadoEnvio?.erro && (
             <div className="aviso"><strong>Não deu para enviar:</strong> {estadoEnvio.erro}</div>
