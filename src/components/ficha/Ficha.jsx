@@ -4,6 +4,7 @@ import BarraRecurso from './BarraRecurso.jsx';
 import TabelaPericias from './TabelaPericias.jsx';
 import PainelCondicoes from './PainelCondicoes.jsx';
 import { AbaCombate, AbaHabilidades, AbaRituais, AbaInventario, AbaDescricao } from './Abas.jsx';
+import CabecalhoSeta from './CabecalhoSeta.jsx';
 import { MonstruosoBotao, MonstruosoPainel } from './Monstruoso.jsx';
 import { CLASSES, trilhasDaClasse } from '../../data/classes.js';
 import { ORIGENS } from '../../data/origens.js';
@@ -57,21 +58,9 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
   const [aba, setAba] = useState('combate');
   const [erroFoto, setErroFoto] = useState(null);
   const [verRegras, setVerRegras] = useState(false);
-  const [menuAvatarAberto, setMenuAvatarAberto] = useState(false);
-  const fileInputRef = useRef(null);
-  const containerAvatarRef = useRef(null);
-
-  useEffect(() => {
-    function cliqueFora(e) {
-      if (containerAvatarRef.current && !containerAvatarRef.current.contains(e.target)) {
-        setMenuAvatarAberto(false);
-      }
-    }
-    if (menuAvatarAberto) {
-      document.addEventListener('mousedown', cliqueFora);
-      return () => document.removeEventListener('mousedown', cliqueFora);
-    }
-  }, [menuAvatarAberto]);
+  const [contasDefesaAberta, setContasDefesaAberta] = useState(false);
+  const [contasBloqueioAberta, setContasBloqueioAberta] = useState(false);
+  const [contasEsquivaAberta, setContasEsquivaAberta] = useState(false);
 
   const regras = personagem.regras || {};
   const nexUtil = nexEfetivo(personagem);
@@ -95,73 +84,32 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
       setErroFoto(err.message);
     }
     e.target.value = '';
-    setMenuAvatarAberto(false);
-  }
-
-  function lidarCliqueRetrato() {
-    if (!personagem.imagem) {
-      fileInputRef.current?.click();
-    } else {
-      setMenuAvatarAberto(!menuAvatarAberto);
-    }
   }
 
   return (
     <div className="container">
+      <style>{`
+        /* Força o alinhamento e centralização rigorosa da coluna esquerda do token */
+        .ficha > div:first-child {
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          justify-content: center !important;
+        }
+      `}</style>
+
       <div className="cabecalho-ficha">
-        <div ref={containerAvatarRef} style={{ position: 'relative' }}>
-          <div 
-            className="retrato" 
-            onClick={lidarCliqueRetrato}
-            style={{ 
-              cursor: 'pointer', 
-              backgroundImage: personagem.imagem ? `url(${personagem.imagem})` : undefined 
-            }}
-          >
-            {!personagem.imagem && 'AVATAR'}
-            <input 
-              ref={fileInputRef} 
-              type="file" 
-              accept="image/*,image/gif" 
-              onChange={escolherFoto} 
-              style={{ display: 'none' }} 
-            />
-          </div>
-
-          {menuAvatarAberto && (
-            <div style={{
-              position: 'absolute',
-              top: '100%',
-              left: 0,
-              marginTop: '4px',
-              background: '#1a0505',
-              border: '1px solid var(--sangue)',
-              borderRadius: '4px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.8)',
-              zIndex: 50,
-              width: '140px',
-              overflow: 'hidden'
-            }}>
-              <button
-                type="button"
-                className="btn ghost sm"
-                style={{ width: '100%', textAlign: 'left', borderRadius: 0, border: 'none', padding: '10px 12px', fontSize: '12px' }}
-                onClick={() => { setMenuAvatarAberto(false); fileInputRef.current?.click(); }}
-              >
-                Trocar avatar
-              </button>
-              <button
-                type="button"
-                className="btn ghost sm"
-                style={{ width: '100%', textAlign: 'left', borderRadius: 0, border: 'none', padding: '10px 12px', fontSize: '12px', color: '#ef4444' }}
-                onClick={() => { set({ imagem: null }); setMenuAvatarAberto(false); }}
-              >
-                Remover avatar
-              </button>
-            </div>
+        <div>
+          <label className="retrato" style={personagem.imagem ? { backgroundImage: `url(${personagem.imagem})` } : undefined}>
+            {!personagem.imagem && 'Foto ou GIF'}
+            <input type="file" accept="image/*,image/gif" onChange={escolherFoto} />
+          </label>
+          {personagem.imagem && (
+            <button className="btn ghost sm" style={{ marginTop: 6, width: '100%' }} onClick={() => set({ imagem: null })}>
+              Tirar foto
+            </button>
           )}
-
-          {erroFoto && <div className="aviso" style={{ maxWidth: 200, fontSize: 11, marginTop: 4 }}>{erroFoto}</div>}
+          {erroFoto && <div className="aviso" style={{ maxWidth: 200, fontSize: 11 }}>{erroFoto}</div>}
         </div>
 
         <div>
@@ -224,7 +172,7 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
 
       {/* Grid Principal da Ficha */}
       <div className="ficha">
-        {/* Coluna Esquerda */}
+        {/* Coluna Esquerda com o Token/Imagem do Agente Centrados */}
         <div>
           <RodaAtributos
             atributos={personagem.atributos}
@@ -323,20 +271,25 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
             <div className="defesa-caixa">
               <div className="rotulo">Defesa</div>
               <span className="num">{d.defesa}</span>
-              <div className="conta">
-                10 + AGI +
-                <InputNumeroScroll
-                  value={personagem.defesaEquipamento}
-                  onChange={(v) => set({ defesaEquipamento: v ?? 0 })}
-                  title="Equipamento · Altera com o scroll"
-                />
-                +
-                <InputNumeroScroll
-                  value={personagem.defesaOutros}
-                  onChange={(v) => set({ defesaOutros: v ?? 0 })}
-                  title="Outros · Altera com o scroll"
-                />
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 4 }}>
+                <CabecalhoSeta estaAberto={contasDefesaAberta} onClick={() => setContasDefesaAberta((v) => !v)} />
               </div>
+              {contasDefesaAberta && (
+                <div className="conta">
+                  10 + AGI +
+                  <InputNumeroScroll
+                    value={personagem.defesaEquipamento}
+                    onChange={(v) => set({ defesaEquipamento: v ?? 0 })}
+                    title="Equipamento · Altera com o scroll"
+                  />
+                  +
+                  <InputNumeroScroll
+                    value={personagem.defesaOutros}
+                    onChange={(v) => set({ defesaOutros: v ?? 0 })}
+                    title="Outros · Altera com o scroll"
+                  />
+                </div>
+              )}
             </div>
 
             <div className={'defesa-caixa' + (d.bloqueio.disponivel ? '' : ' inativa')} title={d.bloqueio.formula}>
@@ -348,19 +301,24 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
                 title="Escreve o valor à mão ou roda o scroll; deixa vazio para voltar ao automático"
                 onChange={(v) => set({ bloqueioManual: v })}
               />
-              <div className="conta">
-                RD = Fortitude {d.bloqueio.base >= 0 ? '+' : '−'}{Math.abs(d.bloqueio.base)}
-                <br />
-                extra <InputNumeroScroll
-                  value={personagem.bloqueioExtra || 0}
-                  onChange={(v) => set({ bloqueioExtra: v ?? 0 })}
-                  title="Extra · Altera com o scroll"
-                />
-                {d.bloqueio.manual && (
-                  <button type="button" className="voltar-auto" onClick={() => set({ bloqueioManual: null })}>auto ({d.bloqueio.auto})</button>
-                )}
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 4 }}>
+                <CabecalhoSeta estaAberto={contasBloqueioAberta} onClick={() => setContasBloqueioAberta((v) => !v)} />
               </div>
-              {d.bloqueio.trilhaTexto && (
+              {contasBloqueioAberta && (
+                <div className="conta">
+                  RD = Fortitude {d.bloqueio.base >= 0 ? '+' : '−'}{Math.abs(d.bloqueio.base)}
+                  <br />
+                  extra <InputNumeroScroll
+                    value={personagem.bloqueioExtra || 0}
+                    onChange={(v) => set({ bloqueioExtra: v ?? 0 })}
+                    title="Extra · Altera com o scroll"
+                  />
+                  {d.bloqueio.manual && (
+                    <button type="button" className="voltar-auto" onClick={() => set({ bloqueioManual: null })}>auto ({d.bloqueio.auto})</button>
+                  )}
+                </div>
+              )}
+              {contasBloqueioAberta && d.bloqueio.trilhaTexto && (
                 <div className="conta" style={{ color: 'var(--sangue-claro)', marginTop: 4 }}>{d.bloqueio.trilhaTexto}</div>
               )}
             </div>
@@ -374,18 +332,23 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
                 title="Escreve o valor à mão ou roda o scroll; deixa vazio para voltar ao automático"
                 onChange={(v) => set({ esquivaManual: v })}
               />
-              <div className="conta">
-                Defesa + Reflexos {d.esquiva.base >= 0 ? '+' : '−'}{Math.abs(d.esquiva.base)}
-                <br />
-                extra <InputNumeroScroll
-                  value={personagem.esquivaExtra || 0}
-                  onChange={(v) => set({ esquivaExtra: v ?? 0 })}
-                  title="Extra · Altera com o scroll"
-                />
-                {d.esquiva.manual && (
-                  <button type="button" className="voltar-auto" onClick={() => set({ esquivaManual: null })}>auto ({d.esquiva.auto})</button>
-                )}
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 4 }}>
+                <CabecalhoSeta estaAberto={contasEsquivaAberta} onClick={() => setContasEsquivaAberta((v) => !v)} />
               </div>
+              {contasEsquivaAberta && (
+                <div className="conta">
+                  Defesa + Reflexos {d.esquiva.base >= 0 ? '+' : '−'}{Math.abs(d.esquiva.base)}
+                  <br />
+                  extra <InputNumeroScroll
+                    value={personagem.esquivaExtra || 0}
+                    onChange={(v) => set({ esquivaExtra: v ?? 0 })}
+                    title="Extra · Altera com o scroll"
+                  />
+                  {d.esquiva.manual && (
+                    <button type="button" className="voltar-auto" onClick={() => set({ esquivaManual: null })}>auto ({d.esquiva.auto})</button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

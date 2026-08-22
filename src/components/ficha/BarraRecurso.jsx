@@ -66,9 +66,15 @@ export default function BarraRecurso({ titulo, classe, atual, max, onChange, tem
 
   function editarMaximo() {
     if (!destravado || !onExtraChange) return;
-    const res = window.prompt(`Bónus/penalidade fixa somada ao máximo automático de ${titulo} (0 = nenhum):`, ex);
+    // O jogador escreve o máximo que quer (ex.: 30), não o bónus — mas por
+    // trás continua a guardar-se só a diferença (`extra`) em relação ao
+    // automático puro, para o máximo continuar a acompanhar sozinho o que
+    // muda no automático (Vigor subir, NEX subir, etc.), como já fazia.
+    const res = window.prompt(`Máximo de ${titulo} (atual: ${max}):`, max);
     if (res === null) return;
-    onExtraChange(Math.trunc(Number(res) || 0));
+    const novoMax = Math.trunc(Number(res) || 0);
+    const automaticoPuro = max - ex;
+    onExtraChange(novoMax - automaticoPuro);
   }
 
   /**
@@ -110,8 +116,14 @@ export default function BarraRecurso({ titulo, classe, atual, max, onChange, tem
             <button
               type="button"
               onClick={() => setDestravado(!destravado)}
-              title={destravado ? "Fechar ajuste de bónus" : "Ajustar bónus/penalidade fixa ao máximo (soma-se ao automático — não o substitui)"}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', opacity: destravado ? 1 : 0.5, padding: 0 }}
+              title={destravado ? "Fechar ajuste do máximo" : "Ajustar o máximo à mão"}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer',
+                fontSize: '11px', lineHeight: 1, padding: '3px 6px', borderRadius: 4,
+                background: destravado ? 'var(--sangue)' : 'rgba(255,255,255,.07)',
+                border: '1px solid ' + (destravado ? 'var(--sangue)' : 'var(--linha-forte)'),
+                color: destravado ? '#fff' : 'var(--txt-dim)',
+              }}
             >
               {destravado ? '✎' : '±'}
             </button>
@@ -121,8 +133,15 @@ export default function BarraRecurso({ titulo, classe, atual, max, onChange, tem
         {/* Centro: Título perfeitamente centrado */}
         <span style={{ fontWeight: 'bold', letterSpacing: '1px', textAlign: 'center' }}>{titulo}</span>
         
-        {/* Lado direito: Chip de temp alinhado horizontalmente na mesma linha */}
-        <div style={{ justifySelf: 'end', display: 'flex', alignItems: 'center', gap: '4px' }}>
+        {/* Lado direito: Chip de temp alinhado horizontalmente na mesma linha.
+            O duplo clique fica no wrapper (não no botão/input lá dentro) porque
+            o primeiro clique de um duplo-clique já troca o botão pelo input —
+            se o ouvinte estivesse só no botão, o segundo clique cairia no
+            elemento novo e o duplo-clique nunca era detetado. */}
+        <div
+          style={{ justifySelf: 'end', display: 'flex', alignItems: 'center', gap: '4px' }}
+          onDoubleClick={() => onTemp && onTemp(0)}
+        >
           {onTemp && (
             aEditarTemp ? (
               <input
@@ -141,7 +160,7 @@ export default function BarraRecurso({ titulo, classe, atual, max, onChange, tem
                 type="button"
                 className={'temp-chip' + (t > 0 ? ' ativo' : '')}
                 onClick={() => setAEditarTemp(true)}
-                title="Pontos temporários"
+                title="Pontos temporários · duplo clique para zerar"
                 style={{ fontSize: '10px', padding: '1px 4px' }}
               >
                 {t > 0 ? `+${t} temp` : '+ temp'}
@@ -171,7 +190,7 @@ export default function BarraRecurso({ titulo, classe, atual, max, onChange, tem
                 cursor: destravado ? 'pointer' : 'default',
                 textDecoration: destravado ? 'underline dotted' : 'none',
               }}
-              title={destravado ? 'Clica para somar/subtrair um bónus fixo ao máximo (o máximo em si continua sempre automático)' : ''}
+              title={destravado ? 'Clica para escrever o máximo que queres' : ''}
             >
               {max}
             </span>
