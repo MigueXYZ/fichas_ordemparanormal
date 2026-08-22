@@ -11,6 +11,7 @@ import { novoAtaque, novoItem, novaHabilidade, novoRitual } from '../../engine/c
 import { rolarExpressao, rolarAtaqueCompleto, rolarDano, rolarTeste } from '../../engine/dados.js';
 import { estatisticasArma, interpretarCritico, armaDoItem, ehArma, formulaTeste } from '../../engine/armas.js';
 import { precoDoRitual } from '../../engine/rituais.js';
+import { ataquesNaturaisAtivos, rituaisAtivos } from '../../engine/monstruoso.js';
 import EditorArma from './EditorArma.jsx';
 import { calcPericias } from '../../engine/calc.js';
 import IconeD20 from '../IconeD20.jsx';
@@ -47,7 +48,12 @@ function useLista(personagem, setPersonagem, chave) {
 // ---------------------------------------------------------------- COMBATE
 
 export function AbaCombate({ personagem, setPersonagem, onRolar }) {
-  const { lista, editar } = useLista(personagem, setPersonagem, 'ataques');
+  const { lista: listaPropria, editar } = useLista(personagem, setPersonagem, 'ataques');
+  // Armas naturais concedidas pela Trilha do Monstruoso (ex.: Mordida) só
+  // existem enquanto a etapa de hoje está ativa — aparecem/desaparecem
+  // sozinhas nesta lista, não são editáveis nem removíveis à mão.
+  const naturais = ataquesNaturaisAtivos(personagem, nexEfetivo(personagem));
+  const lista = [...listaPropria, ...naturais];
   const [expr, setExpr] = useState('');
   const [acertos, setAcertos] = useState({});
 
@@ -62,6 +68,7 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
       nome: a.nome || 'Ataque',
       dados: e.dados, bonusAtaque: e.bonusAtaque, margem: e.margem,
       dano: e.dano, bonusDano: e.bonusDano, extras: e.extras, multiplicador: e.multiplicador,
+      dadosExtraAtaque: e.dadosExtraAtaque,
     });
     setAcertos({ ...acertos, [i]: r });
     onRolar(r);
@@ -99,12 +106,15 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
             const acerto = acertos[i];
             const equipado = a.equipado !== false;
             return (
-              <div className={'bloco arma' + (equipado ? '' : ' guardada')} key={i}>
+              <div className={'bloco arma' + (equipado ? '' : ' guardada')} key={a._monstruosoId || i}>
                 <div className="topo">
                   <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                     {a.imagem && <div className="miniatura-arma" style={{ backgroundImage: `url(${a.imagem})` }} />}
                     <div>
-                    <b style={{ fontSize: '18px', letterSpacing: '0.5px' }}>{a.nome || 'Sem nome'}</b>
+                    <b style={{ fontSize: '18px', letterSpacing: '0.5px' }}>
+                      {a.nome || 'Sem nome'}
+                      {a._monstruoso && <span className="pill" style={{ marginLeft: 8, fontSize: 10 }} title={a.notas}>MONSTRUOSO</span>}
+                    </b>
                     <div className="arma-stats" style={{ fontSize: '14px' }}>
                       <span title={`Teste de ${e.pericia.nome} com ${NOME_ATRIBUTO[e.atributoTeste] || ''}${e.dados > 0 ? '' : ' — com o atributo a 0 rolas 2 dados e fica o pior'}`}>
                         {e.pericia.nome}{' '}
@@ -112,6 +122,7 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
                           {e.dados === 0 ? 2 : e.dados}d20
                         </span>
                         {e.bonusAtaque ? (e.bonusAtaque > 0 ? ` +${e.bonusAtaque}` : ` ${e.bonusAtaque}`) : ''}
+                        {e.dadosExtraAtaque.length > 0 && ` + ${e.dadosExtraAtaque.join(' + ')}`}
                       </span>
                       {e.agilAtiva && <span title="Arma ágil: usa Agilidade em vez de Força no ataque e no dano" style={{ opacity: 0.8 }}>ÁGIL</span>}
                       <span title="Dano">{e.dano}{e.bonusDano ? (e.bonusDano > 0 ? ` + ${e.bonusDano}` : ` − ${Math.abs(e.bonusDano)}`) : ''}</span>
@@ -119,20 +130,30 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
                       {a.tipo && <span>{a.tipo}</span>}
                       {e.alcance && <span>{e.alcance}</span>}
                       <span title="Ocupa este espaço na carga, esteja na mão ou guardada">{Number(a.espacos) || 0} esp.</span>
-                      {e.extras.map((x) => <span key={x}>+{x}</span>)}
+                      {e.extras.map((x, i) => {
+                        const expr = typeof x === 'string' ? x : x.expr;
+                        const elemental = typeof x === 'object' && x !== null && x.elemental;
+                        return (
+                          <span key={`${expr}-${i}`} style={elemental ? { color: 'var(--sangue-claro)' } : undefined} title={elemental ? 'Dano da Trilha do Monstruoso' : undefined}>
+                            +{expr}
+                          </span>
+                        );
+                      })}
                     </div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                    <button
-                      type="button"
-                      className={'toggle-equipar' + (equipado ? ' equipado' : '')}
-                      onClick={() => editar(i, { equipado: !equipado })}
-                      title={equipado ? 'Está na mão. Carrega para a guardar.' : 'Está guardada. Carrega para a equipar.'}
-                    >
-                      <span className="bolinha" />
-                      {equipado ? 'Equipada' : 'Guardada'}
-                    </button>
+                    {!a._monstruoso && (
+                      <button
+                        type="button"
+                        className={'toggle-equipar' + (equipado ? ' equipado' : '')}
+                        onClick={() => editar(i, { equipado: !equipado })}
+                        title={equipado ? 'Está na mão. Carrega para a guardar.' : 'Está guardada. Carrega para a equipar.'}
+                      >
+                        <span className="bolinha" />
+                        {equipado ? 'Equipada' : 'Guardada'}
+                      </button>
+                    )}
                     <button className="btn sm" disabled={!equipado} title={equipado ? '' : 'Equipa a arma primeiro'} onClick={() => atacar(a, i)}>Atacar</button>
                     <button
                       className={'btn sm' + (acerto?.critico ? '' : ' ghost')}
@@ -149,12 +170,18 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
                   <div className={'resultado-ataque' + (acerto.critico ? ' critico' : '')}>
                     <span>
                       Acerto: <b>{acerto.total}</b> ({acerto.dados}d20 [{acerto.rolagens.join(', ')}] → maior {acerto.escolhido}
-                      {acerto.bonus ? ` ${acerto.bonus > 0 ? '+' : '−'} ${Math.abs(acerto.bonus)}` : ''})
+                      {acerto.bonus ? ` ${acerto.bonus > 0 ? '+' : '−'} ${Math.abs(acerto.bonus)}` : ''}
+                      {(acerto.dadosExtra || []).map((d) => ` + ${d.expr} [${d.rolagens.join(', ')}]`).join('')})
                       {acerto.critico ? ' · ACERTO CRÍTICO' : ''}
                     </span>
                     {acerto.dano && (
                       <span>
                         Dano: <b>{acerto.dano.total}</b> ({acerto.dano.expressao} [{acerto.dano.rolagens.join(', ')}]
+                        {(acerto.dano.extras || []).map((ex, i) => (
+                          <span key={i} style={ex.elemental ? { color: 'var(--sangue-claro)' } : undefined} title={ex.elemental ? 'Dano da Trilha do Monstruoso' : undefined}>
+                            {` + ${ex.expr} [${ex.rolagens.join(', ')}]`}
+                          </span>
+                        ))}
                         {acerto.dano.bonus ? ` ${acerto.dano.bonus > 0 ? '+' : '−'} ${Math.abs(acerto.dano.bonus)}` : ''}
                         {acerto.dano.critico ? ` · dados ×${acerto.dano.multiplicador}` : ''})
                       </span>
@@ -179,7 +206,9 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
 }
 
 function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
-  const rituais = personagem.rituais || [];
+  // Rituais concedidos pela Trilha do Monstruoso só existem enquanto a
+  // etapa de hoje está ativa — somam-se aos rituais próprios da personagem.
+  const rituais = [...(personagem.rituais || []), ...rituaisAtivos(personagem, nexEfetivo(personagem))];
   if (!rituais.length) return null;
 
   const max = calcMaximos(personagem);
@@ -239,10 +268,13 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
           const circulo = Number(r.circulo) || 1;
           const podeGastar = custo <= atual;
           return (
-            <div className={'bloco ritual el-' + (r.elemento || 'variavel')} key={i}>
+            <div className={'bloco ritual el-' + (r.elemento || 'variavel')} key={r._monstruosoId || i}>
               <div className="topo">
                 <div>
-                  <b style={{ fontSize: '18px', letterSpacing: '0.5px' }}>{r.nome || 'Sem nome'}</b>
+                  <b style={{ fontSize: '18px', letterSpacing: '0.5px' }}>
+                    {r.nome || 'Sem nome'}
+                    {r._monstruoso && <span className="pill" style={{ marginLeft: 8, fontSize: 10 }} title="Concedido pela Trilha do Monstruoso — só enquanto a etapa de hoje está ativa">MONSTRUOSO</span>}
+                  </b>
                   <div className="arma-stats" style={{ fontSize: '14px' }}>
                     <span>{circulo}º círculo</span>
                     {r.elemento && <span>{r.elemento}</span>}
@@ -354,7 +386,12 @@ export function AbaHabilidades({ personagem, setPersonagem }) {
 // --------------------------------------------------------------- RITUAIS
 
 export function AbaRituais({ personagem, setPersonagem }) {
-  const { lista, adicionar, editar, remover } = useLista(personagem, setPersonagem, 'rituais');
+  const { lista: listaPropria, adicionar, editar, remover } = useLista(personagem, setPersonagem, 'rituais');
+  // Rituais concedidos pela Trilha do Monstruoso só existem enquanto a
+  // etapa de hoje está ativa — mostram-se aqui, mas não são editáveis (a
+  // ficha deriva-os sozinha, não há nada para guardar à mão).
+  const concedidos = rituaisAtivos(personagem, nexEfetivo(personagem));
+  const lista = [...listaPropria, ...concedidos];
   const [aEscolher, setAEscolher] = useState(false);
   const circuloMax = circuloMaximoPorNex(nexEfetivo(personagem));
 
@@ -397,33 +434,52 @@ export function AbaRituais({ personagem, setPersonagem }) {
         <div className="painel-vazio">Ainda não conheces rituais</div>
       ) : (
         <div className="lista-blocos">
-          {lista.map((r, i) => (
-            <div className="bloco" key={i}>
-              <div className="topo">
-                <input type="text" placeholder="Nome do ritual" value={r.nome} onChange={(e) => editar(i, { nome: e.target.value })} style={{ fontSize: '18px', fontWeight: 'bold' }} />
-                <button className="btn sm danger" onClick={() => remover(i)}>Remover</button>
-              </div>
-              <div className="grelha">
-                <Campo label="Círculo" valor={r.circulo} onChange={(v) => editar(i, { circulo: Number(v) })} opcoes={CIRCULOS.map((c) => ({ value: c, label: `${c}º` }))} />
-                <Campo label="Elemento" valor={r.elemento} onChange={(v) => editar(i, { elemento: v })} opcoes={ELEMENTOS.map((e) => ({ value: e.id, label: e.nome }))} />
-                <Campo label="Execução" valor={r.execucao} onChange={(v) => editar(i, { execucao: v })} />
-                <Campo label="Alcance" valor={r.alcance} onChange={(v) => editar(i, { alcance: v })} />
-                <Campo label="Alvo" valor={r.alvo} onChange={(v) => editar(i, { alvo: v })} />
-                <Campo label="Duração" valor={r.duracao} onChange={(v) => editar(i, { duracao: v })} />
-                <Campo label="Resistência" valor={r.resistencia} onChange={(v) => editar(i, { resistencia: v })} />
-                <Campo label="Custo (PE)" valor={r.custo} onChange={(v) => editar(i, { custo: v })} />
-              </div>
-              <div className="campo" style={{ marginTop: 10, marginBottom: 0 }}>
-                <textarea placeholder="Descrição" value={r.descricao} onChange={(e) => editar(i, { descricao: e.target.value })} style={{ fontSize: '14px' }} />
-              </div>
-              {(r.discente || r.verdadeiro) && (
-                <div style={{ fontSize: 13, color: 'var(--txt-dim)', marginTop: 8 }}>
-                  {r.discente && <div><b>Discente ({r.discente.custo}):</b> {r.discente.texto} {r.discente.requer}</div>}
-                  {r.verdadeiro && <div><b>Verdadeiro ({r.verdadeiro.custo}):</b> {r.verdadeiro.texto} {r.verdadeiro.requer}</div>}
+          {lista.map((r, i) => {
+            if (r._monstruoso) {
+              return (
+                <div className="bloco" key={r._monstruosoId || i}>
+                  <div className="topo">
+                    <b style={{ fontSize: '18px', letterSpacing: '0.5px' }}>{r.nome || 'Sem nome'}</b>
+                    <span className="pill" title="Concedido pela Trilha do Monstruoso — só enquanto a etapa de hoje está ativa">MONSTRUOSO</span>
+                  </div>
+                  <div className="arma-stats" style={{ fontSize: '14px' }}>
+                    {r.circulo !== '' && <span>{r.circulo}º círculo</span>}
+                    {r.elemento && <span>{r.elemento}</span>}
+                    {r.execucao && <span>{r.execucao}</span>}
+                    {r.alcance && <span>{r.alcance}</span>}
+                  </div>
+                  {r.descricao && <p style={{ fontSize: 13, color: 'var(--txt-dim)', marginTop: 8 }}>{r.descricao}</p>}
                 </div>
-              )}
-            </div>
-          ))}
+              );
+            }
+            return (
+              <div className="bloco" key={i}>
+                <div className="topo">
+                  <input type="text" placeholder="Nome do ritual" value={r.nome} onChange={(e) => editar(i, { nome: e.target.value })} style={{ fontSize: '18px', fontWeight: 'bold' }} />
+                  <button className="btn sm danger" onClick={() => remover(i)}>Remover</button>
+                </div>
+                <div className="grelha">
+                  <Campo label="Círculo" valor={r.circulo} onChange={(v) => editar(i, { circulo: Number(v) })} opcoes={CIRCULOS.map((c) => ({ value: c, label: `${c}º` }))} />
+                  <Campo label="Elemento" valor={r.elemento} onChange={(v) => editar(i, { elemento: v })} opcoes={ELEMENTOS.map((e) => ({ value: e.id, label: e.nome }))} />
+                  <Campo label="Execução" valor={r.execucao} onChange={(v) => editar(i, { execucao: v })} />
+                  <Campo label="Alcance" valor={r.alcance} onChange={(v) => editar(i, { alcance: v })} />
+                  <Campo label="Alvo" valor={r.alvo} onChange={(v) => editar(i, { alvo: v })} />
+                  <Campo label="Duração" valor={r.duracao} onChange={(v) => editar(i, { duracao: v })} />
+                  <Campo label="Resistência" valor={r.resistencia} onChange={(v) => editar(i, { resistencia: v })} />
+                  <Campo label="Custo (PE)" valor={r.custo} onChange={(v) => editar(i, { custo: v })} />
+                </div>
+                <div className="campo" style={{ marginTop: 10, marginBottom: 0 }}>
+                  <textarea placeholder="Descrição" value={r.descricao} onChange={(e) => editar(i, { descricao: e.target.value })} style={{ fontSize: '14px' }} />
+                </div>
+                {(r.discente || r.verdadeiro) && (
+                  <div style={{ fontSize: 13, color: 'var(--txt-dim)', marginTop: 8 }}>
+                    {r.discente && <div><b>Discente ({r.discente.custo}):</b> {r.discente.texto} {r.discente.requer}</div>}
+                    {r.verdadeiro && <div><b>Verdadeiro ({r.verdadeiro.custo}):</b> {r.verdadeiro.texto} {r.verdadeiro.requer}</div>}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

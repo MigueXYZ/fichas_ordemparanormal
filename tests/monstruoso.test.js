@@ -1,0 +1,688 @@
+import assert from 'node:assert/strict';
+import { personagemVazio, ajustarRecursos } from '../src/engine/character.js';
+import { calcMaximos, calcPericias, calcDeslocamento, calcDefesa, calcDefesas, nexEfetivo } from '../src/engine/calc.js';
+import { estatisticasArma } from '../src/engine/armas.js';
+import { rolarDano } from '../src/engine/dados.js';
+import {
+  classeMonstruosa, patamarAtual, efetivamenteAtivo, tudoPermanente, atributosEfetivos,
+  efeitosDiarios, ativarHoje, desativarHoje, escolherElemento, limiteDrenagem,
+  ataquesNaturaisAtivos, rituaisAtivos, escolhasNecessarias,
+  escolherRitual, escolherPericiasConhecimento, resistenciaTextoAtual, consequenciasAtivas,
+  resumoPorPatamar,
+} from '../src/engine/monstruoso.js';
+
+let passou = 0;
+function teste(nome, fn) {
+  try { fn(); passou++; console.log('  ok  ' + nome); }
+  catch (e) { console.error('  FALHOU  ' + nome + '\n    ' + e.stack); process.exitCode = 1; }
+}
+
+function combatenteMonstruoso(nex, elemento) {
+  const p = personagemVazio();
+  p.classeId = 'combatente';
+  p.trilhaId = 'monstruoso';
+  p.nex = nex;
+  if (elemento) Object.assign(p, escolherElemento(elemento).patch);
+  return p;
+}
+
+function especialistaMonstruoso(nex, elemento) {
+  const p = personagemVazio();
+  p.classeId = 'especialista';
+  p.trilhaId = 'monstruoso-especialista';
+  p.nex = nex;
+  if (elemento) Object.assign(p, escolherElemento(elemento).patch);
+  return p;
+}
+
+function ocultistaMonstruoso(nex, elemento) {
+  const p = personagemVazio();
+  p.classeId = 'ocultista';
+  p.trilhaId = 'monstruoso-ocultista';
+  p.nex = nex;
+  if (elemento) Object.assign(p, escolherElemento(elemento).patch);
+  return p;
+}
+
+/** Ativa a etapa de hoje sem exigir componentes/rolagens (dá inventário genérico ao Especialista/Ocultista). */
+function ativar(p) {
+  if (p.classeId !== 'combatente') p.inventario = [{ nome: 'Componentes Ritualísticos', quantidade: 99 }];
+  const r = ativarHoje(p, nexEfetivo(p), {});
+  assert.ok(!r.erro, r.erro);
+  Object.assign(p, r.patch);
+  return p;
+}
+
+// ------------------------------------------------------------------
+// Regra-mãe: tudo desaparece sem a etapa ativa, exceto Presença e o
+// "tudo permanente" do Combatente aos 99%.
+// ------------------------------------------------------------------
+
+teste('classeMonstruosa/patamarAtual continuam a funcionar como antes', () => {
+  const p = combatenteMonstruoso(42, 'Sangue');
+  assert.equal(classeMonstruosa(p), 'combatente');
+  assert.equal(patamarAtual(42), 40);
+  assert.equal(patamarAtual(9), 0);
+  assert.equal(patamarAtual(99), 99);
+});
+
+teste('sem ativar a etapa, nada está em efeito (Combatente, abaixo de 99%)', () => {
+  const p = combatenteMonstruoso(65, 'Sangue');
+  assert.equal(efetivamenteAtivo(p, 65), false);
+  const ef = efeitosDiarios(p, 65);
+  assert.deepEqual(ef.dadosPericia, {});
+  assert.equal(ataquesNaturaisAtivos(p, 65).length, 0);
+  const a = atributosEfetivos(p, 65);
+  assert.equal(a.for, 1); // atributo base da personagemVazio()
+});
+
+teste('ao ativar, os efeitos aparecem; ao desativar, desaparecem', () => {
+  let p = combatenteMonstruoso(10, 'Sangue');
+  ativar(p);
+  assert.equal(efetivamenteAtivo(p, 10), true);
+  let ef = efeitosDiarios(p, 10);
+  assert.deepEqual(ef.dadosPericia, { ciencias: -1, intuicao: -1 });
+
+  Object.assign(p, desativarHoje().patch);
+  assert.equal(efetivamenteAtivo(p, 10), false);
+  ef = efeitosDiarios(p, 10);
+  assert.deepEqual(ef.dadosPericia, {});
+});
+
+teste('Combatente Sangue: penalidade -1O aos 10%, -2O a partir dos 40% (não sobe mais)', () => {
+  let p = combatenteMonstruoso(40, 'Sangue');
+  ativar(p);
+  assert.deepEqual(efeitosDiarios(p, 40).dadosPericia, { ciencias: -2, intuicao: -2 });
+  p.nex = 99;
+  assert.deepEqual(efeitosDiarios(p, 99).dadosPericia, { ciencias: -2, intuicao: -2 }); // não sobe mais
+});
+
+teste('Combatente Morte: PE por Vigor desde os 40%, +Ø em Intimidação e +1 turno de "morrendo"', () => {
+  let p = combatenteMonstruoso(10, 'Morte');
+  ativar(p);
+  let ef = efeitosDiarios(p, 10);
+  assert.equal(ef.peAtributo, null); // ainda não chegou aos 40%
+  assert.deepEqual(ef.dadosPericia, { diplomacia: -1, enganacao: -1 }); // só a penalidade de 10%, sem Intimidação ainda
+
+  p.nex = 40;
+  ativar(p);
+  ef = efeitosDiarios(p, 40);
+  assert.equal(ef.peAtributo, 'vig');
+  assert.equal(ef.dadosPericia.intimidacao, 1); // +Ø em Intimidação
+  assert.equal(ef.turnosMorrendoExtra, 1);
+});
+
+teste('Combatente Energia NUNCA troca Presença por Agilidade nos PE (não está no livro)', () => {
+  let p = combatenteMonstruoso(99, 'Energia');
+  ativar(p);
+  assert.equal(efeitosDiarios(p, 99).peAtributo, null);
+});
+
+teste('Combatente Conhecimento: soma Intelecto à Defesa desde os 10%; Enganação passa a usar Intelecto desde os 40%', () => {
+  let p = combatenteMonstruoso(10, 'Conhecimento');
+  p.atributos.int = 4;
+  const antes = calcDefesa(p);
+  ativar(p);
+  assert.equal(calcDefesa(p), antes + 4);
+
+  let per = calcPericias(p).find((x) => x.id === 'enganacao');
+  assert.equal(per.attr, 'pre'); // ainda não chegou aos 40%
+
+  p.nex = 40;
+  ativar(p);
+  per = calcPericias(p).find((x) => x.id === 'enganacao');
+  assert.equal(per.attr, 'int');
+  assert.equal(per.attrTrocado, true);
+});
+
+teste('Combatente Energia: +6m de deslocamento é só do Especialista, não do Combatente', () => {
+  let p = combatenteMonstruoso(10, 'Energia');
+  ativar(p);
+  assert.equal(calcDeslocamento(p), 9);
+});
+
+teste('Combatente não consome Componentes Ritualísticos, e não recupera PV/PE ao ativar (isso é só Especialista/Ocultista)', () => {
+  const p = combatenteMonstruoso(10, 'Sangue');
+  const r = ativarHoje(p, 10, {});
+  assert.ok(!r.erro);
+  assert.equal(r.patch.inventario, undefined);
+  assert.equal(r.patch.pvAtual, undefined);
+  assert.equal(r.patch.peAtual, undefined);
+});
+
+// ------------------------------------------------------------------
+// Perda permanente de Presença — a ÚNICA coisa que não é diária. Não é
+// simétrica: o Combatente só perde -1 aos 65% em 3 dos 4 elementos; Morte é
+// a exceção, com uma segunda perda aos 99% (as outras classes perdem -1
+// aos 65% E -1 aos 99%, sempre, nos 4 elementos).
+// ------------------------------------------------------------------
+
+teste('Presença perde -1 na 1ª ativação aos 65%, e mais -1 na 1ª ativação aos 99% (não antes) — Especialista/Ocultista', () => {
+  let p = especialistaMonstruoso(40, 'Sangue');
+  ativar(p);
+  assert.equal(p.atributos.pre, 1); // ainda não chegou a 65%
+
+  p.nex = 65;
+  ativar(p);
+  assert.equal(p.atributos.pre, 0);
+  assert.deepEqual(p.monstruosoPresencaPerdida, [65]);
+
+  // Ativar de novo aos 65% não perde outra vez.
+  Object.assign(p, desativarHoje().patch);
+  ativar(p);
+  assert.equal(p.atributos.pre, 0);
+
+  p.nex = 99;
+  ativar(p);
+  assert.equal(p.atributos.pre, -1);
+  assert.deepEqual(p.monstruosoPresencaPerdida, [65, 99]);
+});
+
+teste('Combatente: só Morte perde Presença 2 vezes (65% e 99%) — os outros 3 elementos só perdem aos 65%', () => {
+  for (const el of ['Sangue', 'Conhecimento', 'Energia']) {
+    const p = combatenteMonstruoso(99, el);
+    ativar(p);
+    assert.equal(p.atributos.pre, 0, el); // só -1, nunca -2
+    assert.deepEqual(p.monstruosoPresencaPerdida, [65], el);
+  }
+  const morte = combatenteMonstruoso(99, 'Morte');
+  ativar(morte);
+  assert.equal(morte.atributos.pre, -1); // -2 no total (Morte tem a segunda perda)
+  assert.deepEqual(morte.monstruosoPresencaPerdida, [65, 99]);
+});
+
+teste('perda de Presença não reverte ao desativar', () => {
+  let p = especialistaMonstruoso(65, 'Sangue');
+  ativar(p);
+  assert.equal(p.atributos.pre, 0);
+  Object.assign(p, desativarHoje().patch);
+  assert.equal(p.atributos.pre, 0); // continua perdida
+  assert.equal(efetivamenteAtivo(p, 65), false); // mas o resto desligou
+});
+
+teste('perda de Presença dos 65% é a mesma para as 3 classes e os 4 elementos', () => {
+  for (const el of ['Sangue', 'Morte', 'Conhecimento', 'Energia']) {
+    for (const fabrica of [combatenteMonstruoso, especialistaMonstruoso, ocultistaMonstruoso]) {
+      const p = fabrica(65, el);
+      ativar(p);
+      assert.equal(p.atributos.pre, 0, `${fabrica.name} ${el}`);
+    }
+  }
+});
+
+// ------------------------------------------------------------------
+// Combatente 99%: tudo fica permanente.
+// ------------------------------------------------------------------
+
+teste('Combatente aos 99%: tudo fica sempre ligado, mesmo sem ativar a etapa hoje', () => {
+  const p = combatenteMonstruoso(99, 'Sangue');
+  // Nunca chamou ativarHoje — mas já está no patamar 99%.
+  assert.equal(tudoPermanente(p, 99), true);
+  assert.equal(efetivamenteAtivo(p, 99), true);
+  const ef = efeitosDiarios(p, 99);
+  assert.deepEqual(ef.dadosPericia, { ciencias: -2, intuicao: -2 });
+  assert.equal(ataquesNaturaisAtivos(p, 99).length, 1); // Mordida continua lá
+});
+
+teste('Especialista/Ocultista NÃO têm "tudo permanente" aos 99% — continua diário', () => {
+  assert.equal(tudoPermanente(especialistaMonstruoso(99, 'Sangue'), 99), false);
+  assert.equal(tudoPermanente(ocultistaMonstruoso(99, 'Sangue'), 99), false);
+  const p = especialistaMonstruoso(99, 'Sangue');
+  assert.equal(efetivamenteAtivo(p, 99), false);
+  assert.deepEqual(efeitosDiarios(p, 99).dadosPericia, {});
+});
+
+// ------------------------------------------------------------------
+// Atributos efetivos (bónus/penalidades da trilha, ao vivo).
+// ------------------------------------------------------------------
+
+teste('atributosEfetivos soma os deltas ativos e ignora Presença (essa já é permanente)', () => {
+  let p = especialistaMonstruoso(99, 'Sangue'); // 65%: +1 For, 99%: +1 For => +2 no total quando ativo
+  assert.equal(atributosEfetivos(p, 99).for, 1); // inativo: sem bónus
+  ativar(p);
+  assert.equal(atributosEfetivos(p, 99).for, 3); // 1 base + 2 da trilha
+});
+
+teste('a drenagem de "Ser Testado" reduz o atributo drenado só enquanto ativo, e reverte ao desativar', () => {
+  let p = especialistaMonstruoso(65, 'Sangue');
+  p.atributos.int = 4;
+  ativar(p);
+  p.monstruosoDrenagem = 2;
+  assert.equal(atributosEfetivos(p, 65).int, 2); // 4 - 2 drenados
+  Object.assign(p, desativarHoje().patch);
+  assert.equal(p.monstruosoDrenagem, 0); // a escolha também volta a 0
+  assert.equal(atributosEfetivos(p, 65).int, 4);
+});
+
+teste('estatisticasArma usa o atributo efetivo (For/Agi já com bónus da trilha) no dano', () => {
+  let p = especialistaMonstruoso(99, 'Sangue');
+  p.atributos.for = 2;
+  ativar(p);
+  const arma = { nome: 'Faca', pericia: 'luta', dano: '1d6', critico: 'x2', atributoDano: 'for', danoExtra: [], modificacoes: [] };
+  const e = estatisticasArma(p, arma);
+  assert.equal(e.bonusDano, 2 + 2); // 2 base + 2 da trilha (65%+99%)
+});
+
+// ------------------------------------------------------------------
+// Drenagem de "Ser Testado" (Especialista, 40%+): base + escala por ponto,
+// FÓRMULA PRÓPRIA de cada elemento — verbatim do livro (p.82-83).
+// ------------------------------------------------------------------
+
+teste('drenagem Sangue: base 1d6/RD2, cada ponto soma +1d6 dano e +2 RD; passa a d8 aos 65%+', () => {
+  let p = especialistaMonstruoso(40, 'Sangue');
+  ativar(p);
+  let ef = efeitosDiarios(p, 40);
+  assert.deepEqual(ef.danoExtra, ['1d6']); // 0 pontos: só a base
+  assert.equal(ef.resistenciaDano, 2);
+
+  p.monstruosoDrenagem = 3;
+  ef = efeitosDiarios(p, 40);
+  assert.deepEqual(ef.danoExtra, ['4d6']); // base(1) + 3
+  assert.equal(ef.resistenciaDano, 8); // 2 + 3*2
+
+  p.nex = 65;
+  ef = efeitosDiarios(p, 65);
+  assert.deepEqual(ef.danoExtra, ['4d8']); // mesmo total de dados, mas em d8
+});
+
+teste('estatisticasArma marca o dano extra da trilha como "elemental" (para a interface colorir à parte); o dano da arma/mods fica normal', () => {
+  let p = especialistaMonstruoso(40, 'Sangue');
+  ativar(p);
+  const arma = { nome: 'Katana', pericia: 'luta', dano: '1d10', critico: '19/x2', atributoDano: 'for', danoExtra: ['1d4'], modificacoes: [] };
+  const e = estatisticasArma(p, arma);
+  assert.equal(e.extras.length, 2);
+  assert.deepEqual(e.extras[0], '1d4'); // dano próprio da arma, string simples, não elemental
+  assert.deepEqual(e.extras[1], { expr: '1d6', elemental: true }); // dano da drenagem (base, 0 pontos)
+});
+
+teste('rolarDano soma o extra elemental ao total normalmente, mas devolve `elemental: true` nessa entrada para colorir na interface', () => {
+  const r = rolarDano({ nome: 'Katana — dano', dano: '1d10', extras: ['1d4', { expr: '1d6', elemental: true }] });
+  assert.equal(r.extras.length, 2);
+  assert.equal(r.extras[0].elemental, false);
+  assert.equal(r.extras[1].elemental, true);
+  assert.equal(r.extras[1].expr, '1d6');
+  assert.ok(Number.isInteger(r.extras[1].soma));
+  // total = dado da arma + os dois extras (todos contam para o mesmo número final)
+  const somaEsperada = r.rolagens[0] + r.extras[0].soma + r.extras[1].soma;
+  assert.equal(r.total, somaEsperada);
+});
+
+teste('drenagem Morte: base +1 turno / 2d8 PV temp, cada ponto soma +1 turno e +2d8', () => {
+  let p = especialistaMonstruoso(40, 'Morte');
+  ativar(p);
+  let ef = efeitosDiarios(p, 40);
+  assert.equal(ef.turnosMorrendoExtra, 1);
+  assert.deepEqual(ef.pvTempCena, { dados: 2, faces: 8 });
+
+  p.monstruosoDrenagem = 2;
+  ef = efeitosDiarios(p, 40);
+  assert.equal(ef.turnosMorrendoExtra, 3); // 1 + 2
+  assert.deepEqual(ef.pvTempCena, { dados: 6, faces: 8 }); // 2*(1+2)
+});
+
+teste('drenagem Conhecimento: bónus genérico em testes de Intelecto (base 1d6 + 1d6/ponto)', () => {
+  let p = especialistaMonstruoso(40, 'Conhecimento');
+  ativar(p);
+  let ef = efeitosDiarios(p, 40);
+  assert.deepEqual(ef.testeBonusDadoGenerico, { faces: 6, quantidade: 1, descricao: 'em testes baseados em Intelecto' });
+  p.monstruosoDrenagem = 4;
+  ef = efeitosDiarios(p, 40);
+  assert.equal(ef.testeBonusDadoGenerico.quantidade, 5);
+});
+
+teste('drenagem Energia: base +1d6 ataque/+2 Defesa, cada ponto soma +1d6/+2', () => {
+  let p = especialistaMonstruoso(40, 'Energia');
+  ativar(p);
+  let ef = efeitosDiarios(p, 40);
+  assert.equal(ef.defesaExtra, 2);
+  assert.deepEqual(ef.ataqueBonusDados, [{ faces: 6, quantidade: 1, corpoACorpoApenas: false }]);
+  p.monstruosoDrenagem = 3;
+  ef = efeitosDiarios(p, 40);
+  assert.equal(ef.defesaExtra, 8); // 2 + 3*2
+  assert.deepEqual(ef.ataqueBonusDados, [{ faces: 6, quantidade: 4, corpoACorpoApenas: false }]);
+});
+
+// ------------------------------------------------------------------
+// "+1d8 em testes de ataque" (Especialista Sangue 65%+) — dado FIXO somado
+// ao total do teste de ataque, não à pool de d20. Tem de chegar mesmo à
+// rolagem, via estatisticasArma -> rolarAtaqueCompleto.
+// ------------------------------------------------------------------
+
+teste('Especialista Sangue 65%+: +1d8 em testes de ataques corpo a corpo (não em Pontaria)', () => {
+  let p = especialistaMonstruoso(65, 'Sangue');
+  ativar(p);
+  const faca = { nome: 'Faca', pericia: 'luta', dano: '1d6', critico: 'x2', atributoDano: 'for', danoExtra: [], modificacoes: [] };
+  const pistola = { nome: 'Pistola', pericia: 'pontaria', dano: '2d6', critico: 'x2', atributoDano: '', danoExtra: [], modificacoes: [] };
+  assert.deepEqual(estatisticasArma(p, faca).dadosExtraAtaque, ['1d8']);
+  assert.deepEqual(estatisticasArma(p, pistola).dadosExtraAtaque, []);
+});
+
+teste('Especialista Sangue 65%+: o +1d8 aparece mesmo antes dos 40%+ de drenagem (é sempre ativo, não depende de pontos drenados)', () => {
+  let p = especialistaMonstruoso(65, 'Sangue');
+  ativar(p);
+  p.monstruosoDrenagem = 0;
+  const faca = { nome: 'Faca', pericia: 'luta', dano: '1d6', critico: 'x2', atributoDano: 'for', danoExtra: [], modificacoes: [] };
+  assert.deepEqual(estatisticasArma(p, faca).dadosExtraAtaque, ['1d8']);
+});
+
+// ------------------------------------------------------------------
+// Grande/Enorme (Especialista Sangue): penalidade real de Furtividade.
+// ------------------------------------------------------------------
+
+teste('Especialista Sangue 10%: Grande dá -2 em Furtividade; passa a -5 (Enorme) aos 99%', () => {
+  let p = especialistaMonstruoso(10, 'Sangue');
+  ativar(p);
+  assert.equal(efeitosDiarios(p, 10).flatPericia.furtividade, -2);
+  p.nex = 99;
+  ativar(p);
+  assert.equal(efeitosDiarios(p, 99).flatPericia.furtividade, -5);
+});
+
+// ------------------------------------------------------------------
+// Armas naturais e rituais concedidos: aparecem/desaparecem com a etapa.
+// ------------------------------------------------------------------
+
+teste('arma natural (Mordida) só aparece com a etapa ativa e some ao desativar', () => {
+  let p = combatenteMonstruoso(65, 'Sangue');
+  assert.equal(ataquesNaturaisAtivos(p, 65).length, 0);
+  ativar(p);
+  const naturais = ataquesNaturaisAtivos(p, 65);
+  assert.equal(naturais.length, 1);
+  assert.equal(naturais[0].nome, 'Mordida (Monstruoso)');
+  assert.equal(naturais[0]._monstruoso, true);
+  Object.assign(p, desativarHoje().patch);
+  assert.equal(ataquesNaturaisAtivos(p, 65).length, 0);
+});
+
+teste('ritual fixo (Especialista Sangue 99%: Vínculo de Sangue) só aparece com a etapa ativa', () => {
+  // Uso o Especialista aqui (não o Combatente) porque o Combatente aos 99%
+  // já tem "tudo permanente" — ver o teste próprio para esse caso.
+  let p = especialistaMonstruoso(99, 'Sangue');
+  assert.equal(rituaisAtivos(p, 99).length, 0);
+  ativar(p);
+  const rituais = rituaisAtivos(p, 99);
+  assert.ok(rituais.some((r) => r.nome === 'Vínculo de Sangue'));
+});
+
+teste('Combatente Sangue 99%: como tudo é permanente aqui, o ritual já aparece sem chamar ativarHoje', () => {
+  const p = combatenteMonstruoso(99, 'Sangue');
+  const rituais = rituaisAtivos(p, 99);
+  assert.ok(rituais.some((r) => r.nome === 'Forma Monstruosa'));
+});
+
+teste('ritual não catalogado (ex.: Fim Inevitável) não inventa círculo/elemento', () => {
+  let p = combatenteMonstruoso(99, 'Morte');
+  ativar(p);
+  const r = rituaisAtivos(p, 99).find((x) => x.nome === 'Fim Inevitável');
+  assert.ok(r);
+  assert.equal(r.circulo, '');
+});
+
+teste('ritual à escolha só aparece depois de a escolha ser guardada', () => {
+  let p = ocultistaMonstruoso(99, 'Sangue');
+  const escolhas = escolhasNecessarias(p, 99).filter((g) => g.tipo === 'ritual-escolha');
+  assert.equal(escolhas.length, 2); // um de Sangue, um de Medo
+  ativar(p);
+  assert.equal(rituaisAtivos(p, 99).length, 0); // ainda não escolheu nenhum
+
+  const ganhoSangue = escolhas.find((g) => g.elemento === 'sangue');
+  Object.assign(p, escolherRitual(p, ganhoSangue.id, 'vinculo-de-sangue').patch);
+  // Se o id não existir no catálogo local, cai no mesmo mecanismo de "não inventa";
+  // testamos apenas que a escolha guardada passa a aparecer.
+  const ativos = rituaisAtivos(p, 99);
+  assert.equal(ativos.length, 1);
+});
+
+teste('escolhas permanentes não desaparecem ao desativar (só o efeito é diário)', () => {
+  let p = ocultistaMonstruoso(99, 'Sangue');
+  const ganhoSangue = escolhasNecessarias(p, 99).find((g) => g.tipo === 'ritual-escolha' && g.elemento === 'sangue');
+  Object.assign(p, escolherRitual(p, ganhoSangue.id, 'vinculo-de-sangue').patch);
+  assert.equal(p.monstruosoEscolhas.rituais[ganhoSangue.id], 'vinculo-de-sangue');
+  Object.assign(p, desativarHoje().patch);
+  assert.equal(p.monstruosoEscolhas.rituais[ganhoSangue.id], 'vinculo-de-sangue'); // a escolha em si mantém-se
+});
+
+// ------------------------------------------------------------------
+// Perícias treinadas pela trilha (Ocultismo, perícias livres).
+// ------------------------------------------------------------------
+
+teste('Ocultismo fica treinado (ou +2 se já treinada) só enquanto ativo', () => {
+  let p = combatenteMonstruoso(10, 'Sangue');
+  let per = calcPericias(p).find((x) => x.id === 'ocultismo');
+  assert.equal(per.treino, 0);
+  ativar(p);
+  per = calcPericias(p).find((x) => x.id === 'ocultismo');
+  assert.equal(per.grau, 'treinado');
+  Object.assign(p, desativarHoje().patch);
+  per = calcPericias(p).find((x) => x.id === 'ocultismo');
+  assert.equal(per.grau, 'destreinado');
+});
+
+teste('Ocultista: +2 fixo em Ocultismo mesmo já treinado (não troca de grau), sem duplicar o bónus', () => {
+  let p = ocultistaMonstruoso(10, 'Sangue');
+  p.pericias.ocultismo.grau = 'treinado';
+  ativar(p);
+  const per = calcPericias(p).find((x) => x.id === 'ocultismo');
+  assert.equal(per.grau, 'treinado');
+  assert.equal(per.monstruoso, 2); // só o +2, não soma outra vez o treino
+  assert.equal(per.bonus, 5 + 2); // treino(5) + monstruoso(2), sem "outros" manuais
+});
+
+teste('Ocultista: SEM treino prévio a trilha força o treino (5) e não soma +2 por cima (nunca 9) — igual às outras 2 classes', () => {
+  let p = ocultistaMonstruoso(10, 'Sangue');
+  assert.equal(p.pericias?.ocultismo?.grau ?? 'destreinado', 'destreinado');
+  ativar(p);
+  const per = calcPericias(p).find((x) => x.id === 'ocultismo');
+  assert.equal(per.grau, 'treinado');
+  assert.equal(per.monstruoso, 0); // forçou o treino, não soma o +2 por cima
+  assert.equal(per.bonus, 5); // nunca 7, nunca 9 — só o treino
+});
+
+teste('Ocultismo: as 3 classes usam a mesma regra condicional (ou força treino=5, ou +2 se já treinado=7, nunca os dois)', () => {
+  for (const fabrica of [combatenteMonstruoso, especialistaMonstruoso, ocultistaMonstruoso]) {
+    let destreinado = fabrica(10, 'Sangue');
+    ativar(destreinado);
+    assert.equal(calcPericias(destreinado).find((x) => x.id === 'ocultismo').bonus, 5);
+
+    let treinado = fabrica(10, 'Sangue');
+    treinado.pericias.ocultismo.grau = 'treinado';
+    ativar(treinado);
+    assert.equal(calcPericias(treinado).find((x) => x.id === 'ocultismo').bonus, 7);
+  }
+});
+
+teste('Especialista Conhecimento 10%: as 2 perícias escolhidas só ficam treinadas com a escolha guardada e ativo', () => {
+  let p = especialistaMonstruoso(10, 'Conhecimento');
+  const g = escolhasNecessarias(p, 10).find((x) => x.tipo === 'pericias-livres');
+  assert.ok(g);
+  ativar(p);
+  let per = calcPericias(p).find((x) => x.id === 'investigacao');
+  assert.equal(per.grau, 'destreinado'); // ainda não escolheu
+
+  Object.assign(p, escolherPericiasConhecimento(p, ['investigacao', 'percepcao']).patch);
+  per = calcPericias(p).find((x) => x.id === 'investigacao');
+  assert.equal(per.grau, 'treinado');
+  assert.equal(calcPericias(p).find((x) => x.id === 'percepcao').grau, 'treinado');
+});
+
+// ------------------------------------------------------------------
+// "Soma o atributo em testes desse atributo" — SÓ o Especialista. O
+// Ocultista NÃO tem esta frase no livro (só troca o atributo de PE/DT e
+// ganha +1 ponto de atributo) — é um erro fácil de assumir por analogia
+// com o Especialista, por isso fica testado explicitamente.
+// ------------------------------------------------------------------
+
+teste('"soma o atributo em testes desse atributo": só o Especialista tem isto, o Ocultista NÃO', () => {
+  let esp = especialistaMonstruoso(10, 'Sangue');
+  esp.atributos.for = 3;
+  ativar(esp); // aos 10% ainda não há +For da trilha (só aos 65%/99%) — For efetiva = 3
+  const perEsp = calcPericias(esp).find((x) => x.id === 'atletismo'); // Atletismo usa Força
+  assert.equal(perEsp.monstruoso, 3); // soma a Força efetiva (3) a um teste que já é de Força
+});
+
+teste('Ocultista Sangue 10%: +1 Força e PE por Força, mas SEM somar Força em testes de Força', () => {
+  let p = ocultistaMonstruoso(10, 'Sangue');
+  p.atributos.for = 3;
+  ativar(p);
+  const ef = efeitosDiarios(p, 10);
+  assert.equal(ef.peAtributo, 'for');
+  // A penalidade de 10% (Diplomacia/Enganação/Intuição) continua lá — só não
+  // há nenhuma entrada de Atletismo/Luta (perícias de Força), ao contrário
+  // do Especialista.
+  assert.deepEqual(Object.keys(ef.flatPericia).sort(), ['diplomacia', 'enganacao', 'intuicao']);
+  assert.equal(ef.flatPericia.atletismo, undefined);
+  assert.equal(atributosEfetivos(p, 10).for, 4); // 3 base + 1 da trilha
+});
+
+// ------------------------------------------------------------------
+// Especialista/Ocultista: penalidade sempre diária (nunca "sempre ligada").
+// ------------------------------------------------------------------
+
+teste('Especialista/Ocultista: penalidade em Diplomacia/Enganação/Intuição também é só diária', () => {
+  for (const fabrica of [especialistaMonstruoso, ocultistaMonstruoso]) {
+    const p = fabrica(40, 'Sangue');
+    assert.deepEqual(efeitosDiarios(p, 40).flatPericia, {});
+    ativar(p);
+    const ef = efeitosDiarios(p, 40);
+    assert.equal(ef.flatPericia.diplomacia, -5);
+    assert.equal(ef.flatPericia.enganacao, -5);
+    assert.equal(ef.flatPericia.intuicao, -5);
+  }
+});
+
+teste('Especialista/Ocultista 65%+: a penalidade passa a ser em dado (-O), não número', () => {
+  const p = especialistaMonstruoso(65, 'Sangue');
+  ativar(p);
+  const ef = efeitosDiarios(p, 65);
+  assert.equal(ef.flatPericia.diplomacia, undefined);
+  assert.equal(ef.flatPericia.enganacao, undefined);
+  assert.equal(ef.flatPericia.intuicao, undefined);
+  assert.equal(ef.dadosPericia.diplomacia, -1);
+});
+
+// ------------------------------------------------------------------
+// Resumo por patamar — a caixa de informação nova (agrupada, 10%/40%/...).
+// ------------------------------------------------------------------
+
+teste('resumoPorPatamar: só mostra patamares desbloqueados, cada um com o título certo', () => {
+  let p = especialistaMonstruoso(40, 'Sangue');
+  ativar(p);
+  const blocos = resumoPorPatamar(p, 40);
+  assert.deepEqual(blocos.map((b) => b.patamar), [10, 40]);
+  assert.equal(blocos[0].titulo, 'Ser Experimentado');
+  assert.equal(blocos[1].titulo, 'Ser Testado');
+  // 99% nunca aparece com NEX 40.
+  assert.ok(!blocos.some((b) => b.patamar === 99));
+});
+
+teste('resumoPorPatamar: inclui a penalidade e o "Grande" no bloco de 10%', () => {
+  let p = especialistaMonstruoso(10, 'Sangue');
+  ativar(p);
+  const bloco10 = resumoPorPatamar(p, 10)[0];
+  assert.ok(bloco10.linhas.some((l) => l.includes('Grande')));
+  assert.ok(bloco10.linhas.some((l) => l.includes('Diplomacia')));
+});
+
+// ------------------------------------------------------------------
+// Especialista: PE/PV atual sobe (não só o máximo) ao ativar.
+// ------------------------------------------------------------------
+
+teste('ao ativar, o PV/PE ATUAL sobe pela mesma diferença que o máximo (ajustarRecursos)', () => {
+  // Isolado da rolagem de recuperação de PV (que é aleatória e já está
+  // testada à parte) — construímos o "antes/depois" à mão, só com a
+  // mudança de estado que ativarHoje provoca (Vigor efetivo sobe aos 99%
+  // do Especialista/Morte, o que sobe o PV máximo).
+  let p = especialistaMonstruoso(99, 'Morte');
+  p.atributos.vig = 3;
+  p.pvAtual = 20;
+  const antes = { ...p };
+  const depoisPatch = { ...p, monstruosoAtivoHoje: true };
+  const maxAntes = calcMaximos(antes).pv;
+  const maxDepois = calcMaximos(depoisPatch).pv;
+  assert.ok(maxDepois > maxAntes, 'o Vigor efetivo (+2 aos 99%) tem de subir o PV máximo');
+  const depois = ajustarRecursos(antes, depoisPatch);
+  assert.equal(depois.pvAtual - antes.pvAtual, maxDepois - maxAntes);
+});
+
+teste('ao desativar, o PV/PE atual desce de volta (nunca fica negativo)', () => {
+  let p = especialistaMonstruoso(99, 'Morte');
+  p.atributos.vig = 3;
+  const ativo = { ...p, monstruosoAtivoHoje: true, pvAtual: 1 }; // ferido, bem abaixo do máximo
+  const inativo = ajustarRecursos(ativo, { ...ativo, monstruosoAtivoHoje: false });
+  assert.ok(inativo.pvAtual >= 0);
+  assert.ok(inativo.pvAtual < ativo.pvAtual);
+});
+
+// ------------------------------------------------------------------
+// Consequências narrativas (NEX, não etapa) e ativação/erros.
+// ------------------------------------------------------------------
+
+teste('consequências (Perturbado 75%, Sanidade 1 aos 99%) disparam por NEX, não pela etapa', () => {
+  assert.equal(consequenciasAtivas(74).length, 0);
+  assert.equal(consequenciasAtivas(75).length, 1);
+  assert.equal(consequenciasAtivas(99).length, 2);
+});
+
+teste('Especialista precisa de Componentes Ritualísticos para ativar', () => {
+  const p = especialistaMonstruoso(10, 'Sangue');
+  const r = ativarHoje(p, 10, {});
+  assert.ok(r.erro);
+});
+
+teste('Especialista consome o componente e recupera PV ao ativar', () => {
+  const p = especialistaMonstruoso(10, 'Sangue');
+  p.inventario = [{ nome: 'Componentes Ritualísticos de Sangue', quantidade: 1 }];
+  const r = ativarHoje(p, 10, {});
+  assert.ok(!r.erro);
+  assert.equal(r.patch.inventario.length, 0);
+  assert.ok(r.patch.pvAtual > 0);
+});
+
+teste('resistenciaTextoAtual: Combatente sempre (tipos específicos, nota "não soma ao Bloqueio"); Especialista só Sangue 40%+ (RD geral, "já somada ao Bloqueio"); Ocultista nunca', () => {
+  let c = combatenteMonstruoso(10, 'Sangue');
+  assert.equal(resistenciaTextoAtual(c, 10), null);
+  ativar(c);
+  assert.match(resistenciaTextoAtual(c, 10), /balístico e Sangue 5/);
+  assert.match(resistenciaTextoAtual(c, 10), /não soma ao Bloqueio/);
+
+  let e = especialistaMonstruoso(40, 'Sangue');
+  ativar(e);
+  // Geral: NÃO menciona "de Sangue" (só o dano extra é de Sangue, a RD cobre qualquer tipo).
+  assert.match(resistenciaTextoAtual(e, 40), /Resistência a dano 2 \(geral/);
+  assert.doesNotMatch(resistenciaTextoAtual(e, 40), /dano de Sangue/);
+  assert.match(resistenciaTextoAtual(e, 40), /já somada ao Bloqueio/);
+
+  let eMorte = especialistaMonstruoso(40, 'Morte');
+  ativar(eMorte);
+  assert.equal(resistenciaTextoAtual(eMorte, 40), null); // só Sangue tem RD no Especialista
+
+  let o = ocultistaMonstruoso(99, 'Sangue');
+  ativar(o);
+  assert.equal(resistenciaTextoAtual(o, 99), null); // Ocultista nunca tem RD
+});
+
+teste('calcDefesas/Bloqueio: RD geral do Especialista-Sangue soma a sério (fica disponível mesmo sem treino em Fortitude); a do Combatente (tipos específicos) NÃO soma, fica só em texto', () => {
+  let e = especialistaMonstruoso(40, 'Sangue');
+  ativar(e);
+  const antes = calcDefesas(e).bloqueio.auto;
+  e.monstruosoDrenagem = 1; // base RD2 + 1 ponto drenado = RD4
+  const d = calcDefesas(e);
+  assert.equal(d.bloqueio.trilha, 4);
+  assert.equal(d.bloqueio.auto, antes + 4 - 2); // já tinha a base (RD2) somada antes de drenar
+  assert.equal(d.bloqueio.disponivel, true); // disponível mesmo sem Fortitude treinada
+  assert.match(d.bloqueio.trilhaTexto, /já somada ao Bloqueio/);
+
+  let c = combatenteMonstruoso(10, 'Sangue');
+  ativar(c);
+  const dc = calcDefesas(c);
+  assert.equal(dc.bloqueio.trilha, 0); // RD do Combatente não soma (só cobre tipos específicos)
+  assert.match(dc.bloqueio.trilhaTexto, /não soma ao Bloqueio/);
+});
+
+teste('limiteDrenagem usa o atributo drenado (não o do elemento)', () => {
+  const p = especialistaMonstruoso(40, 'Sangue');
+  p.atributos.int = 3;
+  assert.equal(limiteDrenagem(p, 40), 3);
+});
+
+console.log(`\n${passou} testes ok`);

@@ -22,7 +22,7 @@ function detalhe(r) {
   if (r.tipo === 'expressao') {
     return `[${r.rolagens.join(', ')}]${r.bonus ? ` ${r.bonus > 0 ? '+' : '−'} ${Math.abs(r.bonus)}` : ''}`;
   }
-  const acerto = `${r.dados}d20 [${r.rolagens.join(', ')}] → ${r.piorDeDois ? 'pior' : 'maior'} ${r.escolhido}${r.bonus ? ` ${r.bonus > 0 ? '+' : '−'} ${Math.abs(r.bonus)}` : ''}`;
+  const acerto = `${r.dados}d20 [${r.rolagens.join(', ')}] → ${r.piorDeDois ? 'pior' : 'maior'} ${r.escolhido}${r.bonus ? ` ${r.bonus > 0 ? '+' : '−'} ${Math.abs(r.bonus)}` : ''}${(r.dadosExtra || []).map((d) => ` + ${d.expr} [${d.rolagens.join(', ')}]`).join('')}`;
   // num ataque o dano vem colado ao acerto
   if (r.dano) return `${acerto}  ·  dano ${r.dano.expressao} [${r.dano.rolagens.join(', ')}]${r.dano.bonus ? ` ${r.dano.bonus > 0 ? '+' : '−'} ${Math.abs(r.dano.bonus)}` : ''} = ${r.dano.total}`;
   return acerto;

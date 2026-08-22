@@ -536,6 +536,7 @@ body.bate-forte .barra-recurso .preenchido::before {
 .tabela-pericias tr.treinada .nome-pericia { color: var(--sangue-claro); }
 
 .tabela-pericias .attr, .tabela-pericias .bonus { text-align: center; color: var(--txt-dim); font-size: 15px; font-family: var(--numeros); white-space: nowrap; }
+.tabela-pericias input.aviso-outros { border-color: #f5a623; box-shadow: 0 0 0 1px rgba(245,166,35,.35); }
 .tabela-pericias td:first-child { width: 100%; }
 .tabela-pericias select {
   width: 58px;

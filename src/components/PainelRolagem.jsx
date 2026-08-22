@@ -7,7 +7,11 @@ export function Dados({ r }) {
     return (
       <span className="conta">
         {r.expressao} [{r.rolagens.join(', ')}]
-        {r.extras?.map((e) => ` + ${e.expr} [${e.rolagens.join(', ')}]`).join('')}
+        {r.extras?.map((e, i) => (
+          <span key={i} style={e.elemental ? { color: 'var(--sangue-claro)' } : undefined} title={e.elemental ? 'Dano da Trilha do Monstruoso' : undefined}>
+            {` + ${e.expr} [${e.rolagens.join(', ')}]`}
+          </span>
+        ))}
         {r.bonus ? ` ${r.bonus > 0 ? '+' : '−'} ${Math.abs(r.bonus)}` : ''}
         {r.critico ? ` · dados ×${r.multiplicador}` : ''}
       </span>
@@ -32,6 +36,9 @@ export function Dados({ r }) {
       ))}
       ] → {r.piorDeDois ? 'pior' : 'maior'} <span className="melhor">{r.escolhido}</span>
       {r.bonus ? ` ${r.bonus > 0 ? '+' : '−'} ${Math.abs(r.bonus)}` : ''}
+      {(r.dadosExtra || []).map((d, i) => (
+        <span key={i}>{` + ${d.expr} [${d.rolagens.join(', ')}]`}</span>
+      ))}
     </span>
   );
 }

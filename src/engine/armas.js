@@ -1,5 +1,6 @@
-import { calcPericias, calcPenalidadesCondicoes } from './calc.js';
+import { calcPericias, calcPenalidadesCondicoes, nexEfetivo } from './calc.js';
 import { aplicarModificacoes } from '../data/modificacoesArma.js';
+import { atributosEfetivos } from './monstruoso.js';
 
 /** Lê o crítico como vem nos livros: "x2", "19/x2", "19", "18/x3". */
 export function interpretarCritico(texto) {
@@ -28,6 +29,10 @@ export function estatisticasArma(personagem, arma) {
   const p = pericias.find((x) => x.id === arma.pericia) || { dados: 1, bonus: 0, nome: '', attr: 'for' };
   const mods = aplicarModificacoes(arma);
   const conds = calcPenalidadesCondicoes(personagem);
+  // Atributos "efetivos" (já com os bónus/penalidades ao vivo da Trilha do
+  // Monstruoso somados) — para que uma Força/Agilidade concedida pela
+  // trilha também conte nos testes de ataque e nas rolagens de dano.
+  const atributosEf = atributosEfetivos(personagem, nexEfetivo(personagem));
 
   const critico = arma.margem
     ? { margem: Number(arma.margem), multiplicador: Number(arma.multiplicador) || 2 }
@@ -53,14 +58,24 @@ export function estatisticasArma(personagem, arma) {
 
   let dados = p.dados;
   if (agilAtiva) {
-    const dadosBaseAgi = Number(personagem.atributos?.agi || 0);
+    const dadosBaseAgi = Number(atributosEf.agi || 0);
     const penAgi = conds.dadosGeral + (conds.dadosAttr['agi'] || 0) + (conds.dadosPericia[arma.pericia] || 0);
     dados = Math.max(0, dadosBaseAgi + penAgi);
   }
   dados = Math.max(0, dados + dadosAtaquePenalidade);
 
   const atributoDano = agilAtiva && arma.atributoDano === 'for' ? 'agi' : arma.atributoDano;
-  const bonusAtributoDano = atributoDano ? Number(personagem.atributos[atributoDano] || 0) : 0;
+  const bonusAtributoDano = atributoDano ? Number(atributosEf[atributoDano] || 0) : 0;
+
+  // Dados extra somados ao TOTAL do teste de ataque (não à pool de d20) —
+  // ex.: Especialista Sangue 65%+, "+1d8 em testes de ataques corpo a
+  // corpo". "Corpo a corpo" aqui é a perícia de Luta (por oposição a
+  // Pontaria); quem não pede "corpoACorpoApenas" soma sempre (ex.: o bónus
+  // de Energia via drenagem, que é "em testes de ataque" sem restrição).
+  const corpoACorpo = arma.pericia === 'luta';
+  const dadosExtraAtaque = (conds.monstruoso.ataqueBonusDados || [])
+    .filter((d) => !d.corpoACorpoApenas || corpoACorpo)
+    .map((d) => `${d.quantidade}d${d.faces}`);
 
   return {
     pericia: p,
@@ -69,11 +84,19 @@ export function estatisticasArma(personagem, arma) {
     atributoDano,
     agilAtiva,
     bonusAtaque: p.bonus + (Number(arma.bonus) || 0) + mods.ataque,
+    dadosExtraAtaque,
     dano: somarDados(arma.dano, mods.dadosDano),
     bonusDano: bonusAtributoDano + mods.dano,
     margem: Math.max(2, critico.margem - mods.margem),
     multiplicador: critico.multiplicador,
-    extras: [...(arma.danoExtra || []), ...mods.danoExtra],
+    // O dano extra da Trilha do Monstruoso é marcado `elemental` para a
+    // interface o colorir à parte na conta do dano (ver rolarDano em
+    // engine/dados.js) — o dano da arma e das modificações fica normal.
+    extras: [
+      ...(arma.danoExtra || []),
+      ...mods.danoExtra,
+      ...conds.monstruoso.danoExtra.map((expr) => ({ expr, elemental: true })),
+    ],
     alcance: mods.alcance || arma.alcance,
     espacos: (Number(arma.espacos) || 0) + mods.espacos,
     mods,

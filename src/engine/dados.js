@@ -7,12 +7,32 @@ function d20() {
  * ficas com o melhor. Com atributo 0 rolas 2 e ficas com o pior.
  * Crítico = o dado escolhido saiu 20. Falha crítica = saiu 1.
  */
-export function rolarTeste({ nome, dados, bonus = 0, detalhe = '' }) {
+/**
+ * `dadosExtra` (opcional): lista de expressões tipo "1d8" — dados fixos que
+ * se SOMAM ao total do teste, à parte da pool de d20 (ex.: Especialista
+ * Sangue 65%, "+1d8 em testes de ataques corpo a corpo" — não é mais um d20
+ * na pool, é um dado fixo somado ao resultado).
+ */
+export function rolarTeste({ nome, dados, bonus = 0, detalhe = '', dadosExtra = [] }) {
   const n = Number(dados) || 0;
   const quantidade = n > 0 ? n : 2;
   const rolagens = Array.from({ length: quantidade }, d20);
   const escolhido = n > 0 ? Math.max(...rolagens) : Math.min(...rolagens);
   const b = Number(bonus) || 0;
+
+  const extras = [];
+  let somaExtra = 0;
+  for (const expr of dadosExtra || []) {
+    const m = String(expr).replace(/\s/g, '').toLowerCase().match(/^(\d*)d(\d+)([+-]\d+)?$/);
+    if (!m) continue;
+    const qtd = Math.min(Number(m[1] || 1), 20);
+    const faces = Number(m[2]);
+    const rs = Array.from({ length: qtd }, () => 1 + Math.floor(Math.random() * faces));
+    const soma = rs.reduce((a, x) => a + x, 0) + Number(m[3] || 0);
+    extras.push({ expr, rolagens: rs, soma });
+    somaExtra += soma;
+  }
+
   return {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     tipo: 'teste',
@@ -23,7 +43,8 @@ export function rolarTeste({ nome, dados, bonus = 0, detalhe = '' }) {
     rolagens,
     escolhido,
     bonus: b,
-    total: escolhido + b,
+    dadosExtra: extras,
+    total: escolhido + b + somaExtra,
     critico: escolhido === 20,
     falhaCritica: escolhido === 1,
   };
@@ -63,8 +84,8 @@ function id() {
  * Teste de ataque. O crítico acontece quando o dado escolhido é igual ou maior
  * que a margem de ameaça da arma (por omissão 20).
  */
-export function rolarAtaque({ nome, dados, bonus = 0, margem = 20 }) {
-  const r = rolarTeste({ nome, dados, bonus });
+export function rolarAtaque({ nome, dados, bonus = 0, margem = 20, dadosExtra = [] }) {
+  const r = rolarTeste({ nome, dados, bonus, dadosExtra });
   const m = Number(margem) || 20;
   return { ...r, tipo: 'ataque', margem: m, critico: r.escolhido >= m, falhaCritica: r.escolhido === 1 };
 }
@@ -86,6 +107,14 @@ function primeiraExpressaoValida(dano) {
   return null;
 }
 
+/**
+ * `extras` (opcional): cada entrada é uma expressão tipo "1d8" (dano fixo
+ * somado ao dano da arma) OU `{ expr: "1d8", elemental: true }` — marca-se
+ * `elemental` quando o dado vem da Trilha do Monstruoso (ex.: o dano extra
+ * "de Sangue" da drenagem), para a interface conseguir colorir só essa
+ * parte da conta a vermelho e mostrar quanto do total é dano elemental. O
+ * TOTAL continua um só número — não se separa em dois danos.
+ */
 export function rolarDano({ nome, dano, bonus = 0, extras = [], critico = false, multiplicador = 2 }) {
   const m = primeiraExpressaoValida(dano);
   if (!m) return null;
@@ -99,11 +128,14 @@ export function rolarDano({ nome, dano, bonus = 0, extras = [], critico = false,
 
   const detalhesExtra = [];
   for (const e of extras) {
-    const me = String(e).replace(/\s/g, '').toLowerCase().match(/^(\d*)d(\d+)$/);
+    const expr = typeof e === 'string' ? e : e?.expr;
+    const elemental = typeof e === 'object' && e !== null ? Boolean(e.elemental) : false;
+    const me = String(expr).replace(/\s/g, '').toLowerCase().match(/^(\d*)d(\d+)$/);
     if (!me) continue;
     const rs = Array.from({ length: Math.min(Number(me[1] || 1), 30) }, () => 1 + Math.floor(Math.random() * Number(me[2])));
-    total += rs.reduce((a, b) => a + b, 0);
-    detalhesExtra.push({ expr: e, rolagens: rs });
+    const soma = rs.reduce((a, b) => a + b, 0);
+    total += soma;
+    detalhesExtra.push({ expr, rolagens: rs, soma, elemental });
   }
 
   return {
@@ -125,8 +157,8 @@ export function rolarDano({ nome, dano, bonus = 0, extras = [], critico = false,
  * Um ataque é uma coisa só: o teste de acerto e, colado a ele, o dano.
  * O resultado leva o dano em `.dano` para o cartão mostrar as duas secções.
  */
-export function rolarAtaqueCompleto({ nome, dados, bonusAtaque = 0, margem = 20, dano, bonusDano = 0, extras = [], multiplicador = 2 }) {
-  const acerto = rolarAtaque({ nome, dados, bonus: bonusAtaque, margem });
+export function rolarAtaqueCompleto({ nome, dados, bonusAtaque = 0, margem = 20, dano, bonusDano = 0, extras = [], multiplicador = 2, dadosExtraAtaque = [] }) {
+  const acerto = rolarAtaque({ nome, dados, bonus: bonusAtaque, margem, dadosExtra: dadosExtraAtaque });
   const golpe = rolarDano({
     nome: `${nome} — dano`,
     dano, bonus: bonusDano, extras,
