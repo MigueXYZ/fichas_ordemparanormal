@@ -533,4 +533,106 @@ teste('personagem e ameaça suportam tags como array', () => {
   assert.ok(Array.isArray(a.tags));
 });
 
+console.log('\nLayout modular da ficha por widgets (US #67)\n');
+
+teste('layout padrão da ficha tem 3 colunas e widgets essenciais', async () => {
+  const { lerLayoutFicha, LAYOUT_FICHA_PADRAO } = await import('../src/engine/sheetLayout.js');
+  const l = lerLayoutFicha();
+  assert.equal(l.numColunas, 3);
+  assert.ok(Array.isArray(l.colunas));
+  assert.equal(l.colunas.length, 3);
+  assert.ok(l.colunas[0].includes('atributos'));
+  assert.ok(l.colunas[1].includes('pericias'));
+  assert.ok(l.colunas[2].includes('abas'));
+});
+
+teste('moverWidget reorganiza widgets na mesma coluna e entre colunas', async () => {
+  const { moverWidget, LAYOUT_FICHA_PADRAO } = await import('../src/engine/sheetLayout.js');
+  let l = JSON.parse(JSON.stringify(LAYOUT_FICHA_PADRAO));
+  
+  // Mover 'recursos' para cima (fica antes de 'atributos')
+  l = moverWidget(l, 'recursos', 'cima');
+  assert.equal(l.colunas[0][0], 'recursos');
+  assert.equal(l.colunas[0][1], 'atributos');
+
+  // Mover 'recursos' para a coluna da direita (coluna 1, onde está pericias)
+  l = moverWidget(l, 'recursos', 'direita');
+  assert.ok(!l.colunas[0].includes('recursos'));
+  assert.ok(l.colunas[1].includes('recursos'));
+});
+
+teste('ocultar e mostrar widgets atualiza colunas e visibilidade', async () => {
+  const { ocultarWidget, mostrarWidget, LAYOUT_FICHA_PADRAO } = await import('../src/engine/sheetLayout.js');
+  let l = JSON.parse(JSON.stringify(LAYOUT_FICHA_PADRAO));
+  
+  l = ocultarWidget(l, 'atributos');
+  assert.ok(!l.colunas[0].includes('atributos'));
+  assert.equal(l.widgets.atributos.visivel, false);
+
+  l = mostrarWidget(l, 'atributos', 0);
+  assert.ok(l.colunas[0].includes('atributos'));
+  assert.equal(l.widgets.atributos.visivel, true);
+});
+
+teste('alterar número de colunas ajusta distribuição dos widgets', async () => {
+  const { alterarNumColunas, LAYOUT_FICHA_PADRAO } = await import('../src/engine/sheetLayout.js');
+  let l = JSON.parse(JSON.stringify(LAYOUT_FICHA_PADRAO));
+
+  l = alterarNumColunas(l, 2);
+  assert.equal(l.numColunas, 2);
+  assert.equal(l.colunas.length, 2);
+  assert.ok(l.colunas[1].includes('abas')); // o conteúdo da coluna 3 migrou para a coluna 2
+
+  l = alterarNumColunas(l, 3);
+  assert.equal(l.numColunas, 3);
+  assert.equal(l.colunas.length, 3);
+});
+
+teste('gestão de widgets customizados (criar, editar, remover)', async () => {
+  const {
+    adicionarWidgetCustomizado,
+    atualizarWidgetCustomizado,
+    removerWidgetCustomizado,
+    LAYOUT_FICHA_PADRAO
+  } = await import('../src/engine/sheetLayout.js');
+
+  let l = JSON.parse(JSON.stringify(LAYOUT_FICHA_PADRAO));
+  const novo = { id: 'cw-teste-1', tipo: 'contador', titulo: 'Munições', atual: 30, max: 30, cor: '#f04653' };
+
+  l = adicionarWidgetCustomizado(l, novo);
+  assert.ok(l.colunas[0].includes('cw-teste-1'));
+  assert.equal(l.customWidgets['cw-teste-1'].titulo, 'Munições');
+
+  l = atualizarWidgetCustomizado(l, { ...novo, atual: 25 });
+  assert.equal(l.customWidgets['cw-teste-1'].atual, 25);
+
+  l = removerWidgetCustomizado(l, 'cw-teste-1');
+  assert.ok(!l.colunas[0].includes('cw-teste-1'));
+  assert.equal(l.customWidgets['cw-teste-1'], undefined);
+});
+
+teste('soltarWidgetSobre posiciona antes e depois do alvo com precisão vertical', async () => {
+  const { soltarWidgetSobre, soltarWidgetNaColuna, LAYOUT_FICHA_PADRAO } = await import('../src/engine/sheetLayout.js');
+  let l = JSON.parse(JSON.stringify(LAYOUT_FICHA_PADRAO));
+  // Coluna 0 padrão: ['atributos', 'recursos', 'defesas', 'condicoes']
+
+  // 1. Soltar 'condicoes' ANTES de 'atributos' (vai para o topo da coluna 0)
+  l = soltarWidgetSobre(l, 'condicoes', 'atributos', 'antes');
+  assert.deepEqual(l.colunas[0], ['condicoes', 'atributos', 'recursos', 'defesas']);
+
+  // 2. Soltar 'condicoes' DEPOIS de 'recursos'
+  l = soltarWidgetSobre(l, 'condicoes', 'recursos', 'depois');
+  assert.deepEqual(l.colunas[0], ['atributos', 'recursos', 'condicoes', 'defesas']);
+
+  // 3. Soltar 'pericias' (coluna 1) DEPOIS de 'defesas' (coluna 0)
+  l = soltarWidgetSobre(l, 'pericias', 'defesas', 'depois');
+  assert.ok(!l.colunas[1].includes('pericias'));
+  assert.equal(l.colunas[0][l.colunas[0].length - 1], 'pericias');
+
+  // 4. Soltar na coluna 1 vazia
+  l = soltarWidgetNaColuna(l, 'pericias', 1);
+  assert.ok(l.colunas[1].includes('pericias'));
+  assert.ok(!l.colunas[0].includes('pericias'));
+});
+
 console.log(`\n${passou} testes ok`);
