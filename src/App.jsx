@@ -7,6 +7,7 @@ import Fundo from './components/Fundo.jsx';
 import EspacoToken from './components/EspacoToken.jsx';
 import HistoricoRolagens from './components/HistoricoRolagens.jsx';
 import PainelOverlay from './components/PainelOverlay.jsx';
+import EditorOverlay from './components/EditorOverlay.jsx';
 import FichaAmeaca from './components/ficha/FichaAmeaca.jsx';
 import { personagemVazio } from './engine/character.js';
 import { descarregarPdf } from './export/pdf.js';
@@ -14,6 +15,7 @@ import { guardarAgente, exportarJson, novoId } from './engine/armazenamento.js';
 import { tocarRolagem, alternarSom, somLigado, alternarCoracao, coracaoLigado } from './engine/som.js';
 import { calcMaximos } from './engine/calc.js';
 import { lerConfig, guardarConfig, publicar } from './overlay/transporte.js';
+import { lerLayout, guardarLayout } from './overlay/layoutConfig.js';
 
 export default function App() {
   const [vista, setVista] = useState('inicio'); // inicio | wizard | ficha
@@ -42,13 +44,15 @@ export default function App() {
 
   // ---- overlay para o OBS ----
   const [configOverlay, setConfigOverlay] = useState(lerConfig);
+  const [layoutOverlay, setLayoutOverlay] = useState(lerLayout);
   const [verOverlay, setVerOverlay] = useState(false);
+  const [verEditorOverlay, setVerEditorOverlay] = useState(false);
   const [estadoEnvio, setEstadoEnvio] = useState(null);
   const ultimoEnvio = useRef('');
   const relogioOverlay = useRef(null);
 
   useEffect(() => {
-    if (!configOverlay.ligado || !personagem || personagem.tipo === 'ameaca') {
+    if (!configOverlay.ligado || !personagem) {
       publicar({ ligado: false }, null);
       return undefined;
     }
@@ -56,20 +60,20 @@ export default function App() {
     const ultima = rolagens[rolagens.length - 1] || null;
     const estado = {
       nome: personagem.nome || 'Agente',
-      legenda: [personagem.patente, personagem.regras?.nivelSeparado
+      subtitulo: [personagem.classe, personagem.patente, personagem.origem, personagem.regrasOpcionais?.nivel
         ? `Nível ${personagem.nivel ?? 1} · NEX ${personagem.nex}%`
         : `NEX ${personagem.nex}%`].filter(Boolean).join(' · '),
       token: personagem.token || null,
       imagem: personagem.imagem || null,
       pv: { atual: personagem.pvAtual ?? max.pv, max: max.pv, temp: personagem.pvTemp || 0 },
-      san: max.semSanidade ? null : { atual: personagem.sanAtual ?? max.san, max: max.san },
+      san: max.semSanidade ? null : { atual: personagem.sanAtual ?? max.san, max: max.san, temp: personagem.sanTemp || 0 },
       pe: max.semSanidade ? null : { atual: personagem.peAtual ?? max.pe, max: max.pe, temp: personagem.peTemp || 0 },
       pd: max.semSanidade ? { atual: personagem.pdAtual ?? max.pd, max: max.pd, temp: personagem.pdTemp || 0 } : null,
       condicoes: personagem.condicoes || [],
       rolagem: ultima,
+      layout: layoutOverlay,
     };
     const corpo = JSON.stringify(estado);
-    if (corpo === ultimoEnvio.current && configOverlay.modo !== 'p2p') return undefined;
 
     clearTimeout(relogioOverlay.current);
     relogioOverlay.current = setTimeout(async () => {
@@ -78,7 +82,7 @@ export default function App() {
       setEstadoEnvio(r.ok ? { quando: Date.now() } : { erro: r.erro });
     }, 150);
     return () => clearTimeout(relogioOverlay.current);
-  }, [personagem, rolagens, configOverlay]);
+  }, [personagem, rolagens, configOverlay, layoutOverlay]);
 
   const mudarOverlay = useCallback((novo) => {
     setConfigOverlay(guardarConfig(novo));
@@ -140,7 +144,7 @@ export default function App() {
         />
       )}
       <div className="topbar">
-        <h1>Claudio <span className="marca-sub">· Ordem Paranormal</span></h1>
+        <h1 onClick={voltarAoInicio} title="Voltar ao início">Claudio <span className="marca-sub">· Ordem Paranormal</span></h1>
         <div className="acoes">
           <button
             className="btn ghost sm" title={som ? 'Desligar som dos dados' : 'Ligar som dos dados'}
@@ -209,6 +213,23 @@ export default function App() {
           aoMudar={mudarOverlay}
           estadoEnvio={estadoEnvio}
           aoFechar={() => setVerOverlay(false)}
+          aoAbrirEditor={() => {
+            setVerOverlay(false);
+            setVerEditorOverlay(true);
+          }}
+        />
+      )}
+
+      {verEditorOverlay && (
+        <EditorOverlay
+          layoutInicial={layoutOverlay}
+          personagem={personagem}
+          aoGuardar={(novo) => {
+            guardarLayout(novo);
+            setLayoutOverlay(novo);
+            setVerEditorOverlay(false);
+          }}
+          aoFechar={() => setVerEditorOverlay(false)}
         />
       )}
 

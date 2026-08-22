@@ -53,6 +53,11 @@ export function apagarAgente(id) {
   escrever(ler().filter((a) => a.id !== id));
 }
 
+export function apagarVariosAgentes(ids) {
+  const set = new Set(ids);
+  escrever(ler().filter((a) => !set.has(a.id)));
+}
+
 export function duplicarAgente(id) {
   const original = obterAgente(id);
   if (!original) return null;
