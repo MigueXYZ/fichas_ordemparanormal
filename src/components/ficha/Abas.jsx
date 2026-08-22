@@ -11,7 +11,8 @@ import { novoAtaque, novoItem, novaHabilidade, novoRitual } from '../../engine/c
 import { rolarExpressao, rolarAtaqueCompleto, rolarDano, rolarTeste } from '../../engine/dados.js';
 import { estatisticasArma, interpretarCritico, armaDoItem, ehArma, formulaTeste } from '../../engine/armas.js';
 import { precoDoRitual } from '../../engine/rituais.js';
-import { ataquesNaturaisAtivos, rituaisAtivos } from '../../engine/monstruoso.js';
+import { ataquesNaturaisAtivos, rituaisAtivos, temComponentesDoElemento } from '../../engine/monstruoso.js';
+import { ELEMENTOS_MONSTRUOSO, COR_ELEMENTO } from '../../data/monstruoso.js';
 import EditorArma from './EditorArma.jsx';
 import { calcPericias } from '../../engine/calc.js';
 import IconeD20 from '../IconeD20.jsx';
@@ -216,9 +217,21 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
   const atual = usaPd ? (personagem.pdAtual ?? max.pd) : (personagem.peAtual ?? max.pe);
   const dt = Number(personagem.dtRitual) || null;
 
+  // "Componentes ritualísticos são necessários para a conjuração de rituais
+  // do elemento em questão" (Livro Base) — precisa dos componentes DESSE
+  // elemento, os de outro elemento não servem. Medo não tem componentes
+  // (não existem, por regra) e "variável (à escolha)" não tem um elemento
+  // fixo para verificar — nenhum dos dois entra nesta exigência.
+  function precisaComponente(r) {
+    return Boolean(r.elemento) && r.elemento !== 'medo' && r.elemento !== 'variavel';
+  }
+  function temComponente(r) {
+    return !precisaComponente(r) || temComponentesDoElemento(personagem.inventario, r.elemento);
+  }
+
   function conjurar(r) {
     const custo = Number(String(r.custo).replace(/\D/g, '')) || 0;
-    if (custo > atual) return;
+    if (custo > atual || !temComponente(r)) return;
 
     const circulo = Number(r.circulo) || 1;
     const oc = calcPericias(personagem).find((x) => x.id === 'ocultismo') || { dados: 0, bonus: 0 };
@@ -267,6 +280,9 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
           const custo = Number(String(r.custo).replace(/\D/g, '')) || 0;
           const circulo = Number(r.circulo) || 1;
           const podeGastar = custo <= atual;
+          const componenteOk = temComponente(r);
+          const podeConjurar = podeGastar && componenteOk;
+          const nomeElemento = ELEMENTOS.find((e) => e.id === r.elemento)?.nome || r.elemento;
           return (
             <div className={'bloco ritual el-' + (r.elemento || 'variavel')} key={r._monstruosoId || i}>
               <div className="topo">
@@ -285,12 +301,21 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
                     {r.execucao && <span>{r.execucao}</span>}
                     {r.alcance && <span>{r.alcance}</span>}
                     {r.resistencia && <span>resistência: {r.resistencia}</span>}
+                    {!componenteOk && (
+                      <span style={{ color: 'var(--sangue-claro)' }} title={`Precisas de "Componentes Ritualísticos de ${nomeElemento}" no inventário`}>
+                        sem componentes de {nomeElemento}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <button
                   className="btn sm"
-                  disabled={!podeGastar}
-                  title={podeGastar ? `Gasta ${custo} ${usaPd ? 'PD' : 'PE'} e faz o teste de Ocultismo` : 'Não tens pontos que cheguem'}
+                  disabled={!podeConjurar}
+                  title={
+                    !podeGastar ? 'Não tens pontos que cheguem'
+                    : !componenteOk ? `Precisas de "Componentes Ritualísticos de ${nomeElemento}" no inventário — os de outro elemento não servem`
+                    : `Gasta ${custo} ${usaPd ? 'PD' : 'PE'} e faz o teste de Ocultismo`
+                  }
                   onClick={() => conjurar(r)}
                 >
                   Conjurar
@@ -494,8 +519,12 @@ export function AbaInventario({ personagem, setPersonagem }) {
   const [aEscolher, setAEscolher] = useState(false);
   const [aEscolherArma, setAEscolherArma] = useState(false);
   const [aEditarArma, setAEditarArma] = useState(null);   
-  const [aEditarItem, setAEditarItem] = useState(null);   
+  const [aEditarItem, setAEditarItem] = useState(null);
   const [aviso, setAviso] = useState(null);
+  // "Componentes Ritualísticos de (Elemento)" é o mesmo item para os 4
+  // elementos — antes de o meter no inventário, pergunta-se qual (mesmo
+  // popup de escolha usado no elemento do Monstruoso).
+  const [aEscolherElementoComponente, setAEscolherElementoComponente] = useState(null);
   const catalogoArmas = ITENS.filter(ehArma);
   const carga = calcCarga(personagem);
   const cats = calcItensPorCategoria(personagem);
@@ -649,6 +678,12 @@ export function AbaInventario({ personagem, setPersonagem }) {
             if (ehArma(i)) {
               armas.adicionar(armaDoItem(i));
               setAviso(`${i.nome} foi para o separador Combate, já equipada.`);
+              setAEscolher(false);
+            } else if (i.id === 'componentes-ritualisticos-de-elemento') {
+              // Este item serve para os 4 elementos — pergunta qual antes de o
+              // meter no inventário, em vez de ficar com "(Elemento)" no nome.
+              setAEscolher(false);
+              setAEscolherElementoComponente(i);
             } else {
               adicionar({
                 nome: i.nome,
@@ -656,14 +691,53 @@ export function AbaInventario({ personagem, setPersonagem }) {
                 espacos: i.espacos ?? 1,
                 cargaBonus: i.cargaBonus ?? 0,
                 descricao: i.descricao || '',
-                manual: false 
+                manual: false
               });
               setAviso(null);
+              setAEscolher(false);
             }
-            setAEscolher(false);
           }}
           onFechar={() => setAEscolher(false)}
         />
+      )}
+
+      {aEscolherElementoComponente && (
+        <div className="modal-fundo" style={{ zIndex: 100 }} onClick={(e) => e.target === e.currentTarget && setAEscolherElementoComponente(null)}>
+          <div className="modal" style={{ maxWidth: 440, textAlign: 'center' }}>
+            <div className="modal-topo">
+              <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>De que elemento são os Componentes?</h3>
+              <button className="fechar" onClick={() => setAEscolherElementoComponente(null)}>×</button>
+            </div>
+            <div className="modal-corpo">
+              <p style={{ color: 'var(--txt-dim)', fontSize: 14.5, marginBottom: 24 }}>
+                Componentes ritualísticos são específicos de um elemento (Sangue, Morte, Conhecimento ou Energia).
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                {ELEMENTOS_MONSTRUOSO.map((el) => (
+                  <button
+                    key={el} className="btn ghost"
+                    style={{ borderColor: COR_ELEMENTO[el], color: COR_ELEMENTO[el], padding: 16 }}
+                    onClick={() => {
+                      const i = aEscolherElementoComponente;
+                      adicionar({
+                        nome: `Componentes Ritualísticos de ${el}`,
+                        categoria: categoriaRomana(i.categoria) ?? '',
+                        espacos: i.espacos ?? 1,
+                        cargaBonus: i.cargaBonus ?? 0,
+                        descricao: i.descricao || '',
+                        manual: false,
+                      });
+                      setAviso(null);
+                      setAEscolherElementoComponente(null);
+                    }}
+                  >
+                    <strong style={{ fontSize: 15 }}>{el.toUpperCase()}</strong>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {aviso && <div className="aviso"><strong>Arma:</strong> {aviso}</div>}

@@ -8,7 +8,7 @@ import {
   efeitosDiarios, ativarHoje, desativarHoje, escolherElemento, limiteDrenagem,
   ataquesNaturaisAtivos, rituaisAtivos, escolhasNecessarias,
   escolherRitual, escolherPericiasConhecimento, resistenciaTextoAtual, consequenciasAtivas,
-  resumoPorPatamar,
+  resumoPorPatamar, temComponentesDoElemento,
 } from '../src/engine/monstruoso.js';
 
 let passou = 0;
@@ -44,9 +44,13 @@ function ocultistaMonstruoso(nex, elemento) {
   return p;
 }
 
-/** Ativa a etapa de hoje sem exigir componentes/rolagens (dá inventário genérico ao Especialista/Ocultista). */
+/**
+ * Ativa a etapa de hoje sem exigir rolagens (dá ao Especialista/Ocultista o
+ * componente do elemento CERTO — não há componente genérico que sirva para
+ * qualquer elemento, ver `temComponentesDoElemento`).
+ */
 function ativar(p) {
-  if (p.classeId !== 'combatente') p.inventario = [{ nome: 'Componentes Ritualísticos', quantidade: 99 }];
+  if (p.classeId !== 'combatente') p.inventario = [{ nome: `Componentes Ritualísticos de ${p.monstruosoElemento}`, quantidade: 99 }];
   const r = ativarHoje(p, nexEfetivo(p), {});
   assert.ok(!r.erro, r.erro);
   Object.assign(p, r.patch);
@@ -636,6 +640,16 @@ teste('Especialista consome o componente e recupera PV ao ativar', () => {
   assert.ok(!r.erro);
   assert.equal(r.patch.inventario.length, 0);
   assert.ok(r.patch.pvAtual > 0);
+});
+
+teste('Componentes de OUTRO elemento não servem — não há componente "genérico" (por pedido explícito: só o elemento certo transforma)', () => {
+  const p = especialistaMonstruoso(10, 'Sangue');
+  p.inventario = [{ nome: 'Componentes Ritualísticos de Morte', quantidade: 5 }];
+  const r = ativarHoje(p, 10, {});
+  assert.ok(r.erro);
+  assert.match(r.erro, /Componentes Ritualísticos de Sangue/);
+  assert.equal(temComponentesDoElemento(p.inventario, 'Sangue'), false);
+  assert.equal(temComponentesDoElemento(p.inventario, 'Morte'), true);
 });
 
 teste('resistenciaTextoAtual: Combatente sempre (tipos específicos, nota "não soma ao Bloqueio"); Especialista só Sangue 40%+ (RD geral, "já somada ao Bloqueio"); Ocultista nunca', () => {

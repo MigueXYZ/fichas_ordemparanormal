@@ -456,13 +456,22 @@ function normalizar(txt) {
   return String(txt || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
-/** Procura "Componentes Ritualísticos [de <Elemento>]" no inventário. */
-function encontrarComponente(inventario, elemento) {
+/**
+ * Procura "Componentes Ritualísticos de <Elemento>" no inventário — TEM de
+ * ser exatamente o elemento certo. Não existe componente "genérico" que
+ * sirva para qualquer elemento: o livro é claro, "componentes ritualísticos
+ * são necessários para a conjuração de rituais do elemento em questão" — só
+ * Sangue serve para rituais/etapa de Sangue, só Morte para Morte, etc.
+ */
+export function encontrarComponente(inventario, elemento) {
   const lista = inventario || [];
   const elNorm = normalizar(elemento);
-  const doElemento = lista.findIndex((i) => normalizar(i.nome).includes('componentes ritualistic') && normalizar(i.nome).includes(elNorm));
-  if (doElemento !== -1) return doElemento;
-  return lista.findIndex((i) => normalizar(i.nome).includes('componentes ritualistic'));
+  return lista.findIndex((i) => normalizar(i.nome).includes('componentes ritualistic') && normalizar(i.nome).includes(elNorm));
+}
+
+/** Tem no inventário Componentes Ritualísticos do elemento certo? */
+export function temComponentesDoElemento(inventario, elemento) {
+  return encontrarComponente(inventario, elemento) !== -1;
 }
 
 /**
@@ -499,7 +508,7 @@ export function ativarHoje(personagem, nex, { onRolar } = {}) {
   if (CONSOME_COMPONENTE[classe]) {
     const idx = encontrarComponente(inventario, elemento);
     if (idx === -1) {
-      return { erro: `Precisas de "Componentes Ritualísticos de ${elemento}" (ou genéricos) no inventário.` };
+      return { erro: `Precisas de "Componentes Ritualísticos de ${elemento}" no inventário — os de outro elemento não servem.` };
     }
     inventario = [...inventario];
     const item = inventario[idx];
