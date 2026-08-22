@@ -1,5 +1,6 @@
 import { calcPericias, calcPenalidadesCondicoes, nexEfetivo } from './calc.js';
-import { aplicarModificacoes } from '../data/modificacoesArma.js';
+import { aplicarModificacoes, ALCANCES } from '../data/modificacoesArma.js';
+import { aplicarMaldicoesArma } from '../data/maldicoes.js';
 import { atributosEfetivos } from './monstruoso.js';
 
 /** Lê o crítico como vem nos livros: "x2", "19/x2", "19", "18/x3". */
@@ -27,24 +28,15 @@ export function somarDados(expr, quantos) {
 export function estatisticasArma(personagem, arma) {
   const pericias = calcPericias(personagem);
   const p = pericias.find((x) => x.id === arma.pericia) || { dados: 1, bonus: 0, nome: '', attr: 'for' };
-  const mods = aplicarModificacoes(arma);
-  const conds = calcPenalidadesCondicoes(personagem);
-  // Atributos "efetivos" (já com os bónus/penalidades ao vivo da Trilha do
-  // Monstruoso somados) — para que uma Força/Agilidade concedida pela
-  // trilha também conte nos testes de ataque e nas rolagens de dano.
-  const atributosEf = atributosEfetivos(personagem, nexEfetivo(personagem));
-
   const critico = arma.margem
     ? { margem: Number(arma.margem), multiplicador: Number(arma.multiplicador) || 2 }
     : interpretarCritico(arma.critico);
 
-  /*
-   * Armas ágeis (Livro Base, "Habilidades de Armas"): facas, punhais, cajados,
-   * nunchakus, floretes e katanas «permitem que você aplique sua Agilidade em
-   * vez de sua Força em testes de ataque e rolagens de dano realizadas com elas».
-   * Só faz diferença quando o teste ia mesmo por Força — se já trocaste o
-   * atributo da perícia à mão, essa escolha manda.
-   */
+  const maldicoes = aplicarMaldicoesArma(arma, critico.margem);
+  const mods = aplicarModificacoes(arma);
+  const conds = calcPenalidadesCondicoes(personagem);
+  const atributosEf = atributosEfetivos(personagem, nexEfetivo(personagem));
+
   const agilAtiva = Boolean(arma.agil) && p.attr === 'for';
   const atributoTeste = agilAtiva ? 'agi' : p.attr;
 
@@ -67,11 +59,6 @@ export function estatisticasArma(personagem, arma) {
   const atributoDano = agilAtiva && arma.atributoDano === 'for' ? 'agi' : arma.atributoDano;
   const bonusAtributoDano = atributoDano ? Number(atributosEf[atributoDano] || 0) : 0;
 
-  // Dados extra somados ao TOTAL do teste de ataque (não à pool de d20) —
-  // ex.: Especialista Sangue 65%+, "+1d8 em testes de ataques corpo a
-  // corpo". "Corpo a corpo" aqui é a perícia de Luta (por oposição a
-  // Pontaria); quem não pede "corpoACorpoApenas" soma sempre (ex.: o bónus
-  // de Energia via drenagem, que é "em testes de ataque" sem restrição).
   const corpoACorpo = arma.pericia === 'luta';
   const dadosExtraAtaque = (conds.monstruoso.ataqueBonusDados || [])
     .filter((d) => !d.corpoACorpoApenas || corpoACorpo)
@@ -82,36 +69,42 @@ export function estatisticasArma(personagem, arma) {
   // conjurar/terminar a transformação em RituaisEmCombate (Abas.jsx).
   const bonusFormaMonstruosa = personagem.formaMonstruosaAtiva && corpoACorpo ? 5 : 0;
 
+  const alcanceBase = ALCANCES.indexOf(arma.alcance);
+  const saltosAlcance = (mods.lista.reduce((t, m) => t + (m.efeitos.alcanceCategoria || 0), 0)) + maldicoes.alcanceCategoria;
+  const alcanceFinal = alcanceBase >= 0 && saltosAlcance
+    ? ALCANCES[Math.min(alcanceBase + saltosAlcance, ALCANCES.length - 1)]
+    : (mods.alcance || arma.alcance);
+
+  const extras = [
+    ...(arma.danoExtra || []),
+    ...mods.danoExtra,
+    ...maldicoes.danosExtras.map((d) => ({ expr: d.valor, elemental: true, tipoDano: d.tipo })),
+    ...(maldicoes.danoCriticoMultiplicavel ? [{ expr: maldicoes.danoCriticoMultiplicavel.valor, elemental: true, tipoDano: maldicoes.danoCriticoMultiplicavel.tipo, multiplicaCritico: true }] : []),
+    ...conds.monstruoso.danoExtra.map((expr) => ({ expr, elemental: true, tipoDano: 'Sangue' })),
+  ];
+
   return {
     pericia: p,
     dados,
-    atributoTeste: agilAtiva ? 'agi' : p.attr,
+    atributoTeste,
     atributoDano,
     agilAtiva,
     bonusAtaque: p.bonus + (Number(arma.bonus) || 0) + mods.ataque + bonusFormaMonstruosa,
     dadosExtraAtaque,
-    dano: somarDados(arma.dano, mods.dadosDano),
+    dano: somarDados(arma.dano, mods.dadosDano + maldicoes.dadosDano),
     bonusDano: bonusAtributoDano + mods.dano + bonusFormaMonstruosa,
-    margem: Math.max(2, critico.margem - mods.margem),
+    margem: Math.max(2, critico.margem - mods.margem - maldicoes.margemExtra),
     multiplicador: critico.multiplicador,
-    // O dano extra da Trilha do Monstruoso é marcado `elemental` para a
-    // interface o colorir à parte na conta do dano (ver rolarDano em
-    // engine/dados.js) — o dano da arma e das modificações fica normal.
-    extras: [
-      ...(arma.danoExtra || []),
-      ...mods.danoExtra,
-      ...conds.monstruoso.danoExtra.map((expr) => ({ expr, elemental: true })),
-    ],
-    alcance: mods.alcance || arma.alcance,
+    extras,
+    alcance: alcanceFinal,
     espacos: (Number(arma.espacos) || 0) + mods.espacos,
     mods,
+    maldicoes,
   };
 }
 
 /**
- * Constrói o ataque a partir de um item do catálogo. Serve tanto ao separador
- * de Combate como ao Inventário — uma arma escolhida em qualquer um dos dois
- * acaba na mesma lista, por isso conta sempre para a carga.
+ * Constrói o ataque a partir de um item do catálogo.
  */
 export function armaDoItem(item) {
   const c = interpretarCritico(item.critico);
@@ -132,6 +125,7 @@ export function armaDoItem(item) {
     equipado: true,
     danoExtra: [],
     modificacoes: [],
+    maldicoes: item.maldicoes || [],
     notas: item.descricao || '',
   };
 }

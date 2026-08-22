@@ -1,8 +1,11 @@
 import React from 'react';
-import { IconePDF, IconeJSON, IconeCriacao, IconeSom } from './Icones.jsx';
+import { IconePDF, IconeJSON, IconeCriacao, IconeSom, IconeEngrenagem } from './Icones.jsx';
+import EditorTags from './EditorTags.jsx';
+import { resetarLayoutFicha } from '../engine/sheetLayout.js';
 
 export default function ModalDefinicoes({
   personagem,
+  aoMudarPersonagem,
   som,
   aoAlternarSom,
   coracao,
@@ -25,6 +28,19 @@ export default function ModalDefinicoes({
         </div>
 
         <div className="modal-corpo" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Secção Tags do Agente */}
+          {personagem && aoMudarPersonagem && (
+            <div className="seccao-def">
+              <label className="rotulo-def">Tags & Organização</label>
+              <div style={{ marginTop: 8 }}>
+                <EditorTags
+                  tags={personagem.tags || []}
+                  onChange={(novasTags) => aoMudarPersonagem((p) => ({ ...p, tags: novasTags }))}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Secção 1: Ficheiros & Exportação */}
           <div className="seccao-def">
             <label className="rotulo-def">Ficheiros & Exportação</label>
@@ -133,6 +149,33 @@ export default function ModalDefinicoes({
                   <button type="button" className={coracao ? 'ativo' : ''} onClick={aoAlternarCoracao}>Ligado</button>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Secção 4: Layout da Ficha */}
+          <div className="seccao-def">
+            <label className="rotulo-def">Layout da Ficha</label>
+            <div className="card-opcao-def" style={{ marginTop: 8 }}>
+              <div>
+                <b style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15 }}>
+                  <IconeEngrenagem size={16} style={{ color: 'var(--sangue-claro)' }} />
+                  Restaurar Layout Padrão
+                </b>
+                <span className="dica" style={{ display: 'block', marginTop: 2 }}>
+                  Repõe as 3 colunas e posições padrão dos widgets na ficha.
+                </span>
+              </div>
+              <button
+                type="button"
+                className="btn ghost sm"
+                onClick={() => {
+                  resetarLayoutFicha();
+                  alert('Layout da ficha restaurado para o padrão oficial!');
+                }}
+                style={{ minWidth: 120 }}
+              >
+                Restaurar
+              </button>
             </div>
           </div>
         </div>

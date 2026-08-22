@@ -301,6 +301,7 @@ export function gerarAmeaca({ vd = 20, arquetipo = null, tamanho = null } = {}) 
   return {
     tipo: 'ameaca',
     nome: nomeAmeaca,
+    tags: [],
     arquetipo: arq.id,
     vd: Number(vd),
     descritores: arq.descritores,

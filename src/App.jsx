@@ -243,6 +243,7 @@ export default function App() {
       {verDefinicoes && (
         <ModalDefinicoes
           personagem={personagem}
+          aoMudarPersonagem={setPersonagem}
           som={som}
           aoAlternarSom={() => setSom(alternarSom())}
           coracao={coracao}
