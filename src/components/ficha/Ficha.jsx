@@ -56,6 +56,21 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
   const [aba, setAba] = useState('combate');
   const [erroFoto, setErroFoto] = useState(null);
   const [verRegras, setVerRegras] = useState(false);
+  const [menuAvatarAberto, setMenuAvatarAberto] = useState(false);
+  const fileInputRef = useRef(null);
+  const containerAvatarRef = useRef(null);
+
+  useEffect(() => {
+    function cliqueFora(e) {
+      if (containerAvatarRef.current && !containerAvatarRef.current.contains(e.target)) {
+        setMenuAvatarAberto(false);
+      }
+    }
+    if (menuAvatarAberto) {
+      document.addEventListener('mousedown', cliqueFora);
+      return () => document.removeEventListener('mousedown', cliqueFora);
+    }
+  }, [menuAvatarAberto]);
 
   const regras = personagem.regras || {};
   const nexUtil = nexEfetivo(personagem);
