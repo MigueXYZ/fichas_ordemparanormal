@@ -1123,11 +1123,6 @@ export function AbaInventario({ personagem, setPersonagem }) {
           </div>
         </div>
       )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {aviso && <div className="aviso"><strong>Arma:</strong> {aviso}</div>}
 
