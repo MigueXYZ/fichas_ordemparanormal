@@ -811,6 +811,51 @@ body.bate-forte .barra-recurso .preenchido::before {
 .agente-cartao.novo { justify-content: center; border-style: dashed; color: var(--sangue-claro); font-family: var(--display); font-size: 20px; min-height: 78px; }
 
 .barra-acoes { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 26px; }
+.barra-pesquisa-home {
+  max-width: 520px;
+  width: 100%;
+  margin: 22px auto 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.barra-pesquisa-home input {
+  width: 100%;
+  padding: 10px 38px 10px 38px;
+  background: var(--bg-2);
+  border: 1px solid var(--linha-forte);
+  border-radius: var(--raio);
+  color: var(--txt);
+  font-size: 14px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.barra-pesquisa-home input:focus {
+  border-color: var(--sangue-claro);
+  box-shadow: 0 0 12px rgba(240, 70, 83, 0.25);
+  outline: none;
+}
+.barra-pesquisa-home .icone-lupa {
+  position: absolute;
+  left: 12px;
+  pointer-events: none;
+  font-size: 14px;
+  color: var(--txt-dim);
+  opacity: 0.7;
+}
+.barra-pesquisa-home .limpar-pesquisa {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  color: var(--txt-dim);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 6px;
+  line-height: 1;
+}
+.barra-pesquisa-home .limpar-pesquisa:hover {
+  color: var(--sangue-claro);
+}
 .barra-massa {
   display: flex;
   align-items: center;

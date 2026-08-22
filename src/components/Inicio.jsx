@@ -12,8 +12,16 @@ function descrever(a) {
   return [origem, classe, `NEX ${a.nex}%`].filter(Boolean).join(' · ');
 }
 
+function normalizar(texto) {
+  return String(texto || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
 export default function Inicio({ aoCriar, aoAbrir }) {
   const [lista, setLista] = useState(listarAgentes);
+  const [busca, setBusca] = useState('');
   const [erro, setErro] = useState(null);
   const [gerador, setGerador] = useState(false);
   const [modoSelecao, setModoSelecao] = useState(false);
@@ -24,6 +32,25 @@ export default function Inicio({ aoCriar, aoAbrir }) {
   function recarregar() {
     setLista(listarAgentes());
   }
+
+  const termoBusca = normalizar(busca.trim());
+  const listaFiltrada = lista.filter((a) => {
+    if (!termoBusca) return true;
+    const nome = normalizar(a.nome);
+    const classe = normalizar(CLASSES_POR_ID[a.classeId]?.nome);
+    const origem = normalizar(a.origemId === '__custom__' ? a.origemCustom?.nome : ORIGENS_POR_ID[a.origemId]?.nome);
+    const nex = `${a.nex}% ${a.nex}`;
+    const tipo = normalizar(a.tipo);
+    const detalhes = normalizar(descrever(a));
+    return (
+      nome.includes(termoBusca) ||
+      classe.includes(termoBusca) ||
+      origem.includes(termoBusca) ||
+      nex.includes(termoBusca) ||
+      tipo.includes(termoBusca) ||
+      detalhes.includes(termoBusca)
+    );
+  });
 
   async function importar(e) {
     const f = e.target.files?.[0];
@@ -50,7 +77,7 @@ export default function Inicio({ aoCriar, aoAbrir }) {
   }
 
   function selecionarTodos() {
-    setSelecionados(new Set(lista.map((a) => a.id)));
+    setSelecionados(new Set(listaFiltrada.map((a) => a.id)));
   }
 
   function desmarcarTodos() {
@@ -127,12 +154,38 @@ export default function Inicio({ aoCriar, aoAbrir }) {
         <input ref={ficheiro} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={importar} />
       </div>
 
+      {/* Barra de Pesquisa */}
+      {lista.length > 0 && (
+        <div className="barra-pesquisa-home">
+          <span className="icone-lupa" aria-hidden="true">🔍</span>
+          <input
+            type="text"
+            placeholder="Pesquisar por nome, classe, origem, NEX..."
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+          />
+          {busca && (
+            <button
+              type="button"
+              className="limpar-pesquisa"
+              onClick={() => setBusca('')}
+              title="Limpar pesquisa"
+            >
+              ×
+            </button>
+          )}
+        </div>
+      )}
+
       {modoSelecao && lista.length > 0 && (
         <div className="barra-massa">
           <div className="barra-massa-info">
-            <span><b>{selecionados.size}</b> de <b>{lista.length}</b> selecionado(s)</span>
-            <button type="button" className="btn ghost sm" onClick={selecionados.size === lista.length ? desmarcarTodos : selecionarTodos}>
-              {selecionados.size === lista.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
+            <span>
+              <b>{selecionados.size}</b> de <b>{listaFiltrada.length}</b> selecionado(s)
+              {termoBusca && <span style={{ opacity: 0.7, marginLeft: 4 }}>(filtrados de {lista.length})</span>}
+            </span>
+            <button type="button" className="btn ghost sm" onClick={selecionados.size === listaFiltrada.length ? desmarcarTodos : selecionarTodos}>
+              {selecionados.size === listaFiltrada.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
             </button>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -164,7 +217,7 @@ export default function Inicio({ aoCriar, aoAbrir }) {
           <button className="agente-cartao novo" onClick={aoCriar}>+ Novo agente</button>
         )}
 
-        {lista.map((a) => {
+        {listaFiltrada.map((a) => {
           const estaSelecionado = selecionados.has(a.id);
           return (
             <div
@@ -217,6 +270,17 @@ export default function Inicio({ aoCriar, aoAbrir }) {
           );
         })}
       </div>
+
+      {lista.length > 0 && listaFiltrada.length === 0 && (
+        <div style={{ textAlign: 'center', marginTop: 30, color: 'var(--txt-dim)' }}>
+          <p style={{ fontSize: 15, marginBottom: 10 }}>
+            Nenhum personagem encontrado para "<b>{busca}</b>".
+          </p>
+          <button type="button" className="btn ghost sm" onClick={() => setBusca('')}>
+            Limpar pesquisa
+          </button>
+        </div>
+      )}
 
       {lista.length === 0 && (
         <p style={{ color: 'var(--txt-fraco)', marginTop: 24, fontSize: 14 }}>
