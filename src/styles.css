@@ -772,6 +772,34 @@ body.bate-forte .barra-recurso .preenchido::before {
   cursor: pointer; transition: border-color .15s, background .15s; text-align: left; color: var(--txt); width: 100%;
 }
 .agente-cartao:hover { border-color: var(--sangue); background: var(--bg-3); }
+.agente-cartao.selecionado {
+  border-color: var(--sangue);
+  background: rgba(192, 21, 33, 0.12);
+  box-shadow: 0 0 14px rgba(192, 21, 33, 0.2) inset;
+}
+.agente-cartao .seletor-check {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--linha-forte);
+  border-radius: 4px;
+  background: var(--bg-4);
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  cursor: pointer;
+  font-size: 13px;
+  color: transparent;
+  transition: all .15s ease;
+  user-select: none;
+}
+.agente-cartao:hover .seletor-check {
+  border-color: var(--sangue);
+}
+.agente-cartao.selecionado .seletor-check {
+  border-color: var(--sangue);
+  background: var(--sangue);
+  color: #fff;
+}
 .agente-cartao .foto {
   width: 54px; height: 54px; border-radius: var(--raio); background: var(--bg-4) center/cover no-repeat;
   flex: 0 0 auto; display: grid; place-items: center; color: var(--txt-fraco); font-size: 20px; font-family: var(--display);
@@ -782,6 +810,25 @@ body.bate-forte .barra-recurso .preenchido::before {
 .agente-cartao.novo { justify-content: center; border-style: dashed; color: var(--sangue-claro); font-family: var(--display); font-size: 20px; min-height: 78px; }
 
 .barra-acoes { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 26px; }
+.barra-massa {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--linha-forte);
+  border-radius: var(--raio);
+  padding: 10px 16px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+.barra-massa-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--txt);
+}
 
 /* ---------------------------------------------------------- janela modal */
 .modal-fundo {
