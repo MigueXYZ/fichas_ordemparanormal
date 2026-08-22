@@ -139,7 +139,7 @@ export default function App() {
         />
       )}
       <div className="topbar">
-        <h1>Claudio <span className="marca-sub">· Ordem Paranormal</span></h1>
+        <h1 onClick={voltarAoInicio} title="Voltar ao início">Claudio <span className="marca-sub">· Ordem Paranormal</span></h1>
         <div className="acoes">
           <button
             className="btn ghost sm" title={som ? 'Desligar som dos dados' : 'Ligar som dos dados'}
