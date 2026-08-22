@@ -79,32 +79,73 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
       setErroFoto(err.message);
     }
     e.target.value = '';
+    setMenuAvatarAberto(false);
+  }
+
+  function lidarCliqueRetrato() {
+    if (!personagem.imagem) {
+      fileInputRef.current?.click();
+    } else {
+      setMenuAvatarAberto(!menuAvatarAberto);
+    }
   }
 
   return (
     <div className="container">
-      <style>{`
-        /* Força o alinhamento e centralização rigorosa da coluna esquerda do token */
-        .ficha > div:first-child {
-          display: flex !important;
-          flex-direction: column !important;
-          align-items: center !important;
-          justify-content: center !important;
-        }
-      `}</style>
-
       <div className="cabecalho-ficha">
-        <div>
-          <label className="retrato" style={personagem.imagem ? { backgroundImage: `url(${personagem.imagem})` } : undefined}>
-            {!personagem.imagem && 'Foto ou GIF'}
-            <input type="file" accept="image/*,image/gif" onChange={escolherFoto} />
-          </label>
-          {personagem.imagem && (
-            <button className="btn ghost sm" style={{ marginTop: 6, width: '100%' }} onClick={() => set({ imagem: null })}>
-              Tirar foto
-            </button>
+        <div ref={containerAvatarRef} style={{ position: 'relative' }}>
+          <div 
+            className="retrato" 
+            onClick={lidarCliqueRetrato}
+            style={{ 
+              cursor: 'pointer', 
+              backgroundImage: personagem.imagem ? `url(${personagem.imagem})` : undefined 
+            }}
+          >
+            {!personagem.imagem && 'AVATAR'}
+            <input 
+              ref={fileInputRef} 
+              type="file" 
+              accept="image/*,image/gif" 
+              onChange={escolherFoto} 
+              style={{ display: 'none' }} 
+            />
+          </div>
+
+          {menuAvatarAberto && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              marginTop: '4px',
+              background: '#1a0505',
+              border: '1px solid var(--sangue)',
+              borderRadius: '4px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.8)',
+              zIndex: 50,
+              width: '140px',
+              overflow: 'hidden'
+            }}>
+              <button
+                type="button"
+                className="btn ghost sm"
+                style={{ width: '100%', textAlign: 'left', borderRadius: 0, border: 'none', padding: '10px 12px', fontSize: '12px' }}
+                onClick={() => { setMenuAvatarAberto(false); fileInputRef.current?.click(); }}
+              >
+                Trocar avatar
+              </button>
+              <button
+                type="button"
+                className="btn ghost sm"
+                style={{ width: '100%', textAlign: 'left', borderRadius: 0, border: 'none', padding: '10px 12px', fontSize: '12px', color: '#ef4444' }}
+                onClick={() => { set({ imagem: null }); setMenuAvatarAberto(false); }}
+              >
+                Remover avatar
+              </button>
+            </div>
           )}
-          {erroFoto && <div className="aviso" style={{ maxWidth: 200, fontSize: 11 }}>{erroFoto}</div>}
+
+          {erroFoto && <div className="aviso" style={{ maxWidth: 200, fontSize: 11, marginTop: 4 }}>{erroFoto}</div>}
         </div>
 
         <div>
@@ -167,7 +208,7 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
 
       {/* Grid Principal da Ficha */}
       <div className="ficha">
-        {/* Coluna Esquerda com o Token/Imagem do Agente Centrados */}
+        {/* Coluna Esquerda */}
         <div>
           <RodaAtributos
             atributos={personagem.atributos}

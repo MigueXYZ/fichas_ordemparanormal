@@ -521,18 +521,21 @@ export function AbaInventario({ personagem, setPersonagem }) {
           <label>Crédito</label>
           <input type="text" readOnly value={cats.patente.credito} />
         </div>
-        <div className="campo" style={{ maxWidth: 190, marginBottom: 0 }}>
+        <div className="campo" style={{ maxWidth: 240, marginBottom: 0 }}>
           <label>Carga</label>
-          <input
-            type="text" readOnly
-            className={carga.sobrecarregado ? 'mau' : ''}
-            value={`${carga.usados} / ${carga.max}`}
-            title={`5 espaços por ponto de Força · máximo absoluto ${carga.limiteAbsoluto}`}
-          />
-          <span className="dica">
-            {carga.dosItens} em itens · {carga.dasArmas} em armas
-            {carga.bonus ? ` · +${carga.bonus} de equipamento` : ''}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <input
+              type="text" readOnly
+              className={carga.sobrecarregado ? 'mau' : ''}
+              value={`${carga.usados} / ${carga.max}`}
+              title={`5 espaços por ponto de Força · máximo absoluto ${carga.limiteAbsoluto}`}
+              style={{ width: '80px', textAlign: 'center' }}
+            />
+            <span className="dica" style={{ fontSize: '11px', lineHeight: '1.2', textAlign: 'left' }}>
+              {carga.dosItens} em itens · {carga.dasArmas} em armas
+              {carga.bonus ? ` · +${carga.bonus} de equipamento` : ''}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -628,7 +631,7 @@ export function AbaInventario({ personagem, setPersonagem }) {
           itens={ITENS}
           filtros={[
             { id: 'tipo', label: 'Todos os tipos', valorDe: (i) => i.tipo, opcoes: TIPOS_ITEM.map((t) => ({ valor: t.id, label: t.nome })) },
-            { id: 'categoria', label: 'Todas as categorias', valorDe: (i) => categoriaRomana(i.categoria), opcoes: CATEGORIAS.map((c) => ({ valor: c, label: `Categoria ${c}` })) },
+            { id: 'categoria', label: 'Todas as categorias', valorDe: (i) => categoriaRomana(i.categoria), opcoes: CATEGORIAS.map((c) => ({ value: c, label: `Categoria ${c}` })) },
           ]}
           aoProcurar={(i, t) => i.nome.toLowerCase().includes(t) || (i.descricao || '').toLowerCase().includes(t)}
           render={(i) => (
