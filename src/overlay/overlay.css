@@ -117,13 +117,13 @@ body.corpo-overlay::before, body.corpo-overlay::after { display: none !important
 /* d2: a "moeda" tem a sua própria animação 3D (vira de face), por isso não
    soma o giro 2D genérico dos outros dados. */
 .ov-rolagem .icone.icone-d2 { animation: none; }
-.icone-d2 { display: inline-block; position: relative; perspective: 220px; }
+.icone-d2 { display: inline-block; perspective: 220px; }
 .icone-d2 .moeda-interior {
-  position: relative; width: 100%; height: 100%;
+  display: block; position: relative; width: 100%; height: 100%;
   transform-style: preserve-3d;
   animation: moeda-vira .6s ease-out;
 }
-.icone-d2 .moeda-face { position: absolute; inset: 0; width: 100%; height: 100%; backface-visibility: hidden; }
+.icone-d2 .moeda-face { display: block; position: absolute; inset: 0; width: 100%; height: 100%; backface-visibility: hidden; }
 .icone-d2 .moeda-face-b { transform: rotateY(180deg); }
 @keyframes moeda-vira {
   0% { opacity: 0; transform: rotateY(0deg) scale(.6); }

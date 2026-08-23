@@ -120,27 +120,23 @@ export function IconeD8({ titulo = 'Rolar d8', ...props }) {
 export function IconeD10({ titulo = 'Rolar d10', ...props }) {
   return (
     <svg viewBox="0 0 64 64" role="img" aria-label={titulo} {...props}>
-      {/* trapezoedro pentagonal: silhueta em "cometa" com cintura em ziguezague,
-          para não se confundir com o losango do d8 nem o pentágono do d12 */}
+      {/* silhueta em "pião" (kite assimétrico: cintura acima do centro),
+          mais alta que larga — não se confunde com o losango simétrico do d8 */}
       <polygon
-        points="32,2 54,19 45,32 54,45 32,62 10,45 19,32 10,19"
+        points="32,3 52,24 32,61 12,24"
         fill="currentColor" fillOpacity="0.10"
         stroke="currentColor" strokeWidth="3.2" strokeLinejoin="round"
       />
       <polygon
-        points="32,17 42,26 38,32 42,38 32,47 22,38 26,32 22,26"
+        points="32,18 42,28 32,46 22,28"
         fill="currentColor" fillOpacity="0.22"
         stroke="currentColor" strokeWidth="3" strokeLinejoin="round"
       />
       <g stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" fill="none" opacity="0.95">
-        <path d="M32,2 32,17" />
-        <path d="M54,19 42,26" />
-        <path d="M45,32 38,32" />
-        <path d="M54,45 42,38" />
-        <path d="M32,62 32,47" />
-        <path d="M10,45 22,38" />
-        <path d="M19,32 26,32" />
-        <path d="M10,19 22,26" />
+        <path d="M32,3 32,18" />
+        <path d="M52,24 42,28" />
+        <path d="M32,61 32,46" />
+        <path d="M12,24 22,28" />
       </g>
     </svg>
   );

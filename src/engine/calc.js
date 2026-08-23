@@ -368,7 +368,7 @@ export function espacosDasArmas(personagem) {
 
 export function calcCarga(personagem) {
   const max = calcCargaMaxima(personagem);
-  const dosItens = (personagem.inventario || []).reduce((t, i) => t + (Number(i.espacos) || 0), 0);
+  const dosItens = (personagem.inventario || []).reduce((t, i) => t + (Number(i.espacos) || 0) * (Number(i.quantidade) || 1), 0);
   const dasArmas = espacosDasArmas(personagem);
   const usados = dosItens + dasArmas;
   return {
@@ -383,7 +383,7 @@ export function calcItensPorCategoria(personagem) {
   const usados = { 0: 0, I: 0, II: 0, III: 0, IV: 0 };
   for (const item of personagem.inventario || []) {
     const cat = categoriaRomana(item.categoria);
-    if (cat) usados[cat] = (usados[cat] || 0) + 1;
+    if (cat) usados[cat] = (usados[cat] || 0) + (Number(item.quantidade) || 1);
   }
   const linhas = CATEGORIAS.map((cat) => ({
     categoria: cat, limite: cat === '0' ? Infinity : patente.itens[cat] ?? 0, usados: usados[cat] || 0,

@@ -132,12 +132,15 @@ export function mapearCampos(personagem) {
 
   (personagem.inventario || []).slice(0, 22).forEach((it, i) => {
     const idx = i < 11 ? `${i + 1}` : `${i - 10}_2`;
-    textos[`ITEM ${idx}`] = it.nome;
+    const qtd = Number(it.quantidade) || 1;
+    // O modelo do PDF não tem uma coluna própria de quantidade — quando há
+    // mais do que 1, junta-se "×N" ao nome para não se perder a informação.
+    textos[`ITEM ${idx}`] = qtd > 1 ? `${it.nome} ×${qtd}` : it.nome;
     textos[`Categoria ${idx}`] = it.categoria;
     textos[`Espaços ${idx}`] = it.espacos;
   });
 
-  const cargaAtual = (personagem.inventario || []).reduce((s, i) => s + (Number(i.espacos) || 0), 0);
+  const cargaAtual = (personagem.inventario || []).reduce((s, i) => s + (Number(i.espacos) || 0) * (Number(i.quantidade) || 1), 0);
   textos['carga_atual'] = cargaAtual;
   textos['carga_max'] = calcCargaMaxima(personagem);
 
