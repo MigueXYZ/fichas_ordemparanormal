@@ -327,6 +327,16 @@ export function MonstruosoPainel({ personagem, setPersonagem, onRolar }) {
   // nunca mexeu segue a regra de omissão (só o patamar atual vem aberto).
   // Guardamos isto como "está aberto?" só para os que já foram tocados.
   const [alterados, setAlterados] = useState(() => new Map());
+  // Regra dos Hooks: TODOS os useState têm de vir antes de qualquer "return
+  // null" condicional — senão, no exato momento em que `elemento` passa de
+  // vazio a escolhido (primeira escolha do elemento), este componente passa
+  // a chamar mais hooks do que na renderização anterior e o React crasha
+  // ("Rendered more hooks than during the previous render"). Foi isto que
+  // estava a rebentar o botão do Monstruoso ao escolher o elemento a
+  // primeira vez, e a impedir qualquer interação depois (incluindo
+  // desativar) — os dois hooks abaixo estavam depois dos "return null".
+  const [peModalAberto, setPeModalAberto] = useState(false);
+  const [peRascunho, setPeRascunho] = useState(1);
 
   const classe = classeMonstruosa(personagem);
   if (!classe) return null;
@@ -387,9 +397,8 @@ export function MonstruosoPainel({ personagem, setPersonagem, onRolar }) {
 
   // Combatente-Sangue 40% (Ser Macabro): Ação de movimento + 1 ou mais PE
   // (limitado pela Força) — recupera 1d8 PV por PE gasto. Popup no estilo
-  // dos outros modais da ficha (não o prompt feio do browser).
-  const [peModalAberto, setPeModalAberto] = useState(false);
-  const [peRascunho, setPeRascunho] = useState(1);
+  // dos outros modais da ficha (não o prompt feio do browser). Estado
+  // declarado lá em cima (antes dos "return null") — ver nota da Regra dos Hooks.
 
   function limitePeRecuperarVida() {
     const max = calcMaximos(personagem);

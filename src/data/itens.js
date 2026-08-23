@@ -58,6 +58,12 @@ export const TIPOS_DANO = [
   { id: 'conhecimento', nome: 'Conhecimento', pdf: 'conhecimento' },
 ];
 
+// As 5 categorias de proficiência oficiais do livro (armas e proteções) —
+// usadas como checkboxes no campo "Proficiências" da ficha, em vez de texto
+// livre. As mesmas etiquetas já vêm nos catálogos de classe (ex.:
+// data/classes/combatente.js: `proficiencias: ['Armas simples', ...]`).
+export const PROFICIENCIAS_OP = ['Armas simples', 'Armas táticas', 'Armas pesadas', 'Proteções leves', 'Proteções pesadas'];
+
 export function itensFiltrados({ tipo = null, texto = '' } = {}) {
   const t = texto.trim().toLowerCase();
   return ITENS.filter(

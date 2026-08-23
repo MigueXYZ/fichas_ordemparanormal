@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import IconeD20 from './IconeD20.jsx';
+import IconeDado from './IconesDados.jsx';
 import { ExibirDanoSeparado, obterInfoTipoDano } from './ExibirDano.jsx';
 
 /** A conta que deu origem ao resultado, conforme o tipo de rolagem. */
@@ -92,7 +92,7 @@ export function Dados({ r }) {
 function CartaoAtaque({ r, aoFechar }) {
   return (
     <div className={'rolagem-cartao duplo' + (r.critico ? ' critico' : '') + (r.falhaCritica ? ' falha-critica' : '')}>
-      <IconeD20 className="icone" />
+      <IconeDado faces={r.faces} className="icone" />
       <div className="corpo">
         <div className="nome">
           {r.nome}
@@ -146,7 +146,7 @@ export default function PainelRolagem({ rolagens, aoFechar, aoLimpar }) {
           <CartaoAtaque key={r.id} r={r} aoFechar={aoFechar} />
         ) : (
           <div key={r.id} className={'rolagem-cartao' + (r.critico ? ' critico' : '') + (r.falhaCritica ? ' falha-critica' : '')}>
-            <IconeD20 className="icone" />
+            <IconeDado faces={r.faces} className="icone" />
             <div>
               <div className="nome">
                 {r.nome}

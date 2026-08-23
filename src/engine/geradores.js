@@ -124,7 +124,7 @@ export function gerarFicha({ nex = 5, conceito = 'surpresa', classeId = null, or
   // classe
   const classe = CLASSES_POR_ID[classeId] || CLASSES_POR_ID[conc?.classe] || ao(CLASSES.filter((c) => c.id !== 'sobrevivente'));
   p.classeId = classe.id;
-  p.proficiencias = (classe.proficiencias || []).join(', ');
+  p.proficiencias = [...(classe.proficiencias || [])];
 
   const orc = orcamentoPericias(p);
   const escolhas = {};

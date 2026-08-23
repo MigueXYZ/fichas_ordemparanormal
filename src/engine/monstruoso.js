@@ -28,6 +28,7 @@ import {
   PERICIAS_LIVRES_CONHECIMENTO_POR_PATAMAR, quantidadePericiasLivresConhecimento,
   TREINO_INICIAL, EFEITOS_POR_PATAMAR, TEXTOS_POR_PATAMAR, CONSEQUENCIAS, TRILHA_ID_POR_CLASSE,
   NOME_PODER_POR_PATAMAR, RESISTENCIA_POR_PATAMAR, RESISTENCIA_TIPOS_COMBATENTE,
+  RESISTENCIA_TIPOS_COMBATENTE_IDS, RESISTENCIA_ENERGIA_QUIMICO_DESDE,
   DRENAGEM_ATRIBUTO, COR_ELEMENTO, TAMANHO_ESPECIALISTA_SANGUE,
   patamaresPresencaPermanente, TUDO_PERMANENTE_DESDE,
 } from '../data/monstruoso.js';
@@ -463,6 +464,30 @@ export function resistenciaTextoAtual(personagem, nex) {
     return rd > 0 ? `Resistência a dano ${rd} (geral, qualquer tipo — já somada ao Bloqueio)` : null;
   }
   return null;
+}
+
+/**
+ * Redução de Dano automática do Combatente, por tipo de dano (id de
+ * `TIPOS_DANO`, engine/danoRecetor.js) — pronta a somar ao que a personagem
+ * marcar à mão na aba "Redução de Dano" da ficha (confirmado pelo
+ * utilizador: soma-se, não substitui). Só o Combatente tem RD por tipo
+ * específico (o Especialista-Sangue tem RD GERAL, sem tipo, já somada ao
+ * Bloqueio em `engine/calc.js` → `calcDefesas`; o Ocultista não tem RD
+ * nenhuma). Só está em efeito enquanto `efetivamenteAtivo` (etapa de hoje
+ * ativa, ou Combatente 99%+ — "tudo permanente").
+ */
+export function reducaoDanoTrilhaAtiva(personagem, nex) {
+  const classe = classeMonstruosa(personagem);
+  const elemento = elementoAtual(personagem);
+  if (classe !== 'combatente' || !elemento || !efetivamenteAtivo(personagem, nex)) return {};
+  const patamar = patamarAtual(nex);
+  if (patamar < 10) return {};
+  const valor = RESISTENCIA_POR_PATAMAR[patamar];
+  const tipos = [...(RESISTENCIA_TIPOS_COMBATENTE_IDS[elemento] || [])];
+  if (elemento === 'Energia' && patamar >= RESISTENCIA_ENERGIA_QUIMICO_DESDE) tipos.push('quimico');
+  const mapa = {};
+  for (const id of tipos) mapa[id] = valor;
+  return mapa;
 }
 
 /** Cor de referência do elemento atual (para colorir textos de dano/resistência). */

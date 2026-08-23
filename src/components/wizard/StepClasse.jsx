@@ -29,7 +29,7 @@ export default function StepClasse({ personagem, setPersonagem }) {
       ...personagem,
       classeId: c.id,
       trilhaId: null,
-      proficiencias: (c.proficiencias || []).join(', '),
+      proficiencias: [...(c.proficiencias || [])],
     };
     setPersonagem(recalcular(base, {}, []));
   }

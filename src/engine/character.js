@@ -46,15 +46,15 @@ export function personagemVazio() {
     pdTemp: 0,
     sanTemp: 0,     // NOVO: Sanidade temporária
 
-    defesaEquipamento: 0,
     defesaOutros: 0,
     bloqueioExtra: 0,
     esquivaExtra: 0,
-    bloqueioManual: null,   // se preenchido, manda sobre o cálculo automático
+    defesaManual: null,     // se preenchido, manda sobre o cálculo automático — igual a bloqueio/esquiva
+    bloqueioManual: null,
     esquivaManual: null,
-    protecao: '',
-    resistencias: '',
-    proficiencias: '',
+    protecao: [],           // ids de PROTECOES marcados (checkboxes) — a Defesa soma-os sozinha
+    resistencias: [],       // Resistências (checkboxes): id puro (ex.: "sangue") = sem número, esse dano fica a metade (arredondado p/ baixo); "Nome N" (ex.: "Sangue 5") = com número, desconta N ao dano em vez da metade — ver engine/danoRecetor.js → repartirResistenciasFicha
+    proficiencias: [],      // etiquetas de PROFICIENCIAS_OP marcadas (checkboxes)
     deslocamento: 9,
     penalidadeCarga: 0,
 

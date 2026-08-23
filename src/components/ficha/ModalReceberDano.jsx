@@ -1,11 +1,13 @@
 import React, { useState, useMemo } from 'react';
-import { TIPOS_DANO, calcularDanoRecebido, interpretarResistencias } from '../../engine/danoRecetor.js';
+import { TIPOS_DANO, TIPOS_DANO_POR_ID, calcularDanoRecebido, repartirResistenciasFicha } from '../../engine/danoRecetor.js';
+import { reducaoDanoTrilhaAtiva } from '../../engine/monstruoso.js';
 import { IconeLixo, IconeEscudo } from '../Icones.jsx';
 
 export default function ModalReceberDano({
   personagem,
   max,
   defesas,
+  nex,
   aoAplicarDano,
   aoFechar,
 }) {
@@ -21,9 +23,19 @@ export default function ModalReceberDano({
   const rdBloqueio = Number(defesas?.bloqueio?.valor || 0);
   const temBloqueioDisponivel = Boolean(defesas?.bloqueio?.disponivel);
 
-  const resistFicha = useMemo(() => {
-    return interpretarResistencias(personagem?.resistencias);
+  // Resistências da ficha (uma só lista): meias = marcadas sem número (½
+  // dano); resistFicha = marcadas com número (RD fixa) — ver
+  // engine/danoRecetor.js → repartirResistenciasFicha.
+  const { meias: resistentesFicha, flat: resistFicha } = useMemo(() => {
+    return repartirResistenciasFicha(personagem?.resistencias);
   }, [personagem?.resistencias]);
+
+  // Redução de Dano concedida automaticamente pela Trilha do Monstruoso
+  // (Combatente) — soma-se ao que a personagem marcou à mão (ver
+  // engine/monstruoso.js → reducaoDanoTrilhaAtiva).
+  const rdTrilha = useMemo(() => {
+    return reducaoDanoTrilhaAtiva(personagem, nex);
+  }, [personagem, nex]);
 
   const resultado = useMemo(() => {
     return calcularDanoRecebido({
@@ -34,8 +46,9 @@ export default function ModalReceberDano({
       rdBloqueio,
       rdExtra: Number(rdExtra) || 0,
       rdCustom,
+      rdTrilha,
     });
-  }, [parcelas, personagem, max, bloqueioAtivo, rdBloqueio, rdExtra, rdCustom]);
+  }, [parcelas, personagem, max, bloqueioAtivo, rdBloqueio, rdExtra, rdCustom, rdTrilha]);
 
   function adicionarParcela() {
     setParcelas((prev) => [...prev, { valor: '', tipoId: 'morte' }]);
@@ -89,10 +102,22 @@ export default function ModalReceberDano({
                 )}
               </span>
             </div>
-            {personagem?.resistencias && (
-              <div className="texto-resistencias-agente" title="Resistências da ficha">
+            {resistentesFicha.size > 0 && (
+              <div className="texto-resistencias-agente" title="Dano destes tipos fica a metade (arredondado para baixo)">
                 <IconeEscudo size={13} style={{ marginRight: 4, verticalAlign: 'text-bottom' }} />
-                Resistências: {typeof personagem.resistencias === 'string' ? personagem.resistencias : personagem.resistencias.join(', ')}
+                Resistência (½ dano): {[...resistentesFicha].map((id) => TIPOS_DANO_POR_ID[id]?.nome).filter(Boolean).join(', ')}
+              </div>
+            )}
+            {Object.keys(resistFicha).length > 0 && (
+              <div className="texto-resistencias-agente" title="Resistência marcada com número na ficha — desconta esse valor ao dano">
+                <IconeEscudo size={13} style={{ marginRight: 4, verticalAlign: 'text-bottom' }} />
+                Resistência (nº): {Object.entries(resistFicha).map(([id, v]) => `${TIPOS_DANO_POR_ID[id]?.nome || id} ${v}`).join(', ')}
+              </div>
+            )}
+            {Object.keys(rdTrilha).length > 0 && (
+              <div className="texto-resistencias-agente" title="Redução de Dano concedida pela Trilha do Monstruoso (soma-se à Resistência marcada à mão)">
+                <IconeEscudo size={13} style={{ marginRight: 4, verticalAlign: 'text-bottom' }} />
+                Resistência (Trilha): {Object.entries(rdTrilha).map(([id, v]) => `${TIPOS_DANO_POR_ID[id]?.nome || id} ${v}`).join(', ')}
               </div>
             )}
           </div>
@@ -195,13 +220,13 @@ export default function ModalReceberDano({
                 className="btn-link-ajuste-rd"
                 onClick={() => setMostrarAjusteRd(!mostrarAjusteRd)}
               >
-                {mostrarAjusteRd ? '▲ Ocultar resistências ativas' : '▼ Ver / Ajustar resistências ativas'}
+                {mostrarAjusteRd ? '▲ Ocultar Resistência (nº) ativa' : '▼ Ver / Ajustar Resistência (nº) ativa'}
               </button>
 
               {mostrarAjusteRd && (
                 <div className="grelha-ajuste-rd">
                   {TIPOS_DANO.filter((t) => !t.ignoraRd).map((t) => {
-                    const val = rdCustom[t.id] ?? resistFicha[t.id] ?? 0;
+                    const val = rdCustom[t.id] ?? (Number(resistFicha[t.id] || 0) + Number(rdTrilha[t.id] || 0));
                     return (
                       <div key={t.id} className="item-ajuste-rd">
                         <span className="nome-tipo-rd" style={{ color: t.cor }}>{t.nome}</span>
@@ -231,12 +256,12 @@ export default function ModalReceberDano({
               {resultado.detalhesParcelas.map((d, i) => (
                 <div key={i} className="linha-detalhe-dano">
                   <span style={{ color: d.tipo.cor }}>
-                    • {d.valorBruto} {d.tipo.nome}
+                    • {d.valorBruto} {d.tipo.nome}{d.resistente ? ' (½ Resist.)' : ''}
                   </span>
                   <span className="valor-calculo-passo">
                     {d.reducaoTotal > 0 ? (
                       <>
-                        <span className="subtracao-rd">−{d.reducaoTotal} RD</span> ={' '}
+                        <span className="subtracao-rd">−{d.reducaoTotal}{d.resistente ? '' : ' RD'}</span> ={' '}
                         <b>{d.danoLiquido} dano</b>
                       </>
                     ) : (

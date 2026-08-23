@@ -293,6 +293,36 @@ textarea { resize: vertical; min-height: 92px; }
 .retrato:hover { border-color: var(--sangue); color: var(--sangue-claro); }
 .retrato input { display: none; }
 
+.menu-avatar {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 104px;
+  margin-top: 6px;
+  background: var(--bg-3);
+  border: 1px solid var(--linha-forte);
+  border-radius: var(--raio);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
+  z-index: 60;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.menu-avatar button {
+  background: var(--bg-4);
+  border: 1px solid var(--linha);
+  color: var(--txt);
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  text-align: left;
+  transition: all .15s ease;
+}
+.menu-avatar button:hover { border-color: var(--sangue); background: rgba(192, 21, 33, 0.25); color: #fff; }
+.menu-avatar button.remover:hover { border-color: var(--sangue-claro); background: rgba(192, 21, 33, 0.35); }
+
 .campo-linha { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 10px; margin-bottom: 9px; }
 .campo-linha input, .campo-linha select {
   background: transparent; border: none; border-bottom: 1px solid var(--linha-forte);
@@ -367,6 +397,7 @@ textarea { resize: vertical; min-height: 92px; }
 }
 
 /* alterações por exposição */
+.alteracoes-imagem { display: block; width: 100%; max-width: 100%; border-radius: var(--raio); border: 1px solid var(--linha); }
 .alteracoes { margin-top: 20px; border-top: 1px solid var(--linha); padding-top: 14px; }
 .alteracoes h4 { margin: 0 0 10px; font-size: 17px; }
 .alteracoes h4 .pagina { font-size: 10.5px; color: var(--txt-fraco); margin-left: 8px; letter-spacing: .1em; }
@@ -668,8 +699,31 @@ body.bate-forte .barra-recurso .preenchido::before {
 @keyframes entrar { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .rolagem-cartao.critico { border-color: var(--ok); box-shadow: 0 0 26px rgba(74,222,128,.28), 0 10px 30px rgba(0,0,0,.7); }
 .rolagem-cartao.falha-critica { border-color: #7a1016; }
-.rolagem-cartao .icone { width: 40px; height: 40px; color: var(--sangue); flex: 0 0 auto; }
+.rolagem-cartao .icone { width: 40px; height: 40px; color: var(--sangue); flex: 0 0 auto; animation: dado-rola .5s ease-out; }
 .rolagem-cartao.critico .icone { color: var(--ok); }
+@keyframes dado-rola {
+  0% { opacity: 0; transform: rotate(-160deg) scale(.6); }
+  70% { opacity: 1; transform: rotate(12deg) scale(1.05); }
+  100% { opacity: 1; transform: rotate(0deg) scale(1); }
+}
+/* d2: a "moeda" tem a sua própria animação 3D (vira de face), por isso não
+   soma o giro 2D genérico dos outros dados. */
+.rolagem-cartao .icone.icone-d2 { animation: none; }
+.icone-d2 { display: inline-block; position: relative; perspective: 220px; }
+.icone-d2 .moeda-interior {
+  position: relative; width: 100%; height: 100%;
+  transform-style: preserve-3d;
+  animation: moeda-vira .6s ease-out;
+}
+.icone-d2 .moeda-face { position: absolute; inset: 0; width: 100%; height: 100%; backface-visibility: hidden; }
+.icone-d2 .moeda-face-b { transform: rotateY(180deg); }
+@keyframes moeda-vira {
+  0% { opacity: 0; transform: rotateY(0deg) scale(.6); }
+  20% { opacity: 1; transform: rotateY(180deg) scale(1); }
+  50% { transform: rotateY(540deg) scale(1); }
+  80% { transform: rotateY(900deg) scale(1); }
+  100% { opacity: 1; transform: rotateY(900deg) scale(1); }
+}
 .rolagem-cartao .nome { font-family: var(--display); font-size: 22px; letter-spacing: .04em; line-height: 1.2; }
 .rolagem-cartao .conta { font-size: 14.5px; color: var(--txt-dim); font-family: var(--corpo); }
 .rolagem-cartao .conta .melhor { color: var(--txt); font-weight: 700; }
@@ -2000,6 +2054,69 @@ body.bate-forte .barra-recurso .preenchido::before {
   padding: 1px 4px;
   text-align: center;
 }
+
+/* Checkboxes de Proteção/Resistências/Proficiências na ficha (mesma
+   linguagem visual da grelha de ajuste de RD acima: cartão discreto,
+   accent-color a vermelho, grid que se adapta à largura). */
+.grupo-checkboxes-ficha {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+.item-checkbox-ficha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--txt-dim);
+  cursor: pointer;
+  user-select: none;
+  background: var(--bg-4);
+  padding: 5px 8px;
+  border-radius: 4px;
+  transition: color .1s, background .1s;
+}
+.item-checkbox-ficha:hover { background: var(--bg-3); }
+.item-checkbox-ficha.marcado { color: var(--txt); }
+.item-checkbox-ficha input[type="checkbox"] {
+  accent-color: var(--sangue);
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+.item-checkbox-ficha input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+/* Agrupa o input de valor e/ou o selo da Trilha à direita da linha, sempre
+   juntos (a auto-margin fica só aqui, nunca nos filhos, para não os separar). */
+.cauda-item-resistencia {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+.item-checkbox-ficha .input-valor-resistencia {
+  width: 40px;
+  font-size: 11px;
+  padding: 1px 4px;
+  text-align: center;
+}
+.valor-trilha-resistencia {
+  font-size: 10px;
+  font-weight: bold;
+  color: var(--sangue-claro);
+  white-space: nowrap;
+}
+.subtitulo-grupo-checkbox {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--txt-fraco);
+  margin: 10px 0 4px;
+}
+.subtitulo-grupo-checkbox:first-child { margin-top: 0; }
 
 .card-resumo-calculo-dano {
   background: rgba(0, 0, 0, 0.35);

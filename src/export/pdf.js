@@ -2,8 +2,10 @@ import { PDFDocument, PDFName, PDFBool } from 'pdf-lib';
 import { PERICIAS } from '../data/pericias.js';
 import { ORIGENS } from '../data/origens.js';
 import { TRILHAS_POR_ID } from '../data/classes.js';
-import { calcMaximos, calcDefesa, calcDefesas, calcPericias, calcPePorRodada, calcCargaMaxima } from '../engine/calc.js';
+import { calcMaximos, calcDefesas, calcPericias, calcPePorRodada, calcCargaMaxima } from '../engine/calc.js';
 import { codigoOrigem, codigoTrilha, CLASSES_PDF } from '../data/pdfCodigos.js';
+import { PROTECOES } from '../data/itens.js';
+import { TIPOS_DANO_POR_ID } from '../engine/danoRecetor.js';
 
 const URL_TEMPLATE = `${import.meta.env?.BASE_URL ?? '/'}ficha-template.pdf`;
 
@@ -61,9 +63,26 @@ export function mapearCampos(personagem) {
   }
   textos['pe_rodada'] = calcPePorRodada(personagem);
 
-  textos['defesa'] = calcDefesa(personagem);
-  textos['def_extra'] = personagem.defesaOutros || 0;
   const defs = calcDefesas(personagem);
+  // defs.defesa já respeita o valor escrito à mão (defesaManual), tal como
+  // acontece com o bloqueio/esquiva abaixo — o PDF deve refletir o que a
+  // ficha mostra, não só o automático.
+  textos['defesa'] = defs.defesa;
+  textos['def_extra'] = personagem.defesaOutros || 0;
+
+  // Proteção/Resistências/Proficiências passaram a checkboxes na ficha —
+  // para um PDF (campo de texto) juntam-se numa frase legível. `setTexto`
+  // já ignora em silêncio campos que não existam nesta versão do modelo,
+  // por isso é seguro tentar mesmo sem confirmar que o template os tem.
+  textos['protecao'] = (personagem.protecao || [])
+    .map((id) => PROTECOES.find((p) => p.id === id)?.nome).filter(Boolean).join(', ');
+  // Resistências: cada entrada é um id puro de TIPOS_DANO (½ dano, sem
+  // número — troca-se pelo nome legível) ou já vem como texto "Nome N" (com
+  // número, RD fixa) — ver engine/danoRecetor.js → repartirResistenciasFicha.
+  textos['resistencias'] = (personagem.resistencias || [])
+    .map((entrada) => TIPOS_DANO_POR_ID[entrada]?.nome || entrada).filter(Boolean).join(', ');
+  textos['proficiencias'] = (personagem.proficiencias || []).join(', ');
+
   textos['esquiva'] = defs.esquiva.disponivel ? defs.esquiva.valor : 0;
   textos['dt_ritual'] = personagem.dtRitual ?? '';
 

@@ -8,6 +8,7 @@ import {
   elementoAtual as elementoAtualMonstruoso,
 } from './monstruoso.js';
 import { ATRIBUTO_DO_ELEMENTO } from '../data/monstruoso.js';
+import { PROTECOES } from '../data/itens.js';
 
 export const NEX_TRACK = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 99];
 
@@ -173,6 +174,21 @@ export function calcDeslocamento(personagem) {
   return finalDesloc;
 }
 
+/**
+ * Bónus de Defesa das Proteções marcadas (checkboxes de `personagem.protecao`
+ * — ids de `PROTECOES`, ver data/itens/geral.js). Substitui o antigo campo
+ * "Equipamento" escrito à mão: a Defesa passa a somar sozinha o que a
+ * Proteção Leve/Pesada/Escudo já dá no livro, sem precisar de intervenção
+ * manual — ao contrário do Bloqueio/Esquiva, a Defesa não tem um valor à
+ * mão que substitua o cálculo.
+ */
+export function defesaDasProtecoes(personagem) {
+  const marcadas = Array.isArray(personagem.protecao) ? personagem.protecao : [];
+  return PROTECOES
+    .filter((p) => marcadas.includes(p.id))
+    .reduce((total, p) => total + (Number(p.defesa) || 0), 0);
+}
+
 export function calcDefesa(personagem) {
   const conds = calcPenalidadesCondicoes(personagem);
   const carga = calcCarga(personagem);
@@ -182,7 +198,7 @@ export function calcDefesa(personagem) {
   return (
     10 +
     Number(a.agi || 0) +
-    Number(personagem.defesaEquipamento || 0) +
+    defesaDasProtecoes(personagem) +
     Number(personagem.defesaOutros || 0) +
     conds.penalidadeDefesa +
     penalidadeCarga
@@ -194,10 +210,12 @@ export function calcDefesas(personagem) {
   const bonusDe = (id) => pericias.find((p) => p.id === id) || { treino: 0, bonus: 0 };
   const fortitude = bonusDe('fortitude');
   const reflexos = bonusDe('reflexos');
-  const defesa = calcDefesa(personagem);
+  const defesaAuto = calcDefesa(personagem);
   const nex = nexEfetivo(personagem);
 
   const manual = (v) => (v === null || v === undefined || v === '' ? null : Number(v));
+  const defesaManual = manual(personagem.defesaManual);
+  const defesa = defesaManual !== null ? defesaManual : defesaAuto;
   const bloqueioManual = manual(personagem.bloqueioManual);
   const esquivaManual = manual(personagem.esquivaManual);
 
@@ -216,6 +234,8 @@ export function calcDefesas(personagem) {
 
   return {
     defesa,
+    defesaAuto,
+    defesaManual: defesaManual !== null,
     bloqueio: {
       disponivel: bloqueioManual !== null || fortitude.treino > 0 || rdTrilhaGeral > 0,
       manual: bloqueioManual !== null,

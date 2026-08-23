@@ -269,6 +269,14 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
 }
 
 function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
+  // Regra dos Hooks: têm de vir antes de qualquer "return null" condicional
+  // — senão, no momento em que a personagem ganha o primeiro ritual (ex.:
+  // ao chegar a Combatente-Sangue 99%, "Forma Monstruosa"), este componente
+  // passa a chamar mais hooks do que na renderização anterior (0 → 2) e o
+  // React crasha ("Rendered more hooks than during the previous render").
+  const [modalVontade, setModalVontade] = useState(null); // ritual (r) ou null
+  const [danoRascunho, setDanoRascunho] = useState(0);
+
   // Rituais concedidos pela Trilha do Monstruoso só existem enquanto a
   // etapa de hoje está ativa — somam-se aos rituais próprios da personagem.
   const rituais = [...(personagem.rituais || []), ...rituaisAtivos(personagem, nexEfetivo(personagem))];
@@ -363,9 +371,7 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
   // Combatente Sangue 99% ("Ser Aterrorizante"): sempre que sofre dano, teste
   // de Vontade DT 10+dano — falhar obriga a próxima ação padrão a ser
   // conjurar Forma Monstruosa, por isso ao falhar aqui já se conjura sozinho.
-  const [modalVontade, setModalVontade] = useState(null); // ritual (r) ou null
-  const [danoRascunho, setDanoRascunho] = useState(0);
-
+  // (modalVontade/danoRascunho estão declarados no topo da função — Regra dos Hooks.)
   function abrirModalVontade(r) {
     setDanoRascunho(0);
     setModalVontade(r);

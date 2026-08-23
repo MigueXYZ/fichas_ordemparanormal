@@ -47,6 +47,7 @@ export function rolarTeste({ nome, dados, bonus = 0, detalhe = '', dadosExtra = 
     total: escolhido + b + somaExtra,
     critico: escolhido === 20,
     falhaCritica: escolhido === 1,
+    faces: 20,
   };
 }
 
@@ -74,6 +75,7 @@ export function rolarExpressao(expr) {
       total: soma + mod,
       critico: faces === 20 && rolagens.includes(20),
       falhaCritica: faces === 20 && rolagens.every((r) => r === 1),
+      faces,
     };
   }
 
@@ -82,6 +84,7 @@ export function rolarExpressao(expr) {
   const partes = [];
   let totalGeral = 0;
   let teveDado = false;
+  let facesPrincipal = null;
 
   for (let token of tokens) {
     token = token.trim();
@@ -94,6 +97,7 @@ export function rolarExpressao(expr) {
       teveDado = true;
       const qtd = Math.min(Math.max(Number(mDado[1] || 1), 1), 50);
       const faces = Number(mDado[2]);
+      if (facesPrincipal === null) facesPrincipal = faces;
       const mod = Number(mDado[3] ? mDado[3].replace(/\s/g, '') : 0);
       const tipo = mDado[4] || null;
       const rolagens = Array.from({ length: qtd }, () => 1 + Math.floor(Math.random() * faces));
@@ -134,6 +138,7 @@ export function rolarExpressao(expr) {
     total: totalGeral,
     critico: false,
     falhaCritica: false,
+    faces: facesPrincipal,
   };
 }
 
@@ -228,6 +233,7 @@ export function rolarDano({ nome, dano, tipoDano = null, bonus = 0, extras = [],
     bonus: fixo,
     total,
     falhaCritica: false,
+    faces,
   };
 }
 
