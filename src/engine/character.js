@@ -86,6 +86,41 @@ export function personagemVazio() {
   };
 }
 
+/**
+ * Verifica se o personagem ainda está exatamente como personagemVazio() o
+ * deixou — ou seja, se o jogador abriu "criar novo agente" e fechou sem
+ * mexer em nada. Só olha para os campos que o assistente deixa preencher
+ * (nome, atributos, origem, classe, ...); campos técnicos como `id` ou
+ * `historico` ficam de fora — comparar tudo seria frágil.
+ */
+export function personagemEhRascunhoVazio(p) {
+  if (!p) return true;
+  const vazio = personagemVazio();
+  const atributosIguais = Object.keys(vazio.atributos).every(
+    (k) => Number(p.atributos?.[k] ?? vazio.atributos[k]) === vazio.atributos[k]
+  );
+  const descricaoVazia = Object.keys(vazio.descricao).every((k) => !p.descricao?.[k]);
+  return (
+    !p.nome?.trim() &&
+    !p.jogador?.trim() &&
+    Number(p.nex) === vazio.nex &&
+    !p.origemId &&
+    !p.origemCustom &&
+    !p.classeId &&
+    !p.trilhaId &&
+    atributosIguais &&
+    !(p.tags && p.tags.length) &&
+    !p.imagem &&
+    !p.token &&
+    !p.patente?.trim() &&
+    !p.creditoLimite?.trim?.() &&
+    !p.pontosPrestigio?.trim?.() &&
+    !p.patenteTexto?.trim?.() &&
+    !p.anotacoes?.trim() &&
+    descricaoVazia
+  );
+}
+
 /** Depois de mudar classe/NEX/atributos, garante que os atuais não passam do máximo. */
 export function normalizarRecursos(p) {
   const max = calcMaximos(p);

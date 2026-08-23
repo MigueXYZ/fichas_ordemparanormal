@@ -87,6 +87,22 @@ h1, h2, h3, h4 { font-family: var(--display); font-weight: 400; letter-spacing: 
 
 .app { min-height: 100%; display: flex; flex-direction: column; position: relative; z-index: 2; }
 
+/* assistente de criação: a página não rola, a "TV" fica sempre centrada no
+   espaço que sobra debaixo da barra de topo (ver o efeito em App.jsx que
+   liga `body.sem-scroll` e esta classe enquanto vista === 'wizard') */
+body.sem-scroll { overflow: hidden; }
+.app.app-wizard-fixo { height: 100vh; overflow: hidden; }
+.app.app-wizard-fixo .container-wizard {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  overflow: hidden;
+}
+
 /* ---------------------------------------------------------- topo */
 .topbar {
   display: flex; align-items: center; justify-content: space-between; gap: 14px;
@@ -196,6 +212,494 @@ h1, h2, h3, h4 { font-family: var(--display); font-weight: 400; letter-spacing: 
 .roda .atr-botao:hover text { fill: var(--sangue-claro); }
 .roda .atr-botao.inativo { cursor: not-allowed; opacity: .25; }
 .roda .atr-botao.inativo:hover circle { stroke: var(--linha-forte); fill: #1a1214; }
+
+/* ---------------------------------------------------------- passo de Atributos: ecrã "registo" (monitor a ligar + VHS)
+   Sequência de arranque (uma vez, ~2.9s, tudo CSS puro — animation-delay
+   encadeia as camadas, animation-fill-mode:both segura o estado antes/depois
+   sem precisar de JS a remover nada):
+     T0.00–0.30  ecrã preto (.crt-boot-preto, já opaco antes de qualquer delay)
+     T0.25–0.60  flash de "monitor a ligar" (.crt-boot-linha)
+     T0.55–2.35  logótipo da Ordo Realitas aparece, treme, aguenta, sai (.crt-logo)
+     T1.95–2.75  rajada de estática forte, tipo troca de canal (.crt-boot-estatica)
+     T2.10–3.70  o conteúdo real entra (.crt-conteudo), sobrepondo-se à estática
+   Depois do arranque, .crt-ambiente (scanlines + grão + scan a descer +
+   barras de tracking + vinheta) fica ligado para sempre — o "efeito VHS de
+   fundo" pedido — com um leve grão sépia/desaturado a dar ar mais antigo.
+   Tudo isto é pointer-events:none — nunca bloqueia os cliques nos campos. */
+.crt-atributos {
+  position: relative;
+  overflow: hidden;
+  border-radius: calc(var(--raio) * 2);
+  border: 1px solid var(--linha-forte);
+  background: radial-gradient(ellipse 140% 100% at 50% 0%, #17100f, #050303 78%);
+  box-shadow: 0 0 0 6px #080505 inset, 0 0 0 7px var(--linha) inset, 0 30px 70px rgba(0, 0, 0, .6);
+  padding: 26px 30px 32px;
+  filter: sepia(.16) saturate(.8) contrast(1.05);
+  animation: crt-tremor 6.5s infinite;
+  /* a "TV" tem sempre o mesmo tamanho, não estica com o conteúdo (a lista de
+     Origem tem muito mais entradas que a de Atributos) — só `.crt-tela`, por
+     dentro, é que rola. */
+  height: min(820px, 90vh);
+}
+@keyframes crt-tremor {
+  0%, 100% { filter: sepia(.16) saturate(.8) contrast(1.05) brightness(1); }
+  55% { filter: sepia(.16) saturate(.8) contrast(1.05) brightness(1); }
+  56% { filter: sepia(.16) saturate(.8) contrast(1.05) brightness(.88); transform: translateY(1px); }
+  57% { filter: sepia(.16) saturate(.8) contrast(1.05) brightness(1.06); transform: translateY(-1px); }
+  58% { filter: sepia(.16) saturate(.8) contrast(1.05) brightness(.95); transform: translateY(0); }
+  91% { filter: sepia(.16) saturate(.8) contrast(1.05) brightness(1); }
+  92% { filter: sepia(.16) saturate(.8) contrast(1.05) brightness(1.1); }
+  93% { filter: sepia(.16) saturate(.8) contrast(1.05) brightness(.9); }
+}
+
+.crt-conteudo {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  animation: crt-conteudo-entra 1.6s ease-out both;
+  animation-delay: 2.1s;
+}
+@keyframes crt-conteudo-entra {
+  0%   { opacity: 0; filter: blur(10px) brightness(3); }
+  30%  { opacity: .2; filter: blur(8px) brightness(2); }
+  55%  { opacity: .55; filter: blur(3px); }
+  100% { opacity: 1; filter: blur(0); }
+}
+
+/* área do meio, a única parte da TV que rola — cabeçalho e transporte ficam
+   fixos por cima e por baixo (ver `.crt-atributos { height }` acima). Barra
+   de scroll ao estilo de cassete: uma calha às riscas (como as guias da
+   fita) com um "carreto" vermelho. */
+.crt-tela {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 10px;
+  margin-right: -4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--sangue) var(--bg-3);
+}
+.crt-tela::-webkit-scrollbar { width: 11px; }
+.crt-tela::-webkit-scrollbar-track {
+  background: repeating-linear-gradient(to bottom, var(--bg-3) 0px, var(--bg-3) 3px, #000 3px, #000 4px);
+  border-radius: 6px;
+}
+.crt-tela::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, var(--sangue-claro), var(--sangue));
+  border: 2px solid #000;
+  border-radius: 6px;
+}
+.crt-tela::-webkit-scrollbar-thumb:hover { background: var(--sangue-claro); }
+
+/* conteúdo do passo em si, por dentro de `.crt-tela` — remontado via `key`
+   a cada troca de passo (ver CrtEcra.jsx), com um "pop" rápido e sem atraso,
+   sincronizado com a estática de `.crt-canal-flash` acima. Não repete o
+   arranque lento: esse fica preso a `.crt-conteudo`, que só monta uma vez. */
+.crt-canal-conteudo { animation: crt-canal-entra .5s ease-out both; }
+@keyframes crt-canal-entra {
+  0%   { opacity: 0; filter: brightness(2.2) contrast(1.6) blur(2px); transform: translateY(6px); }
+  30%  { opacity: .4; }
+  55%  { opacity: .85; filter: brightness(1.1) blur(0); transform: translateY(0); }
+  100% { opacity: 1; filter: none; transform: translateY(0); }
+}
+
+/* rodapé da TV: Voltar/Continuar como os controlos de transporte de um
+   leitor de cassetes — botões rectangulares, grossos, tácteis. */
+.crt-transporte {
+  flex: none; display: flex; gap: 10px; margin-top: 16px; padding-top: 16px;
+  border-top: 1px dashed var(--linha-forte);
+}
+.fita-botao {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 13px 18px; background: linear-gradient(180deg, #221a1a, #120d0d);
+  border: 1px solid var(--linha-forte); border-radius: 5px;
+  box-shadow: 0 2px 0 #000, inset 0 1px 0 rgba(255, 255, 255, .05);
+  color: var(--txt-dim); font-family: var(--corpo); font-size: 12.5px;
+  letter-spacing: .18em; text-transform: uppercase; transition: color .15s, border-color .15s, transform .1s;
+}
+.fita-botao:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 0 0 #000, inset 0 1px 0 rgba(255, 255, 255, .05); }
+.fita-botao:hover:not(:disabled) { color: var(--sangue-claro); border-color: var(--sangue); }
+.fita-botao:disabled { opacity: .3; cursor: not-allowed; }
+.fita-icone { font-size: 10px; letter-spacing: 0; color: var(--sangue); }
+.fita-continuar { color: var(--txt); }
+.fita-continuar:hover:not(:disabled) { color: var(--sangue-claro); }
+
+@media (max-width: 760px) {
+  .crt-atributos { height: min(680px, 92vh); }
+  .fita-rotulo { display: none; }
+  .fita-icone { font-size: 15px; }
+}
+
+/* --- arranque: preto → flash → logótipo → estática --- */
+.crt-boot-preto {
+  position: absolute; inset: 0; z-index: 6; pointer-events: none; background: #000;
+  animation: crt-boot-preto-fade .5s ease-in both;
+  animation-delay: 2.3s;
+}
+@keyframes crt-boot-preto-fade {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.crt-boot-linha {
+  position: absolute; inset: 0; z-index: 7; pointer-events: none;
+  background: #f3f0ee;
+  animation: crt-boot-linha-flash .5s ease-out both;
+  animation-delay: .25s;
+}
+@keyframes crt-boot-linha-flash {
+  0%   { opacity: 1; transform: scaleY(.006); filter: brightness(3); }
+  55%  { opacity: 1; transform: scaleY(1); filter: brightness(1.4); }
+  70%  { opacity: .5; background: #000; }
+  100% { opacity: 0; background: #000; }
+}
+
+.crt-logo {
+  position: absolute; inset: 0; z-index: 7; pointer-events: none;
+  display: flex; align-items: center; justify-content: center;
+  animation: crt-logo-seq 1.8s ease-in-out both;
+  animation-delay: .55s;
+}
+.crt-logo-img { width: 320px; max-width: 62%; height: auto; filter: drop-shadow(0 0 30px rgba(0, 0, 0, .85)); }
+@keyframes crt-logo-seq {
+  0%   { opacity: 0; transform: scale(.82); filter: blur(7px) brightness(2.6); }
+  7%   { opacity: .9; transform: scale(1.03); filter: blur(1px) brightness(1.7); }
+  11%  { opacity: .45; filter: brightness(.6); }
+  15%  { opacity: 1; transform: scale(1); filter: blur(0) brightness(1); }
+  38%  { opacity: .88; }
+  40%  { opacity: 1; }
+  75%  { opacity: 1; }
+  84%  { opacity: .7; filter: brightness(1.3); }
+  90%  { opacity: .25; transform: scale(1.06); filter: brightness(.5); }
+  100% { opacity: 0; transform: scale(1.1); filter: blur(5px); }
+}
+
+.crt-boot-estatica {
+  position: absolute; inset: -3%; z-index: 8; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 140px 140px;
+  animation: crt-boot-estatica-seq .8s steps(3) both;
+  animation-delay: 1.95s;
+}
+@keyframes crt-boot-estatica-seq {
+  0%   { opacity: 0; }
+  15%  { opacity: .85; }
+  40%  { opacity: .3; }
+  60%  { opacity: .7; }
+  80%  { opacity: .2; }
+  100% { opacity: 0; }
+}
+
+/* --- troca de canal: rajada curta de estática P&B ao mudar de passo dentro
+   da TV (Atributos ⇄ Origem) — remontada via `key` em CrtEcra.jsx a cada
+   troca, nunca na primeira vez (isso já é o arranque, acima). */
+.crt-canal-flash {
+  position: absolute; inset: -3%; z-index: 8; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 120px 120px;
+  filter: grayscale(1) contrast(1.6) brightness(1.3);
+  animation: crt-canal-flash-seq .45s steps(4) both;
+}
+@keyframes crt-canal-flash-seq {
+  0%   { opacity: 0; }
+  8%   { opacity: 1; }
+  30%  { opacity: .35; }
+  46%  { opacity: .9; }
+  70%  { opacity: .2; }
+  100% { opacity: 0; }
+}
+
+/* --- cruz no canto superior direito da TV: sai da criação a qualquer
+   momento (ver onFechar em CrtEcra.jsx / Wizard.jsx). Fica por cima de tudo
+   — incluindo a estática do arranque e da troca de canal (z-index 8) — e é
+   a única coisa nesta camada com pointer-events, ao contrário do resto do
+   "ambiente" VHS, que nunca bloqueia cliques. */
+.crt-fechar {
+  position: absolute; top: 12px; right: 14px; z-index: 9; pointer-events: auto;
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 1px solid var(--linha-forte);
+  background: linear-gradient(180deg, #241615, #140b0b);
+  color: var(--txt-fraco);
+  font-size: 18px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.crt-fechar:hover { color: var(--sangue-claro); border-color: var(--sangue); background: linear-gradient(180deg, #2c1414, #170a0a); }
+
+/* --- ambiente VHS permanente (entra só depois do arranque) --- */
+.crt-ambiente {
+  position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  opacity: 0;
+  animation: crt-ambiente-entra .6s ease-in both;
+  animation-delay: 2.4s;
+}
+@keyframes crt-ambiente-entra { 0% { opacity: 0; } 100% { opacity: 1; } }
+
+.crt-scanlines {
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, .06) 0px, rgba(255, 255, 255, .06) 1px, transparent 2px, transparent 4px);
+  mix-blend-mode: overlay;
+}
+
+.crt-ruido {
+  position: absolute; inset: -3%;
+  opacity: .07;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+  animation: crt-ruido-jitter .4s steps(2) infinite;
+}
+@keyframes crt-ruido-jitter {
+  0%   { transform: translate(0, 0); }
+  25%  { transform: translate(-1.5%, 1%); }
+  50%  { transform: translate(1%, -1.5%); }
+  75%  { transform: translate(-1%, -1%); }
+  100% { transform: translate(0, 0); }
+}
+
+.crt-scan-movel {
+  position: absolute; left: 0; right: 0; top: -80px; height: 80px;
+  background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, .06), transparent);
+  mix-blend-mode: screen;
+  animation: crt-scan-desce 7s linear infinite;
+}
+@keyframes crt-scan-desce {
+  0%   { top: -80px; }
+  100% { top: 100%; }
+}
+
+/* barras de "tracking" — o típico salto/distorção horizontal de uma cassete
+   VHS velha; duas, com ciclos diferentes, para não parecerem sincronizadas */
+.crt-tracking {
+  position: absolute; left: 0; right: 0; height: 10px;
+  background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, .5) 40%, rgba(255, 255, 255, .5) 60%, transparent);
+  mix-blend-mode: overlay;
+  opacity: 0;
+}
+.crt-tracking-a { animation: crt-tracking-salto-a 9s ease-in-out infinite; }
+.crt-tracking-b { animation: crt-tracking-salto-b 13s ease-in-out infinite; }
+@keyframes crt-tracking-salto-a {
+  0%, 91%, 100% { opacity: 0; top: 20%; transform: translateX(0); }
+  92%  { opacity: .7; top: 34%; transform: translateX(-2%); }
+  93%  { opacity: .5; top: 34%; transform: translateX(1.5%); }
+  94.5% { opacity: 0; top: 34%; }
+}
+@keyframes crt-tracking-salto-b {
+  0%, 60%, 100% { opacity: 0; top: 68%; transform: translateX(0); }
+  61%  { opacity: .6; top: 74%; transform: translateX(2%); }
+  62%  { opacity: .4; top: 74%; transform: translateX(-1.5%); }
+  63.5% { opacity: 0; top: 74%; }
+}
+
+.crt-vinheta {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, .6) 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crt-atributos, .crt-conteudo, .crt-boot-preto, .crt-boot-linha, .crt-logo, .crt-boot-estatica,
+  .crt-ambiente, .crt-ruido, .crt-scan-movel, .crt-tracking-a, .crt-tracking-b,
+  .crt-canal-flash, .crt-canal-conteudo { animation: none !important; }
+  .crt-boot-preto, .crt-boot-linha, .crt-logo, .crt-boot-estatica, .crt-canal-flash { opacity: 0; }
+  .crt-conteudo, .crt-canal-conteudo { opacity: 1; filter: none; }
+  .crt-ambiente { opacity: 1; }
+}
+
+.crt-passos { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+
+.crt-cabecalho {
+  display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px;
+  margin-bottom: 18px; padding-bottom: 16px; border-bottom: 1px dashed var(--linha-forte);
+}
+.crt-titulo-bloco { display: flex; flex-direction: column; gap: 6px; }
+.crt-rec {
+  display: flex; align-items: center; gap: 7px; font-family: var(--corpo); font-size: 11px;
+  letter-spacing: .24em; text-transform: uppercase; color: var(--sangue-claro);
+}
+.crt-rec-ponto {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--sangue);
+  box-shadow: 0 0 8px rgba(192, 21, 33, .8); animation: crt-rec-pulso 1.4s ease-in-out infinite;
+}
+@keyframes crt-rec-pulso { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+.crt-timecode { color: var(--txt-fraco); letter-spacing: .1em; font-family: var(--numeros); }
+.crt-titulo {
+  margin: 0; font-family: var(--display); font-size: 25px; letter-spacing: .03em;
+  color: var(--txt); text-transform: uppercase;
+}
+.crt-leitura { display: flex; gap: 22px; flex-wrap: wrap; }
+.crt-leitura-item { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.crt-leitura-item span {
+  font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--txt-fraco); font-family: var(--corpo);
+}
+.crt-leitura-item strong { font-size: 23px; color: var(--sangue-claro); font-family: var(--numeros); }
+.crt-leitura-item.completo strong { color: var(--ok); }
+
+.crt-nex-editor { display: flex; align-items: baseline; gap: 3px; }
+.crt-nex-editor input {
+  width: 46px; background: none; border: none; box-shadow: none; padding: 0;
+  text-align: right; font-family: var(--numeros); font-size: 23px; color: var(--sangue-claro);
+  -moz-appearance: textfield; appearance: textfield;
+}
+.crt-nex-editor input::-webkit-outer-spin-button, .crt-nex-editor input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.crt-nex-editor input:focus { outline: none; text-decoration: underline dotted; }
+.crt-leitura-item .crt-nex-editor span { font-size: 23px; color: var(--txt-fraco); font-family: var(--numeros); text-transform: none; letter-spacing: 0; }
+.crt-leitura-item .crt-degrau { color: var(--warn); }
+
+.crt-regra { margin: 0 0 8px; font-size: 14.5px; }
+.crt-aviso { margin-top: 18px; }
+
+.lista-atributos-crt { display: flex; flex-direction: column; gap: 2px; margin-top: 16px; }
+.linha-atributo-crt {
+  display: grid; grid-template-columns: 148px 138px 1fr; gap: 20px; align-items: center;
+  padding: 16px 4px; border-bottom: 1px solid var(--linha);
+}
+.linha-atributo-crt:last-child { border-bottom: none; }
+@media (max-width: 760px) {
+  .linha-atributo-crt { grid-template-columns: 1fr; gap: 10px; }
+  .crt-leitura { width: 100%; justify-content: space-between; }
+}
+
+.la-nome { display: flex; flex-direction: column; gap: 2px; }
+.la-sigla { font-family: var(--display); font-size: 27px; letter-spacing: .06em; color: var(--sangue-claro); }
+.la-nome-completo { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--txt-fraco); }
+
+.la-caixa {
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  border: 1px solid var(--linha-forte); border-radius: var(--raio); background: var(--bg-3); padding: 4px;
+  width: fit-content;
+}
+.la-caixa button {
+  width: 28px; height: 28px; background: transparent; border: none; color: var(--txt-dim);
+  font-size: 16px; border-radius: 4px; transition: background .15s, color .15s;
+}
+.la-caixa button:hover:not(:disabled) { background: rgba(192, 21, 33, .18); color: var(--sangue-claro); }
+.la-caixa button:disabled { opacity: .25; cursor: not-allowed; }
+.la-input {
+  width: 46px; text-align: center; background: none; border: none; box-shadow: none; padding: 0;
+  font-family: var(--numeros); font-size: 22px; color: var(--txt);
+  -moz-appearance: textfield; appearance: textfield;
+}
+.la-input::-webkit-outer-spin-button, .la-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.la-input:focus { outline: none; color: var(--sangue-claro); }
+
+.la-texto { font-size: 13px; color: var(--txt-dim); line-height: 1.55; }
+.la-conceito { margin: 0 0 4px; color: var(--txt); }
+.la-rotulo { color: var(--sangue-claro); font-weight: 700; }
+.la-mecanica, .la-pericias { margin: 0 0 4px; }
+.la-roleplay { margin: 0; font-style: italic; color: var(--txt-fraco); }
+
+/* --- passo de Origem dentro da TV: lista compacta, um título por linha,
+   com um botão para expandir (em vez do mural de cartões todos abertos).
+   O corpo abre/fecha com `grid-template-rows: 0fr → 1fr`, que anima a altura
+   sem precisar de JS a medir nada — só a classe `.aberta` muda. */
+.lista-origens-crt { display: flex; flex-direction: column; margin-top: 18px; border-top: 1px solid var(--linha); }
+.linha-origem-crt { border-bottom: 1px solid var(--linha); }
+.linha-origem-crt.selecionada { background: rgba(192, 21, 33, .06); }
+
+.origem-cabecalho {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%;
+  padding: 14px 6px; background: none; border: none; text-align: left; cursor: pointer;
+  font-family: inherit; color: inherit;
+}
+.origem-titulo { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.origem-nome {
+  font-family: var(--display); font-size: 19px; letter-spacing: .03em; color: var(--txt);
+  text-transform: uppercase;
+}
+.linha-origem-crt.selecionada .origem-nome { color: var(--sangue-claro); }
+.origem-livro { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--txt-fraco); }
+.origem-pill-escolhida {
+  font-size: 10px; letter-spacing: .1em; text-transform: uppercase; padding: 2px 8px;
+  border-radius: 999px; background: var(--sangue); color: #fff;
+}
+.origem-chevron {
+  flex: none; color: var(--txt-fraco); font-size: 13px; transition: transform .25s ease, color .2s ease;
+}
+.linha-origem-crt.aberta .origem-chevron { transform: rotate(180deg); color: var(--sangue-claro); }
+.origem-cabecalho:hover .origem-chevron { color: var(--sangue-claro); }
+
+.origem-corpo-wrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s ease; }
+.linha-origem-crt.aberta .origem-corpo-wrap { grid-template-rows: 1fr; }
+.origem-corpo-inner { overflow: hidden; }
+.origem-corpo { padding: 0 6px 18px; font-size: 13.5px; color: var(--txt-dim); line-height: 1.6; }
+.origem-corpo p { margin: 0 0 8px; }
+.origem-corpo b { color: var(--sangue-claro); }
+.origem-acao { margin-top: 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .origem-corpo-wrap, .origem-chevron { transition: none; }
+}
+
+/* --- passo de Classe dentro da TV: como são só 3-4, em vez de uma lista
+   ficam lado a lado como colunas verticais — nome, resumo do livro (só o
+   1.º parágrafo; uma seta revela o texto todo), estatísticas iniciais e um
+   emblema "de perk" (ver IconeClasse em StepClasse.jsx). Cada bloco acima do
+   emblema tem ALTURA FIXA (não `max-height`, mesmo se o texto não a enche) —
+   é o que garante os emblemas alinhados horizontalmente nas 4 colunas,
+   independente de a Sobrevivente ter um texto bem mais longo que as outras
+   ou de uma coluna estar expandida e as outras não: abrir uma nunca empurra
+   as restantes, porque a caixa que cresceria tem sempre o mesmo tamanho por
+   fora e rola por dentro. */
+.grade-classes {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0;
+  margin-top: 18px; border-top: 1px solid var(--linha); border-bottom: 1px solid var(--linha);
+}
+.coluna-classe {
+  display: flex; flex-direction: column; padding: 18px 16px; border-left: 1px solid var(--linha);
+  text-align: center;
+}
+.coluna-classe:first-child { border-left: none; }
+.coluna-classe.selecionada { background: rgba(192, 21, 33, .07); }
+
+.coluna-classe-cabecalho { display: flex; flex-direction: column; align-items: center; gap: 3px; margin-bottom: 10px; }
+.coluna-classe-nome {
+  font-family: var(--display); font-size: 19px; letter-spacing: .03em; color: var(--txt); text-transform: uppercase;
+}
+.coluna-classe.selecionada .coluna-classe-nome { color: var(--sangue-claro); }
+.coluna-classe-livro { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--txt-fraco); }
+.coluna-classe-pill { margin: 2px 0 0; }
+
+.coluna-classe-descricao {
+  text-align: left; font-size: 12.5px; color: var(--txt-dim); line-height: 1.55;
+  height: 108px; overflow-y: auto; padding-right: 6px;
+  scrollbar-width: thin; scrollbar-color: var(--sangue) var(--bg-3);
+}
+.coluna-classe-descricao::-webkit-scrollbar { width: 8px; }
+.coluna-classe-descricao::-webkit-scrollbar-track { background: var(--bg-3); border-radius: 6px; }
+.coluna-classe-descricao::-webkit-scrollbar-thumb { background: var(--sangue); border-radius: 6px; }
+.coluna-classe-descricao p { margin: 0 0 8px; }
+
+.coluna-classe-seta {
+  display: block; margin: 2px auto 10px; padding: 2px 10px; background: none; border: none;
+  color: var(--txt-fraco); font-size: 12px; line-height: 1;
+}
+.coluna-classe-seta:hover { color: var(--sangue-claro); }
+.coluna-classe-seta[aria-expanded="true"] { color: var(--sangue-claro); }
+
+.coluna-classe-stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-bottom: 10px; }
+.coluna-classe-notas { height: 74px; overflow: hidden; }
+.coluna-classe-nota { text-align: left; font-size: 11.5px; color: var(--txt-fraco); line-height: 1.5; margin: 0 0 4px; }
+.coluna-classe-nota b { color: var(--sangue-claro); }
+
+.coluna-classe-icone { margin: 10px auto 14px; }
+.classe-icone-svg { width: 76px; height: 76px; }
+.coluna-classe.selecionada .classe-icone-svg circle:nth-child(2) { stroke: var(--sangue-claro); opacity: 1; }
+
+.coluna-classe-escolher { margin-top: auto; align-self: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .coluna-classe-seta { transition: none; }
+}
+
+@media (max-width: 900px) {
+  .grade-classes { grid-template-columns: 1fr; }
+  .coluna-classe { border-left: none; border-top: 1px solid var(--linha); }
+  .coluna-classe:first-child { border-top: none; }
+}
 
 /* ---------------------------------------------------------- cards */
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 18px; margin-top: 20px; }
@@ -672,6 +1176,36 @@ body.bate-forte .barra-recurso .preenchido::before {
 /* ---------------------------------------------------------- filtros / seletor */
 .filtros { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 18px 0 6px; }
 .filtros .contador { font-size: 12px; color: var(--txt-fraco); margin-left: auto; font-family: var(--corpo); }
+
+/* Dropdown que abre sempre para baixo (ver SeletorCrt.jsx) — substitui um
+   <select> nativo nos filtros de dentro da TV, porque o browser decide
+   sozinho para que lado um <select> abre, e perto do rodapé da TV estava
+   sempre a abrir para cima. */
+.seletor-crt { position: relative; min-width: 190px; max-width: 220px; }
+.seletor-crt-gatilho {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  background: var(--bg-4); border: 1px solid var(--linha-forte); border-radius: var(--raio);
+  color: var(--txt); padding: 8px 10px; font-size: 14px; text-align: left;
+}
+.seletor-crt-gatilho:hover { border-color: var(--sangue); }
+.seletor-crt-seta { color: var(--txt-fraco); font-size: 10px; flex: none; }
+.seletor-crt-gatilho[aria-expanded="true"] .seletor-crt-seta { color: var(--sangue-claro); transform: rotate(180deg); }
+.seletor-crt-lista {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 40;
+  background: #1a1214; border: 1px solid var(--linha-forte); border-radius: var(--raio);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, .55); max-height: 240px; overflow-y: auto;
+  list-style: none; margin: 0; padding: 4px;
+  scrollbar-width: thin; scrollbar-color: var(--sangue) var(--bg-3);
+}
+.seletor-crt-lista::-webkit-scrollbar { width: 9px; }
+.seletor-crt-lista::-webkit-scrollbar-track { background: var(--bg-3); border-radius: 6px; }
+.seletor-crt-lista::-webkit-scrollbar-thumb { background: var(--sangue); border-radius: 6px; }
+.seletor-crt-opcao {
+  display: block; width: 100%; text-align: left; padding: 7px 10px; border-radius: 4px;
+  color: var(--txt-dim); font-size: 13.5px; background: none;
+}
+.seletor-crt-opcao:hover { background: rgba(192, 21, 33, .18); color: var(--txt); }
+.seletor-crt-opcao.ativa { color: var(--sangue-claro); background: rgba(192, 21, 33, .12); }
 .escolhido {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   border-left: 2px solid var(--sangue); background: var(--sangue-veu);
@@ -1640,7 +2174,7 @@ body.bate-forte .barra-recurso .preenchido::before {
   border: 1px solid var(--linha-forte);
   box-shadow: 0 24px 70px rgba(0,0,0,.85), 0 0 0 1px var(--sangue-escuro, var(--sangue));
 }
-.popup-morte-logo { max-width: 96px; max-height: 96px; margin: 0 auto 12px; display: block; opacity: .92; }
+.popup-morte-logo { max-width: 150px; max-height: 150px; margin: 0 auto 14px; display: block; opacity: .92; }
 .popup-morte-icone { font-size: 34px; line-height: 1; margin-bottom: 10px; color: var(--txt-dim); }
 .modal-popup-morte h3 {
   margin: 0 0 12px; font-family: var(--display); font-size: 21px; letter-spacing: .03em; color: var(--sangue-claro);

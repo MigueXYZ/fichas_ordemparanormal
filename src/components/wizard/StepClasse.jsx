@@ -1,14 +1,70 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { CLASSES } from '../../data/classes.js';
 import { PERICIAS, PERICIAS_POR_ID } from '../../data/pericias.js';
 import { calcMaximos, orcamentoPericias, nexEfetivo } from '../../engine/calc.js';
 import { aplicarConcessoes } from '../../engine/concessoes.js';
 
+/**
+ * Emblema "de perk" por classe — arte original nossa (nunca a arte real do
+ * livro, que é comercial), um símbolo simples por classe dentro de um selo
+ * circular: mira para o Combatente, lupa para o Especialista, olho num
+ * triângulo para o Ocultista, bússola para o Sobrevivente.
+ */
+function IconeClasse({ id }) {
+  return (
+    <svg className="classe-icone-svg" viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="50" cy="50" r="46" fill="#0c0808" stroke="var(--linha-forte)" strokeWidth="2" />
+      <circle cx="50" cy="50" r="40" fill="none" stroke="var(--sangue)" strokeWidth="1.5" opacity=".55" />
+      {id === 'combatente' && (
+        <g stroke="var(--sangue-claro)" strokeWidth="3" strokeLinecap="round" fill="none">
+          <line x1="30" y1="30" x2="70" y2="70" />
+          <line x1="70" y1="30" x2="30" y2="70" />
+          <circle cx="50" cy="50" r="6" fill="var(--sangue)" stroke="none" />
+        </g>
+      )}
+      {id === 'especialista' && (
+        <g stroke="var(--sangue-claro)" strokeWidth="3" strokeLinecap="round" fill="none">
+          <circle cx="43" cy="43" r="16" />
+          <line x1="54" y1="54" x2="72" y2="72" />
+        </g>
+      )}
+      {id === 'ocultista' && (
+        <g stroke="var(--sangue-claro)" strokeWidth="2.5" strokeLinejoin="round" fill="none">
+          <path d="M50 27 L75 69 L25 69 Z" />
+          <circle cx="50" cy="55" r="8" fill="var(--sangue)" stroke="none" />
+        </g>
+      )}
+      {id === 'sobrevivente' && (
+        <g stroke="var(--sangue-claro)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none">
+          <circle cx="50" cy="50" r="22" />
+          <path d="M50 34 L50 50 L62 62" />
+        </g>
+      )}
+    </svg>
+  );
+}
+
+/**
+ * Passo de Classe — como Atributos e Origem, vive dentro do ecrã "registo"
+ * (ver CrtEcra.jsx em Wizard.jsx). Como só há 3-4 classes, em vez de lista
+ * ficam lado a lado como colunas verticais — nome, resumo do livro (com
+ * scroll próprio, porque a Sobrevivente é bem mais longa que as outras),
+ * estatísticas iniciais e o emblema acima.
+ */
 export default function StepClasse({ personagem, setPersonagem }) {
-  const principais = CLASSES.filter((c) => c.id !== 'sobrevivente');
-  const sobrevivente = CLASSES.find((c) => c.id === 'sobrevivente');
   const classe = CLASSES.find((c) => c.id === personagem.classeId);
   const orc = orcamentoPericias(personagem);
+  // que colunas mostram o texto todo em vez de só o 1.º parágrafo — a caixa
+  // da descrição tem altura fixa e scroll próprio, por isso abrir uma não
+  // empurra o emblema/botão das outras, mantendo tudo alinhado
+  const [expandidas, setExpandidas] = useState(() => new Set());
+  function alternarExpandida(id) {
+    setExpandidas((prev) => {
+      const novo = new Set(prev);
+      if (novo.has(id)) novo.delete(id); else novo.add(id);
+      return novo;
+    });
+  }
 
   const nexUtil = nexEfetivo(personagem);
   const trilhas = classe?.trilhas || [];
@@ -53,47 +109,62 @@ export default function StepClasse({ personagem, setPersonagem }) {
   ]);
 
   return (
-    <div>
-      <p className="texto-regra" style={{ fontSize: 15 }}>
+    <>
+      <p className="texto-regra crt-regra">
         A tua classe indica o treino que recebeste na Ordem para enfrentar os perigos do Outro Lado.
         Em termos de jogo é a característica mais importante: define o que fazes e qual é o teu papel no grupo.
       </p>
-      <p className="texto-regra" style={{ fontSize: 13, color: 'var(--txt-dim)' }}>
-        As perícias concedidas são adicionadas automaticamente. Perícias opcionais podem ser adicionadas ao agente depois de criado.
+      <p className="texto-regra crt-regra" style={{ marginBottom: 16 }}>
+        As perícias concedidas são adicionadas automaticamente — as opcionais podem ser ajustadas depois de criado.
       </p>
 
-      {sobrevivente && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', margin: '14px 0 4px' }}>
-          <span style={{ fontSize: 14 }}>Em alternativa podes começar como uma pessoa comum.</span>
-          <button className={'btn sm' + (personagem.classeId === 'sobrevivente' ? '' : ' ghost')} onClick={() => escolherClasse(sobrevivente)}>
-            {sobrevivente.nome}
-          </button>
-        </div>
-      )}
+      <div className="grade-classes">
+        {CLASSES.map((c) => {
+          const selecionada = personagem.classeId === c.id;
+          const expandida = expandidas.has(c.id);
+          const paragrafos = c.descricao.split('\n\n');
+          return (
+            <div key={c.id} className={'coluna-classe' + (selecionada ? ' selecionada' : '')}>
+              <div className="coluna-classe-cabecalho">
+                <span className="coluna-classe-nome">{c.nome}</span>
+                <span className="coluna-classe-livro">{c.livro}</span>
+                <span className="pill origem-pill-escolhida coluna-classe-pill" style={{ visibility: selecionada ? 'visible' : 'hidden' }}>
+                  Escolhida
+                </span>
+              </div>
 
-      <div className="cards">
-        {principais.map((c) => (
-          <div key={c.id} className={'card' + (personagem.classeId === c.id ? ' selecionado' : '')}>
-            <h3>{c.nome}</h3>
-            <div className="barra" />
-            <div className="corpo">
-              <p>{c.descricao}</p>
-              <p style={{ marginTop: 12 }}>
-                <span className="pill">PV {c.progressao.pv.inicial} + VIG</span>{' '}
-                <span className="pill">SAN {c.progressao.san.inicial}</span>{' '}
-                <span className="pill">PE {c.progressao.pe.inicial} + PRE</span>
-              </p>
-              <p><b>Perícias.</b> {c.pericias?.nota}</p>
-              <p><b>Proficiências.</b> {(c.proficiencias || []).join(', ')}</p>
-              <p><b>Trilhas.</b> {(c.trilhas || []).map((t) => t.nome).join(', ')}</p>
-            </div>
-            <div className="acao">
-              <button className="btn" onClick={() => escolherClasse(c)}>
-                {personagem.classeId === c.id ? 'Escolhida' : 'Escolher'}
+              <div className="coluna-classe-descricao">
+                <p>{paragrafos[0]}</p>
+                {expandida && paragrafos.slice(1).map((paragrafo, i) => <p key={i}>{paragrafo}</p>)}
+              </div>
+              <button
+                type="button"
+                className="coluna-classe-seta"
+                onClick={() => alternarExpandida(c.id)}
+                aria-expanded={expandida}
+                title={expandida ? 'Mostrar só o resumo' : 'Mostrar o texto todo'}
+              >
+                <span aria-hidden="true">{expandida ? '▴' : '▾'}</span>
+              </button>
+
+              <div className="coluna-classe-stats">
+                <span className="pill">PV {c.progressao.pv.inicial}+VIG</span>
+                <span className="pill">SAN {c.progressao.san.inicial}</span>
+                <span className="pill">PE {c.progressao.pe.inicial}+PRE</span>
+              </div>
+              <div className="coluna-classe-notas">
+                <p className="coluna-classe-nota"><b>Perícias.</b> {c.pericias?.nota}</p>
+                <p className="coluna-classe-nota"><b>Proficiências.</b> {(c.proficiencias || []).join(', ')}</p>
+              </div>
+
+              <div className="coluna-classe-icone"><IconeClasse id={c.id} /></div>
+
+              <button type="button" className="btn sm coluna-classe-escolher" onClick={() => escolherClasse(c)}>
+                {selecionada ? 'Escolhida' : 'Escolher'}
               </button>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {classe && trilhas.length > 0 && (
@@ -206,6 +277,6 @@ export default function StepClasse({ personagem, setPersonagem }) {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
