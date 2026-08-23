@@ -46,6 +46,10 @@ export function personagemVazio() {
     pdTemp: 0,
     sanTemp: 0,     // NOVO: Sanidade temporária
 
+    condicoes: [],          // ids de CONDICOES (data/condicoes.js) ativas
+    turnosMorrendo: 0,      // condição "morrendo": turnos começados a 0 PV nesta cena (3 = morre)
+    tenacidadeTestes: 0,    // poder Tenacidade: testes de Fortitude já feitos nesta cena (DT 20 + 10 por anterior)
+
     defesaOutros: 0,
     bloqueioExtra: 0,
     esquivaExtra: 0,

@@ -1583,6 +1583,71 @@ body.bate-forte .barra-recurso .preenchido::before {
 .chip-condicao.tipo-combate, .tag-tipo.tipo-combate { border-color: #ef4444; background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
 .chip-condicao.tipo-saude, .tag-tipo.tipo-saude { border-color: #e11d48; background: rgba(225, 29, 72, 0.15); color: #fda4af; }
 
+/* Sugestão de ligar Morrendo (PV a 0) e painel da condição enquanto ativa */
+.aviso-morrendo {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  background: rgba(225, 29, 72, 0.12); border: 1px solid var(--sangue); border-radius: var(--raio);
+  padding: 10px 14px; margin-top: 10px; font-size: 13px; color: var(--txt);
+}
+.aviso-morrendo strong { color: var(--sangue-claro); }
+.painel-morrendo {
+  background: rgba(225, 29, 72, 0.08); border: 1px solid var(--sangue); border-radius: var(--raio);
+  padding: 12px 14px; margin-top: 10px; display: flex; flex-direction: column; gap: 10px;
+}
+.topo-morrendo { display: flex; flex-direction: column; gap: 4px; }
+.topo-morrendo strong { color: var(--sangue-claro); font-family: var(--display); font-size: 15px; letter-spacing: .04em; }
+.dica-morrendo { font-size: 12.5px; color: var(--txt-dim); line-height: 1.5; }
+.contador-morrendo {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 13px;
+}
+.botoes-contador-morrendo { display: flex; gap: 6px; }
+.botoes-contador-morrendo button {
+  border: 1px solid var(--linha-forte); background: var(--bg-3); color: var(--txt); border-radius: 4px;
+  font-size: 12px; padding: 3px 9px; cursor: pointer;
+}
+.botoes-contador-morrendo button:hover { border-color: var(--sangue); color: var(--sangue-claro); }
+.aviso-morte {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  font-size: 12.5px; font-weight: 700; color: var(--warn); text-transform: uppercase; letter-spacing: .04em;
+}
+.dica-medicina-morrendo { font-size: 12.5px; color: var(--txt-dim); font-style: italic; line-height: 1.5; }
+.acoes-morrendo { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Pop-up central de aviso — PV chegou a 0 */
+@keyframes brilho-popup-morrendo {
+  0%, 100% { box-shadow: 0 24px 70px rgba(0,0,0,.8), 0 0 0 1px var(--sangue), 0 0 26px rgba(192,21,33,.35); }
+  50% { box-shadow: 0 24px 70px rgba(0,0,0,.8), 0 0 0 1px var(--sangue-claro), 0 0 40px rgba(192,21,33,.6); }
+}
+.modal-popup-morrendo {
+  width: min(420px, 100%);
+  padding: 28px 26px 24px;
+  text-align: center;
+  border: 1px solid var(--sangue);
+  animation: brilho-popup-morrendo 1.8s ease-in-out infinite;
+}
+.popup-morrendo-icone { font-size: 40px; line-height: 1; margin-bottom: 10px; color: var(--sangue-claro); }
+.modal-popup-morrendo h3 {
+  margin: 0 0 10px; font-family: var(--display); font-size: 22px; letter-spacing: .03em; color: var(--sangue-claro);
+}
+.modal-popup-morrendo p { margin: 0 0 20px; font-size: 13.5px; color: var(--txt-dim); line-height: 1.6; }
+.popup-morrendo-acoes { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+
+/* Pop-up central de "fim de jornada" — contador de morrendo chegou ao limite */
+.modal-popup-morte {
+  width: min(460px, 100%);
+  padding: 32px 28px 26px;
+  text-align: center;
+  border: 1px solid var(--linha-forte);
+  box-shadow: 0 24px 70px rgba(0,0,0,.85), 0 0 0 1px var(--sangue-escuro, var(--sangue));
+}
+.popup-morte-logo { max-width: 96px; max-height: 96px; margin: 0 auto 12px; display: block; opacity: .92; }
+.popup-morte-icone { font-size: 34px; line-height: 1; margin-bottom: 10px; color: var(--txt-dim); }
+.modal-popup-morte h3 {
+  margin: 0 0 12px; font-family: var(--display); font-size: 21px; letter-spacing: .03em; color: var(--sangue-claro);
+}
+.modal-popup-morte p { margin: 0 0 22px; font-size: 13.5px; color: var(--txt-dim); line-height: 1.65; font-style: italic; }
+.popup-morte-acoes { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+
 /* modal de condições */
 .modal-condicoes { max-width: 720px; max-height: 85vh; display: flex; flex-direction: column; }
 .barra-pesquisa-condicoes input { width: 100%; margin-bottom: 12px; }

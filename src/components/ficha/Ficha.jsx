@@ -3,6 +3,7 @@ import RodaAtributos from '../RodaAtributos.jsx';
 import BarraRecurso from './BarraRecurso.jsx';
 import TabelaPericias from './TabelaPericias.jsx';
 import PainelCondicoes from './PainelCondicoes.jsx';
+import PainelMorrendo from './PainelMorrendo.jsx';
 import { AbaCombate, AbaHabilidades, AbaRituais, AbaInventario, AbaDescricao } from './Abas.jsx';
 import CabecalhoSeta from './CabecalhoSeta.jsx';
 import { MonstruosoBotao, MonstruosoPainel } from './Monstruoso.jsx';
@@ -478,6 +479,7 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
               condicoes={personagem.condicoes || []}
               aoMudar={(novas) => set({ condicoes: novas })}
             />
+            <PainelMorrendo personagem={personagem} nex={nexUtil} onRolar={onRolar} aoMudar={set} />
 
             <div style={{ marginTop: 16 }}>
               <CabecalhoSeta estaAberto={abertaProtecao} onClick={() => setAbertaProtecao((v) => !v)}>

@@ -209,7 +209,12 @@ export const CONDICOES = [
     nome: 'Morrendo',
     tipo: 'saude',
     descricao: 'Com 0 pontos de vida. Se iniciar três turnos morrendo na mesma cena (não necessariamente consecutivos), você morre. Esta condição só é encerrada com um teste de Medicina (DT 20) ou por efeitos específicos.',
-    efeitos: { defesa: -10, indefeso: true, semAcoes: true },
+    // Sem efeitos próprios: a 0 PV o personagem também fica Inconsciente (é
+    // essa condição que traz o −10 Defesa/indefeso/sem ações). As duas andam
+    // juntas na ficha, mas só a Inconsciente sai ao curar — a Morrendo fica
+    // até o Teste de Medicina — por isso os debuffs não podem estar aqui
+    // também, ou duplicavam (ex.: −20 Defesa) enquanto as duas estão ativas.
+    efeitos: {},
   },
   {
     id: 'ofuscado',
