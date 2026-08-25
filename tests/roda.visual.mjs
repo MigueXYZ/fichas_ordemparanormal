@@ -16,11 +16,11 @@ import { chromium } from 'playwright';
 
 // cx, cy, r = interior do círculo · topoRotulo = onde começa o texto desenhado
 const CIRCULOS = {
-  agi: { cx: 490.0, cy: 199.5, r: 114, topoRotulo: 229 },
-  for: { cx: 185.5, cy: 427.0, r: 122, topoRotulo: 443 },
-  int: { cx: 800.0, cy: 425.0, r: 120, topoRotulo: 433 },
-  pre: { cx: 281.5, cy: 791.5, r: 121, topoRotulo: 810 },
-  vig: { cx: 688.5, cy: 792.0, r: 122, topoRotulo: 811 },
+  agi: { cx: 480.0, cy: 190.0, r: 135, topoRotulo: 224 },
+  for: { cx: 175.0, cy: 418.0, r: 135, topoRotulo: 435 },
+  int: { cx: 785.0, cy: 418.0, r: 135, topoRotulo: 435 },
+  pre: { cx: 270.0, cy: 778.0, r: 135, topoRotulo: 795 },
+  vig: { cx: 690.0, cy: 778.0, r: 135, topoRotulo: 795 },
 };
 const FOLGA = 6;   // margem mínima, em unidades do viewBox
 
