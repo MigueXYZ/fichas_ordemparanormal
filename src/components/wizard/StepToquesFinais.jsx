@@ -1,5 +1,42 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import EditorTags from '../EditorTags.jsx';
+import { lerImagem, lerToken } from '../../engine/armazenamento.js';
+
+/** Caixa de upload de imagem (avatar ou token), no mesmo estilo do ".retrato" da ficha. */
+function CampoImagem({ label, valor, aoEscolher, aoRemover }) {
+  const inputRef = useRef(null);
+  const [erro, setErro] = useState(null);
+
+  async function escolher(e) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setErro(null);
+    try {
+      await aoEscolher(f);
+    } catch (err) {
+      setErro(err.message);
+    }
+    e.target.value = '';
+  }
+
+  return (
+    <div className="campo">
+      <label>{label}</label>
+      <div
+        className="retrato"
+        style={valor ? { backgroundImage: `url(${valor})` } : undefined}
+        onClick={() => inputRef.current?.click()}
+      >
+        {!valor && label}
+        <input ref={inputRef} type="file" accept="image/*,image/gif" onChange={escolher} />
+      </div>
+      {valor && (
+        <button type="button" className="btn ghost sm" style={{ marginTop: 6 }} onClick={aoRemover}>Remover</button>
+      )}
+      {erro && <div className="aviso" style={{ maxWidth: 200, fontSize: 11, marginTop: 6 }}>{erro}</div>}
+    </div>
+  );
+}
 
 export default function StepToquesFinais({ personagem, atualizar, onFinalizar, podeFinalizar }) {
   const d = personagem.descricao || {};
@@ -26,6 +63,21 @@ export default function StepToquesFinais({ personagem, atualizar, onFinalizar, p
           <label>Jogador</label>
           <input type="text" value={personagem.jogador} onChange={(e) => atualizar({ jogador: e.target.value })} placeholder="Nome do jogador" />
         </div>
+      </div>
+
+      <div className="linha" style={{ marginBottom: 16 }}>
+        <CampoImagem
+          label="Arte do Personagem"
+          valor={personagem.imagem}
+          aoEscolher={async (f) => atualizar({ imagem: await lerImagem(f) })}
+          aoRemover={() => atualizar({ imagem: null })}
+        />
+        <CampoImagem
+          label="Token do Agente"
+          valor={personagem.token}
+          aoEscolher={async (f) => atualizar({ token: await lerToken(f) })}
+          aoRemover={() => atualizar({ token: null })}
+        />
       </div>
 
       <div style={{ marginBottom: 16 }}>

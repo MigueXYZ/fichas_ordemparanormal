@@ -117,28 +117,36 @@ export function IconeD8({ titulo = 'Rolar d8', ...props }) {
   );
 }
 
-export function IconeD10({ titulo = 'Rolar d10', ...props }) {
+/**
+ * d10 em "gema facetada": bipirâmide vista em ligeiro ângulo, com TODAS as
+ * arestas desenhadas (mesmo as de trás) — é esse traçado em raio-x, com as
+ * linhas a cruzarem-se no meio, que dá o ar de cristal facetado.
+ * Fica dentro de um `span` próprio (não um `<svg>` solto) para poder ter a
+ * sua própria animação 3D (ver .icone-d10 / @keyframes dado-d10-gira).
+ */
+export function IconeD10({ titulo = 'Rolar d10', className, style, ...props }) {
   return (
-    <svg viewBox="0 0 64 64" role="img" aria-label={titulo} {...props}>
-      {/* silhueta em "pião" (kite assimétrico: cintura acima do centro),
-          mais alta que larga — não se confunde com o losango simétrico do d8 */}
-      <polygon
-        points="32,3 52,24 32,61 12,24"
-        fill="currentColor" fillOpacity="0.10"
-        stroke="currentColor" strokeWidth="3.2" strokeLinejoin="round"
-      />
-      <polygon
-        points="32,18 42,28 32,46 22,28"
-        fill="currentColor" fillOpacity="0.22"
-        stroke="currentColor" strokeWidth="3" strokeLinejoin="round"
-      />
-      <g stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" fill="none" opacity="0.95">
-        <path d="M32,3 32,18" />
-        <path d="M52,24 42,28" />
-        <path d="M32,61 32,46" />
-        <path d="M12,24 22,28" />
-      </g>
-    </svg>
+    <span className={'icone-d10' + (className ? ' ' + className : '')} style={style} role="img" aria-label={titulo} {...props}>
+      <svg viewBox="0 0 64 64" className="d10-svg">
+        {/* silhueta exterior */}
+        <polygon
+          points="32,4 56,35 32,60 8,29"
+          fill="currentColor" fillOpacity="0.08"
+          stroke="currentColor" strokeWidth="2.8" strokeLinejoin="round"
+        />
+        {/* arestas de dentro, "transparentes" — o efeito de gema vem daqui */}
+        <g stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" fill="none" opacity="0.85">
+          <path d="M32,4 23,42" />
+          <path d="M32,4 41,23" />
+          <path d="M32,60 23,42" />
+          <path d="M32,60 41,23" />
+          <path d="M56,35 23,42" />
+          <path d="M23,42 8,29" />
+          <path d="M8,29 41,23" />
+          <path d="M41,23 56,35" />
+        </g>
+      </svg>
+    </span>
   );
 }
 

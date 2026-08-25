@@ -51,6 +51,25 @@
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
 
+/* barra de scroll "cassete" — uma calha às riscas (como as guias da fita)
+   com um "carreto" vermelho — aplicada a QUALQUER elemento com scroll em
+   toda a app, para nunca voltar a aparecer a barra genérica do browser. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--sangue) var(--bg-3);
+}
+*::-webkit-scrollbar { width: 11px; height: 11px; }
+*::-webkit-scrollbar-track {
+  background: repeating-linear-gradient(to bottom, var(--bg-3) 0px, var(--bg-3) 3px, #000 3px, #000 4px);
+  border-radius: 6px;
+}
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, var(--sangue-claro), var(--sangue));
+  border: 2px solid #000;
+  border-radius: 6px;
+}
+*::-webkit-scrollbar-thumb:hover { background: var(--sangue-claro); }
+
 body {
   margin: 0;
   color: var(--txt);
@@ -116,6 +135,30 @@ body.sem-scroll { overflow: hidden; }
 }
 .topbar h1 em { color: var(--sangue); font-style: normal; }
 .topbar .acoes { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* botão de Busca Rápida, centrado na barra do topo como um "campo" de busca */
+.busca-topbar {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  display: flex; align-items: center; gap: 9px;
+  min-width: 230px; max-width: 40vw;
+  background: var(--bg-3); border: 1px solid var(--linha-forte); border-radius: 999px;
+  padding: 7px 8px 7px 15px; cursor: pointer;
+  color: var(--txt-fraco); font-family: var(--corpo); font-size: 13px;
+  transition: border-color .15s, background .15s, color .15s, box-shadow .15s;
+}
+.busca-topbar:hover {
+  border-color: var(--sangue); color: var(--txt); background: var(--bg-4);
+  box-shadow: 0 0 0 3px var(--sangue-veu);
+}
+.busca-topbar-icone { flex: none; color: var(--sangue-claro); }
+.busca-topbar-texto { flex: 1; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.busca-topbar-atalho {
+  flex: none; font-size: 10.5px; letter-spacing: .06em; color: var(--txt-fraco);
+  border: 1px solid var(--linha-forte); border-radius: 5px; padding: 2px 7px;
+  background: var(--bg-2); font-family: var(--corpo);
+}
+@media (max-width: 1000px) { .busca-topbar { min-width: 0; } .busca-topbar-texto { display: none; } }
+@media (max-width: 720px) { .busca-topbar { padding: 7px; border-radius: 50%; } .busca-topbar-atalho { display: none; } }
 
 .container { width: 100%; max-width: 1240px; margin: 0 auto; padding: 26px 18px 90px; }
 
@@ -279,20 +322,7 @@ body.sem-scroll { overflow: hidden; }
   overflow-x: hidden;
   padding-right: 10px;
   margin-right: -4px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--sangue) var(--bg-3);
 }
-.crt-tela::-webkit-scrollbar { width: 11px; }
-.crt-tela::-webkit-scrollbar-track {
-  background: repeating-linear-gradient(to bottom, var(--bg-3) 0px, var(--bg-3) 3px, #000 3px, #000 4px);
-  border-radius: 6px;
-}
-.crt-tela::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, var(--sangue-claro), var(--sangue));
-  border: 2px solid #000;
-  border-radius: 6px;
-}
-.crt-tela::-webkit-scrollbar-thumb:hover { background: var(--sangue-claro); }
 
 /* conteúdo do passo em si, por dentro de `.crt-tela` — remontado via `key`
    a cada troca de passo (ver CrtEcra.jsx), com um "pop" rápido e sem atraso,
@@ -666,11 +696,8 @@ body.sem-scroll { overflow: hidden; }
 .coluna-classe-descricao {
   text-align: left; font-size: 12.5px; color: var(--txt-dim); line-height: 1.55;
   height: 108px; overflow-y: auto; padding-right: 6px;
-  scrollbar-width: thin; scrollbar-color: var(--sangue) var(--bg-3);
 }
 .coluna-classe-descricao::-webkit-scrollbar { width: 8px; }
-.coluna-classe-descricao::-webkit-scrollbar-track { background: var(--bg-3); border-radius: 6px; }
-.coluna-classe-descricao::-webkit-scrollbar-thumb { background: var(--sangue); border-radius: 6px; }
 .coluna-classe-descricao p { margin: 0 0 8px; }
 
 .coluna-classe-seta {
@@ -975,6 +1002,65 @@ textarea { resize: vertical; min-height: 92px; }
 .tabela-guia-combate td { padding: 5px 6px; border-bottom: 1px solid var(--linha); color: var(--txt-dim); }
 .tabela-guia-combate td:first-child { color: var(--txt); white-space: nowrap; }
 
+.guia-combate-menu { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.guia-combate-menu-item {
+  display: flex; flex-direction: column; gap: 3px; align-items: flex-start; text-align: left;
+  background: var(--bg-2); border: 1px solid var(--linha-forte); border-radius: var(--raio);
+  padding: 12px 14px; cursor: pointer; transition: border-color .15s, background .15s;
+}
+.guia-combate-menu-item:hover { border-color: var(--sangue); background: var(--sangue-veu); }
+.guia-combate-menu-item .nome { font-family: var(--display); font-size: 16px; color: var(--txt); }
+.guia-combate-menu-item .sub { font-size: 11.5px; color: var(--txt-fraco); }
+.guia-combate-titulo { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.guia-combate-voltar {
+  background: none; border: 1px solid var(--linha-forte); border-radius: 999px;
+  color: var(--txt-dim); font-family: var(--corpo); font-size: 12px; letter-spacing: .04em;
+  padding: 3px 11px; cursor: pointer; transition: border-color .15s, color .15s;
+}
+.guia-combate-voltar:hover { border-color: var(--sangue-claro); color: var(--sangue-claro); }
+
+/* ------------------------------------------- busca rápida global (Ctrl+K) */
+.busca-global { width: min(720px, 100%); }
+.modal-topo .dica-atalho {
+  margin-left: 8px; font-size: 11px; letter-spacing: .1em; color: var(--txt-fraco);
+  border: 1px solid var(--linha-forte); border-radius: 5px; padding: 1px 6px; font-family: var(--corpo);
+}
+.busca-global-topo { padding: 14px 20px 0; display: flex; flex-direction: column; gap: 10px; }
+.busca-global-input { font-size: 15px; }
+.busca-global-categorias { display: flex; flex-wrap: wrap; gap: 6px; }
+.busca-global-chip {
+  background: none; border: 1px solid var(--linha-forte); border-radius: 999px;
+  color: var(--txt-dim); font-family: var(--corpo); font-size: 11.5px; letter-spacing: .05em;
+  padding: 4px 12px; cursor: pointer; transition: border-color .15s, color .15s, background .15s;
+}
+.busca-global-chip:hover { border-color: var(--sangue); color: var(--txt); }
+.busca-global-chip.ativa { background: var(--sangue-veu); border-color: var(--sangue); color: var(--sangue-claro); }
+.busca-global-corpo { padding-top: 12px; }
+.busca-global-vazio { text-align: center; padding: 26px 10px; }
+.busca-global-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.busca-global-item {
+  width: 100%; text-align: left; background: none; border: 1px solid transparent; border-radius: var(--raio);
+  padding: 8px 10px; cursor: pointer; display: flex; flex-direction: column; gap: 2px;
+  transition: border-color .12s, background .12s;
+}
+.busca-global-item:hover, .busca-global-item.destaque { background: var(--sangue-veu); border-color: var(--linha-forte); }
+.busca-global-item-topo { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.busca-global-item-topo b { font-family: var(--display); font-size: 14.5px; color: var(--txt); }
+.busca-global-categoria {
+  flex: none; font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--txt-fraco); border: 1px solid var(--linha-forte); border-radius: 5px; padding: 1px 6px;
+}
+.busca-global-categoria.cat-ritual { color: #a15cd8; border-color: #a15cd855; }
+.busca-global-categoria.cat-poder { color: #d8b53c; border-color: #d8b53c55; }
+.busca-global-categoria.cat-pericia { color: #6fb6d8; border-color: #6fb6d855; }
+.busca-global-categoria.cat-item { color: #8fbf6f; border-color: #8fbf6f55; }
+.busca-global-categoria.cat-condicao { color: var(--sangue-claro); border-color: var(--sangue-escuro); }
+.busca-global-sub { font-size: 12px; color: var(--txt-fraco); }
+.busca-global-detalhe-topo { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.busca-global-meta { font-size: 13px; color: var(--txt-dim); margin: 0 0 10px; }
+.busca-global-descricao { font-size: 13.5px; color: var(--txt-dim); line-height: 1.65; white-space: pre-line; margin: 0; }
+.busca-global-extra { font-size: 12.5px; color: var(--txt-fraco); line-height: 1.55; white-space: pre-line; margin: 10px 0 0; border-top: 1px solid var(--linha); padding-top: 10px; }
+
 /* barras — preto sujo, veias por baixo, nada de plástico moderno */
 .barra-recurso { margin-bottom: 14px; }
 .barra-recurso .titulo {
@@ -1252,11 +1338,8 @@ body.bate-forte .barra-recurso .preenchido::before {
   background: #1a1214; border: 1px solid var(--linha-forte); border-radius: var(--raio);
   box-shadow: 0 12px 26px rgba(0, 0, 0, .55); max-height: 240px; overflow-y: auto;
   list-style: none; margin: 0; padding: 4px;
-  scrollbar-width: thin; scrollbar-color: var(--sangue) var(--bg-3);
 }
 .seletor-crt-lista::-webkit-scrollbar { width: 9px; }
-.seletor-crt-lista::-webkit-scrollbar-track { background: var(--bg-3); border-radius: 6px; }
-.seletor-crt-lista::-webkit-scrollbar-thumb { background: var(--sangue); border-radius: 6px; }
 .seletor-crt-opcao {
   display: block; width: 100%; text-align: left; padding: 7px 10px; border-radius: 4px;
   color: var(--txt-dim); font-size: 13.5px; background: none;
@@ -1329,6 +1412,20 @@ body.bate-forte .barra-recurso .preenchido::before {
   50% { transform: rotateY(540deg) scale(1); }
   80% { transform: rotateY(900deg) scale(1); }
   100% { opacity: 1; transform: rotateY(900deg) scale(1); }
+}
+/* d10: gema facetada — em vez do giro 2D genérico, roda mesmo em 3D, para
+   se verem as arestas de dentro a passar por cima/por baixo umas das outras. */
+.rolagem-cartao .icone.icone-d10 { animation: none; }
+.icone-d10 { display: inline-block; perspective: 240px; }
+.icone-d10 .d10-svg {
+  display: block; width: 100%; height: 100%;
+  transform-style: preserve-3d;
+  animation: dado-d10-gira .65s ease-out;
+}
+@keyframes dado-d10-gira {
+  0% { opacity: 0; transform: rotateY(-24deg) rotateX(10deg) scale(.55); }
+  55% { opacity: 1; transform: rotateY(400deg) rotateX(-8deg) scale(1.08); }
+  100% { opacity: 1; transform: rotateY(360deg) rotateX(0deg) scale(1); }
 }
 .rolagem-cartao .nome { font-family: var(--display); font-size: 22px; letter-spacing: .04em; line-height: 1.2; }
 .rolagem-cartao .conta { font-size: 14.5px; color: var(--txt-dim); font-family: var(--corpo); }
@@ -1966,62 +2063,30 @@ body.bate-forte .barra-recurso .preenchido::before {
   align-items: center;
   justify-content: center;
   pointer-events: auto;
-  width: 100%;
   max-width: 100%;
 }
 
-/* sem token: contorno do modelo visível e clicável para carregar */
+/* sem token: só o contorno do modelo, esbatido */
 .espaco-token .modelo {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  cursor: pointer;
-  width: min(220px, 85%);
-  height: min(62vh, 560px);
-  opacity: .35;
-  transition: opacity .3s ease, transform .2s ease;
+  display: block; position: relative; cursor: pointer;
+  width: min(220px, 85%); height: min(62vh, 560px);
+  opacity: .16; transition: opacity .3s ease;
 }
-.espaco-token .modelo:hover {
-  opacity: .8;
-  transform: translateY(-2px);
-}
+.espaco-token .modelo:hover { opacity: .4; }
 .espaco-token .modelo input { display: none; }
 .espaco-token .modelo .figura {
-  display: block;
-  width: 100%;
-  height: 100%;
+  display: block; width: 100%; height: 100%;
   background: var(--txt);
-  -webkit-mask-image: url('/img/token-modelo.png');
-  -webkit-mask-position: center;
-  -webkit-mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  mask-image: url('/img/token-modelo.png');
-  mask-position: center;
-  mask-size: contain;
-  mask-repeat: no-repeat;
+  -webkit-mask: url('/img/token-modelo.png') center / contain no-repeat;
+  mask: url('/img/token-modelo.png') center / contain no-repeat;
   transform: scaleX(-1);   /* o modelo passa a olhar para a ficha */
 }
 .espaco-token .dica-token {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -22px;
-  text-align: center;
-  font-family: var(--corpo);
-  font-size: 11px;
-  letter-spacing: .18em;
-  text-transform: uppercase;
-  color: var(--txt-dim);
-  opacity: .6;
-  transition: opacity .3s ease, color .3s ease;
-  pointer-events: none;
+  position: absolute; left: 0; right: 0; bottom: -18px; text-align: center;
+  font-family: var(--corpo); font-size: 10px; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--txt-fraco); opacity: 0; transition: opacity .3s ease;
 }
-.espaco-token .modelo:hover .dica-token {
-  opacity: 1;
-  color: var(--sangue-claro);
-}
+.espaco-token .modelo:hover .dica-token { opacity: 1; }
 
 /* com token: a imagem e mais nada */
 .espaco-token .token-img {
@@ -2053,6 +2118,7 @@ body.bate-forte .barra-recurso .preenchido::before {
    Por isso só aparece quando a margem dá mesmo para ele. */
 .espaco-token { display: none; }
 @media (min-width: 1550px) { .espaco-token { display: flex; } }
+
 @media (prefers-reduced-motion: reduce) { .pedestal .holofote { animation: none; } }
 
 .miniatura-arma {

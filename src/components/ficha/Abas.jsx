@@ -123,6 +123,7 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
   const naturais = ataquesNaturaisAtivos(personagem, nex);
   const lista = [...listaPropria, ...naturais];
   const [acertos, setAcertos] = useState({});
+  const [aEditarArma, setAEditarArma] = useState(null); // { indice, arma } ou null
 
   // Combatente Sangue 99% ("Ser Aterrorizante"): sempre que causa dano com a
   // mordida, recupera 5 PV (x2 em crítico) — automático, sem botão.
@@ -236,6 +237,9 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
                       </button>
                     )}
                     <button className="btn sm" disabled={!equipado} title={equipado ? '' : 'Equipa a arma primeiro'} onClick={() => atacar(a, i)}>Atacar</button>
+                    {!a._monstruoso && (
+                      <button className="btn ghost sm" onClick={() => setAEditarArma({ indice: i, arma: a })}>Editar</button>
+                    )}
                     {a.nome === 'Mordida (Monstruoso)' && (
                       <button
                         className="btn sm ghost"
@@ -302,6 +306,17 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
             );
           })}
         </div>
+      )}
+
+      {aEditarArma !== null && (
+        <EditorArma
+          arma={aEditarArma.arma}
+          aoFechar={() => setAEditarArma(null)}
+          aoGuardar={(nova) => {
+            editar(aEditarArma.indice, nova);
+            setAEditarArma(null);
+          }}
+        />
       )}
 
       <RituaisEmCombate personagem={personagem} setPersonagem={setPersonagem} onRolar={onRolar} />

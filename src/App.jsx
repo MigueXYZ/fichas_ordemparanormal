@@ -10,7 +10,8 @@ import PainelOverlay from './components/PainelOverlay.jsx';
 import EditorOverlay from './components/EditorOverlay.jsx';
 import FichaAmeaca from './components/ficha/FichaAmeaca.jsx';
 import ModalDefinicoes from './components/ModalDefinicoes.jsx';
-import { IconeOBS, IconeHistorico, IconeEngrenagem } from './components/Icones.jsx';
+import BuscaGlobal from './components/ficha/BuscaGlobal.jsx';
+import { IconeOBS, IconeHistorico, IconeEngrenagem, IconeBusca } from './components/Icones.jsx';
 import { personagemVazio, personagemEhRascunhoVazio } from './engine/character.js';
 import { descarregarPdf } from './export/pdf.js';
 import { guardarAgente, obterAgente, exportarJson, novoId } from './engine/armazenamento.js';
@@ -57,6 +58,22 @@ export default function App() {
   const [coracao, setCoracao] = useState(coracaoLigado);
   const [verHistorico, setVerHistorico] = useState(false);
   const [verDefinicoes, setVerDefinicoes] = useState(false);
+  const [verBusca, setVerBusca] = useState(false);
+
+  // Busca Rápida Global (Ctrl+K / Cmd+K) — disponível em qualquer lado da
+  // criação ou da ficha, para consultar rituais, poderes, perícias, itens e
+  // condições sem ter de navegar pelas abas (ver BuscaGlobal.jsx).
+  useEffect(() => {
+    if (vista === 'inicio') return undefined;
+    function aoTeclar(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setVerBusca(true);
+      }
+    }
+    window.addEventListener('keydown', aoTeclar);
+    return () => window.removeEventListener('keydown', aoTeclar);
+  }, [vista]);
 
   // ---- overlay para o OBS ----
   const [configOverlay, setConfigOverlay] = useState(lerConfig);
@@ -155,9 +172,11 @@ export default function App() {
     }
   }
 
-  // o espaço do token só aparece com uma ficha de agente aberta (e só em ecrãs
-  // largos o suficiente para caber na margem — ver .espaco-token em styles.css)
-  const comToken = vista !== 'inicio' && Boolean(personagem) && personagem.tipo !== 'ameaca';
+  // o espaço do token só aparece na ficha já criada (e só em ecrãs largos o
+  // suficiente para caber na margem — ver .espaco-token em styles.css). Fica
+  // escondido durante a criação (vista === 'wizard'): lá quem pede o avatar
+  // e o token é o passo "Toques Finais", não este espaço com o boneco.
+  const comToken = vista === 'ficha' && Boolean(personagem) && personagem.tipo !== 'ameaca';
 
   return (
     <div className={'app' + (vista === 'wizard' ? ' app-wizard-fixo' : '')}>
@@ -184,6 +203,14 @@ export default function App() {
             </button>
           )}
         </div>
+
+        {vista !== 'inicio' && (
+          <button type="button" className="busca-topbar" onClick={() => setVerBusca(true)} title="Busca rápida — rituais, poderes, perícias, itens, condições">
+            <IconeBusca size={15} className="busca-topbar-icone" />
+            <span className="busca-topbar-texto">Busca rápida…</span>
+            <span className="busca-topbar-atalho">Ctrl+K</span>
+          </button>
+        )}
 
         <div className="acoes">
           {vista !== 'inicio' ? (
@@ -288,6 +315,8 @@ export default function App() {
           aoLimpar={() => setPersonagem((p) => ({ ...p, historico: [] }))}
         />
       )}
+
+      {verBusca && <BuscaGlobal aoFechar={() => setVerBusca(false)} />}
 
       {verOverlay && (
         <PainelOverlay
