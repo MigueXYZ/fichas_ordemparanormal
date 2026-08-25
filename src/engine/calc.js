@@ -5,7 +5,8 @@ import { PROGRESSAO_PD, ALTERACOES_GERAIS } from '../data/regrasOpcionais.js';
 import {
   efeitosDiarios as efeitosDiariosMonstruoso, atributosEfetivos as atributosEfetivosMonstruoso,
   periciasTreinadasAtivas as periciasTreinadasAtivasMonstruoso, resistenciaTextoAtual as resistenciaTextoAtualMonstruoso,
-  elementoAtual as elementoAtualMonstruoso,
+  elementoAtual as elementoAtualMonstruoso, classeMonstruosa, efetivamenteAtivo as efetivamenteAtivoMonstruoso,
+  patamarAtual as patamarAtualMonstruoso,
 } from './monstruoso.js';
 import { ATRIBUTO_DO_ELEMENTO } from '../data/monstruoso.js';
 import { PROTECOES } from '../data/itens.js';
@@ -221,8 +222,14 @@ export function detalheDtRitual(personagem) {
   const nex = nexEfetivo(personagem);
   const a = atributosEfetivosMonstruoso(personagem, nex);
   const bonusNex = nexIndex(nex) + 1;
-  const presenca = Number(a.pre || 0);
-  return { nex, bonusNex, presenca, total: 10 + bonusNex + presenca };
+  // Especialista/Ocultista da Trilha do Monstruoso, desde os 10%: o atributo
+  // do elemento escolhido passa a valer no lugar de Presença — não só para
+  // os PE (já automatizado em calcMaximos), mas também para a DT dos
+  // rituais (ver PE_POR_ATRIBUTO_DESDE em data/monstruoso.js — mesmo
+  // patamar, mesmo atributo, é a mesma regra a aplicar-se a duas contas).
+  const atributoDt = efeitosDiariosMonstruoso(personagem, nex).peAtributo;
+  const presenca = Number((atributoDt ? a[atributoDt] : a.pre) || 0);
+  return { nex, bonusNex, presenca, atributoDt, total: 10 + bonusNex + presenca };
 }
 
 export function calcDefesas(personagem) {
@@ -249,7 +256,19 @@ export function calcDefesas(personagem) {
   const rdTrilhaGeral = efeitosDiariosMonstruoso(personagem, nex).resistenciaDano || 0;
   const trilhaTexto = resistenciaTextoAtualMonstruoso(personagem, nex);
 
-  const bloqueioAuto = fortitude.bonus + Number(personagem.bloqueioExtra || 0) + rdTrilhaGeral;
+  // Combatente-Energia (desde os 10%, "Ser Testado"): "soma sua Agilidade na
+  // RD recebida por um bloqueio bem-sucedido" (data/classes/combatente.js) —
+  // ao contrário da resistência elemental (que é só de tipos específicos e
+  // fica de fora, ver nota acima), este bónus é geral e soma a sério ao
+  // Bloqueio, tal como o bloqueioExtra manual.
+  const agiBloqueioEnergia = (
+    classeMonstruosa(personagem) === 'combatente'
+    && elementoAtualMonstruoso(personagem) === 'Energia'
+    && patamarAtualMonstruoso(nex) >= 10
+    && efetivamenteAtivoMonstruoso(personagem, nex)
+  ) ? Number(atributosEfetivosMonstruoso(personagem, nex).agi || 0) : 0;
+
+  const bloqueioAuto = fortitude.bonus + Number(personagem.bloqueioExtra || 0) + rdTrilhaGeral + agiBloqueioEnergia;
   const esquivaAuto = defesa + reflexos.bonus + Number(personagem.esquivaExtra || 0);
 
   return {
@@ -257,14 +276,17 @@ export function calcDefesas(personagem) {
     defesaAuto,
     defesaManual: defesaManual !== null,
     bloqueio: {
-      disponivel: bloqueioManual !== null || fortitude.treino > 0 || rdTrilhaGeral > 0,
+      disponivel: bloqueioManual !== null || fortitude.treino > 0 || rdTrilhaGeral > 0 || agiBloqueioEnergia > 0,
       manual: bloqueioManual !== null,
       valor: bloqueioManual !== null ? bloqueioManual : bloqueioAuto,
       auto: bloqueioAuto,
       base: fortitude.bonus,
       trilha: rdTrilhaGeral,
       trilhaTexto,
-      formula: 'RD = bónus de Fortitude' + (rdTrilhaGeral ? ` + ${rdTrilhaGeral} da Trilha do Monstruoso` : ''),
+      agiEnergia: agiBloqueioEnergia,
+      formula: 'RD = bónus de Fortitude'
+        + (rdTrilhaGeral ? ` + ${rdTrilhaGeral} da Trilha do Monstruoso` : '')
+        + (agiBloqueioEnergia ? ` + ${agiBloqueioEnergia} de Agilidade (Combatente-Energia)` : ''),
       requisito: 'Precisa de treino em Fortitude (ou escreve o valor à mão)',
     },
     esquiva: {
@@ -342,7 +364,11 @@ export function calcPericias(personagem) {
 
     const dadosBase = Number(a[attr] || 0);
     const penalidadeDados = conds.dadosGeral + (conds.dadosAttr[attr] || 0) + (conds.dadosPericia[p.id] || 0);
-    const dados = Math.max(0, dadosBase + penalidadeDados);
+    // NÃO fazer Math.max(0, ...) aqui: um atributo 0 (ou já negativo por
+    // penalidade) que leva mais penalidade de dado tem de continuar a
+    // descer — é isso que faz a pool de "pior de N" crescer em vez de
+    // ficar sempre presa em 2 dados (ver quantidadeDados em engine/dados.js).
+    const dados = dadosBase + penalidadeDados;
     const monstruoso = (conds.flatPericia[p.id] || 0) + (treinoMonstruoso.flatExtra[p.id] || 0);
     const dadosExtra = bonusGenericoMonstruoso && attr === attrAlvoBonusGenerico
       ? [`${bonusGenericoMonstruoso.quantidade}d${bonusGenericoMonstruoso.faces}`]

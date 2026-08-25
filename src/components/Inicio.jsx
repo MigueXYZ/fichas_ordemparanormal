@@ -2,7 +2,6 @@ import React, { useRef, useState, useMemo } from 'react';
 import { CLASSES_POR_ID, TRILHAS_POR_ID } from '../data/classes.js';
 import { ORIGENS_POR_ID } from '../data/origens.js';
 import { listarAgentes, apagarAgente, apagarVariosAgentes, duplicarAgente, importarJson, guardarAgente } from '../engine/armazenamento.js';
-import Geradores from './Geradores.jsx';
 import EditorTags from './EditorTags.jsx';
 import { IconeCopiar, IconeLixo, IconeTag } from './Icones.jsx';
 import { ELEMENTOS, ORDEM_ELEMENTOS } from '../data/rituais.js';
@@ -21,13 +20,12 @@ function normalizar(texto) {
     .replace(/[\u0300-\u036f]/g, '');
 }
 
-export default function Inicio({ aoCriar, aoAbrir }) {
+export default function Inicio({ aoCriar, aoAbrir, aoAbrirMestre }) {
   const [lista, setLista] = useState(listarAgentes);
   const [busca, setBusca] = useState('');
   const [tagSelecionada, setTagSelecionada] = useState(null);
   const [editarTagsAgente, setEditarTagsAgente] = useState(null);
   const [erro, setErro] = useState(null);
-  const [gerador, setGerador] = useState(false);
   const [modoSelecao, setModoSelecao] = useState(false);
   const [selecionados, setSelecionados] = useState(new Set());
   const [confirmarApagar, setConfirmarApagar] = useState(null); // { tipo: 'individual', agente } | { tipo: 'massa', agentes }
@@ -169,8 +167,7 @@ export default function Inicio({ aoCriar, aoAbrir }) {
       {erro && <div className="aviso"><strong>Erro:</strong> {erro}</div>}
 
       <div className="barra-acoes" style={{ marginTop: 30 }}>
-        <button className="btn" onClick={aoCriar}>Criar agente</button>
-        <button className="btn ghost" onClick={() => setGerador(true)}>Geradores</button>
+        <button className="btn ghost" onClick={aoAbrirMestre}>Modo Mestre</button>
         <button className="btn ghost" onClick={() => ficheiro.current?.click()}>Importar .json</button>
         {lista.length > 0 && (
           <button
@@ -270,14 +267,6 @@ export default function Inicio({ aoCriar, aoAbrir }) {
             </button>
           </div>
         </div>
-      )}
-
-      {gerador && (
-        <Geradores
-          aoFechar={() => { setGerador(false); recarregar(); }}
-          aoGuardar={(p) => { const g = guardarAgente(p); recarregar(); return g; }}
-          aoAbrir={(p) => aoAbrir(p)}
-        />
       )}
 
       <div className="agentes">

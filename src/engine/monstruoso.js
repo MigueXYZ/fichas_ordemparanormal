@@ -35,6 +35,7 @@ import {
 import { PERICIAS } from '../data/pericias.js';
 import { RITUAIS, RITUAIS_POR_ID } from '../data/rituais.js';
 import { rolarDano } from './dados.js';
+import { CONDICOES_POR_ID } from '../data/condicoes.js';
 
 const CLASSES_MONSTRUOSAS = ['combatente', 'especialista', 'ocultista'];
 const ATRIBUTOS_BASE = { for: 0, agi: 0, int: 0, pre: 0, vig: 0 };
@@ -135,6 +136,113 @@ export function escolherPericiasConhecimento(personagem, periciaIds) {
 }
 
 export { quantidadePericiasLivresConhecimento };
+
+/**
+ * Combatente-Conhecimento, 65%+ (Ser Assustador): pode deixar de ser
+ * treinado numa perícia para ganhar um banco de dados de bónus (= Intelecto)
+ * — até ao fim da cena, gasta 1 de cada vez para +1 dado no pool de um
+ * teste. Recupera a perícia (e esvazia o banco) no próximo interlúdio —
+ * ver `calcularInterludio`/`aplicarDescansoPleno` em engine/interludio.js.
+ */
+export function podeUsarBancoConhecimento(personagem, nex) {
+  return classeMonstruosa(personagem) === 'combatente'
+    && elementoAtual(personagem) === 'Conhecimento'
+    && patamarAtual(nex) >= 65
+    && efetivamenteAtivo(personagem, nex);
+}
+
+/**
+ * Escolhe a perícia a destreinar e abre o banco de dados. O tamanho do banco
+ * usa o Intelecto EFETIVO (`atributosEfetivos`, não o atributo base) — o
+ * próprio Combatente-Conhecimento já tem +1 Intelecto vivo desde os 40% e
+ * outro +1 (total +2) aos 99%, e esse bónus tem de entrar na conta. Só uma
+ * perícia destreinada de cada vez.
+ */
+export function escolherPericiaParaDestreinar(personagem, periciaId, nex) {
+  if (personagem.monstruosoPericiaDestreinada) {
+    return { erro: 'Já tens uma perícia destreinada por esta habilidade — recupera-a num interlúdio antes de escolher outra.' };
+  }
+  const atual = personagem.pericias?.[periciaId];
+  if (!atual || !atual.grau || atual.grau === 'destreinado') {
+    return { erro: 'Escolhe uma perícia que já esteja treinada.' };
+  }
+  const intelecto = Math.max(0, Number(atributosEfetivos(personagem, nex).int || 0));
+  return {
+    patch: {
+      pericias: { ...(personagem.pericias || {}), [periciaId]: { ...atual, grau: 'destreinado' } },
+      monstruosoPericiaDestreinada: periciaId,
+      monstruosoBancoDados: intelecto,
+      monstruosoBancoPendente: false,
+    },
+  };
+}
+
+/** Gasta 1 dado do banco — fica pendente para somar +1 ao pool do PRÓXIMO teste rolado. */
+export function gastarDadoBanco(personagem) {
+  const banco = Number(personagem.monstruosoBancoDados || 0);
+  if (banco <= 0) return { erro: 'Não tens dados no banco.' };
+  return { patch: { monstruosoBancoDados: banco - 1, monstruosoBancoPendente: true } };
+}
+
+/** Soma o dado pendente do banco (se houver) ao tamanho do pool de um teste prestes a ser rolado. */
+export function comBancoPendente(personagem, dados) {
+  return personagem?.monstruosoBancoPendente ? Number(dados || 0) + 1 : Number(dados || 0);
+}
+
+/**
+ * Ocultista-Sangue (Trilha do Monstruoso, AS07, 40%+ "Ser Perfurado"): a
+ * Tatuagem Ritualística (poder base do Ocultista) passa a aplicar-se a
+ * QUALQUER ritual de Sangue marcado na pele, não só aos de alcance Pessoal
+ * com você como alvo. Verbatim: "ele também se aplica a todos os rituais
+ * de Sangue marcados em sua pele, não apenas aos de alcance pessoal que
+ * têm você como alvo".
+ */
+export function tatuagemAlargadaSangue(personagem, nex) {
+  return classeMonstruosa(personagem) === 'ocultista'
+    && elementoAtual(personagem) === 'Sangue'
+    && patamarAtual(nex) >= 40
+    && efetivamenteAtivo(personagem, nex);
+}
+
+/**
+ * -1 PE se o ritual estiver marcado (tatuado): pela regra base (alcance
+ * Pessoal + alvo "você", qualquer elemento) ou, alargado, por
+ * `tatuagemAlargadaSangue` (qualquer ritual de elemento 'sangue' marcado).
+ */
+export function reducaoTatuagemRitualistica(personagem, nex, ritual, marcado) {
+  if (!marcado || !ritual) return 0;
+  const basico = ritual.alcance === 'Pessoal' && ritual.alvo === 'você';
+  const alargado = ritual.elemento === 'sangue' && tatuagemAlargadaSangue(personagem, nex);
+  return (basico || alargado) ? 1 : 0;
+}
+
+/**
+ * Ocultista-Sangue 40%+: +5 em testes de Concentração ao conjurar/manter um
+ * ritual de Sangue marcado na pele (verbatim AS07). Devolve 0 se não se
+ * aplicar (elemento diferente, ritual não marcado, ou patamar insuficiente).
+ */
+export function bonusConcentracaoTatuagem(personagem, nex, ritual, marcado) {
+  if (!marcado || !ritual || ritual.elemento !== 'sangue') return 0;
+  return tatuagemAlargadaSangue(personagem, nex) ? 5 : 0;
+}
+
+/**
+ * Ocultista-Sangue 40%+: 1x/cena, se machucado ou sob condição de fadiga,
+ * pode conjurar como reação (em vez da ação normal exigida para conjurar
+ * um ritual) um ritual de Sangue marcado na pele — continua a gastar o
+ * custo de PE normal do ritual. "Cena" não tem fronteira automática nesta
+ * app (ver nota geral em engine/interludio.js) — o próprio jogador repõe
+ * manualmente.
+ */
+export function podeReagirTatuagemSangue(personagem, nex, ritual, marcado) {
+  if (!marcado || !ritual || ritual.elemento !== 'sangue') return false;
+  if (!tatuagemAlargadaSangue(personagem, nex)) return false;
+  if (personagem.monstruosoReacaoTatuagemUsada) return false;
+  const condicoes = personagem.condicoes || [];
+  const machucado = condicoes.includes('machucado');
+  const fadigado = condicoes.some((id) => CONDICOES_POR_ID[id]?.tipo === 'fadiga');
+  return machucado || fadigado;
+}
 
 /**
  * Soma viva de todos os deltas de atributo em efeito agora (ganhos por
@@ -542,6 +650,29 @@ function presencaPendente(personagem, nex) {
 }
 
 /**
+ * Aplica a perda permanente de Presença ainda pendente (se houver alguma) —
+ * usada dentro de `ativarHoje` (fluxo normal, ao clicar "ativar" no dia) e
+ * também sozinha quando o Combatente atinge o patamar em que tudo fica
+ * permanente (99%, ver `tudoPermanente`): nesse ponto o botão deixa de abrir
+ * modal nenhum (nada para ligar/desligar), por isso já não há clique nenhum
+ * para disparar esta perda — ver o useEffect em `MonstruosoBotao`
+ * (components/ficha/Monstruoso.jsx). Devolve `null` se não houver nada
+ * pendente.
+ */
+export function aplicarPresencaPendente(personagem, nex) {
+  const pendentes = presencaPendente(personagem, nex);
+  if (pendentes.length === 0) return null;
+  const atributos = { ...(personagem.atributos || {}) };
+  atributos.pre = Number(atributos.pre || 0) - pendentes.length;
+  return {
+    patch: {
+      atributos,
+      monstruosoPresencaPerdida: [...(personagem.monstruosoPresencaPerdida || []), ...pendentes],
+    },
+  };
+}
+
+/**
  * Faz a etapa ritualística de hoje: consome o componente (se a classe
  * pedir), rola a recuperação de PV/PE (se houver), aplica a perda
  * permanente de Presença (se for a primeira vez neste patamar) e liga os
@@ -604,13 +735,8 @@ export function ativarHoje(personagem, nex, { onRolar } = {}) {
 
   // Perda permanente de Presença (65%/99%, por classe/elemento) — só na
   // primeira vez, nunca reverte.
-  const pendentes = presencaPendente(personagem, nex);
-  if (pendentes.length > 0) {
-    const atributos = { ...(patch.atributos || personagem.atributos) };
-    atributos.pre = Number(atributos.pre || 0) - pendentes.length;
-    patch.atributos = atributos;
-    patch.monstruosoPresencaPerdida = [...(personagem.monstruosoPresencaPerdida || []), ...pendentes];
-  }
+  const presenca = aplicarPresencaPendente(personagem, nex);
+  if (presenca) Object.assign(patch, presenca.patch);
 
   patch.monstruosoAtivoHoje = true;
   return { patch };
@@ -667,7 +793,7 @@ function linhasGeraisNoPatamar(classe, elemento, patamar) {
   const pen = PROGRESSAO_PENALIDADE[classe]?.[patamar];
   if (pen) {
     const lista = (PERICIAS_PENALIZADAS[classe]?.[elemento] || []).map(nomePericia).join(', ');
-    const valor = pen.dados ? `${pen.dados}O (${Math.abs(pen.dados)} dado${Math.abs(pen.dados) > 1 ? 's' : ''} a menos)` : `${pen.flat}`;
+    const valor = pen.dados ? `${Math.abs(pen.dados)} dado${Math.abs(pen.dados) > 1 ? 's' : ''} a menos` : `${pen.flat}`;
     linhas.push(`Penalidade em ${lista}: ${valor}`);
   }
 

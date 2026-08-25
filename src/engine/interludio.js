@@ -142,6 +142,12 @@ export function calcularInterludio({
     ...(semSanidade ? { pdTemp: 0 } : { sanTemp: 0 }),
     bonusExercicio: novoBonusExercicio,
     bonusLeitura: novoBonusLeitura,
+    // Combatente-Conhecimento (Trilha do Monstruoso, 65%): a perícia
+    // destreinada para abrir o banco de dados de bónus recupera o treino
+    // aqui, e o banco esvazia (ver escolherPericiaParaDestreinar em
+    // engine/monstruoso.js) — "recupera as perícias treinadas perdidas
+    // dessa forma ao final de seu próximo interlúdio", verbatim do livro.
+    ...restaurarPericiaMonstruoso(personagem),
   };
 
   if (limparCondicoes) {
@@ -193,6 +199,20 @@ export function aplicarDescansoPleno(personagem, max) {
     pdTemp: 0,
     sanTemp: 0,
     condicoes: [],
+    ...restaurarPericiaMonstruoso(personagem),
+  };
+}
+
+/** Ver nota acima (Combatente-Conhecimento, 65%) — parte comum a interlúdio e descanso pleno. */
+function restaurarPericiaMonstruoso(personagem) {
+  const id = personagem?.monstruosoPericiaDestreinada;
+  if (!id) return {};
+  const atual = personagem.pericias?.[id] || {};
+  return {
+    pericias: { ...(personagem.pericias || {}), [id]: { ...atual, grau: 'treinado' } },
+    monstruosoPericiaDestreinada: null,
+    monstruosoBancoDados: 0,
+    monstruosoBancoPendente: false,
   };
 }
 

@@ -19,7 +19,7 @@ import {
   classeMonstruosa, patamarAtual, elementoAtual, efeitosDiarios, nomePoderAtual, consequenciasAtivas,
   ativarHoje, desativarHoje, escolherElemento, limiteDrenagem, tudoPermanente,
   escolhasNecessarias, escolherRitual, escolherPericiasConhecimento, rituaisAtivos, resumoPorPatamar,
-  atributosEfetivos,
+  atributosEfetivos, escolherPericiaParaDestreinar, gastarDadoBanco,
 } from '../../engine/monstruoso.js';
 import { ELEMENTOS_MONSTRUOSO, NOME_PODER_POR_PATAMAR, COR_ELEMENTO, DRENAGEM_ATRIBUTO } from '../../data/monstruoso.js';
 import CabecalhoSeta from './CabecalhoSeta.jsx';
@@ -54,7 +54,11 @@ export function MonstruosoBotao({ personagem, setPersonagem, onRolar }) {
     setErro('');
     setDrenagem(0);
     if (!elemento) setModal('escolher');
-    else if (permanente) setModal(null); // nada para ligar/desligar — está sempre ativo
+    // Nada para ligar/desligar — a etapa já está sempre ativa (ver
+    // TUDO_PERMANENTE_DESDE em data/monstruoso.js). Antes o clique não fazia
+    // literalmente nada (setModal(null)), o que parecia um botão avariado —
+    // agora mostra uma explicação em vez de ficar em silêncio.
+    else if (permanente) setModal('permanente');
     else setModal(ativo ? 'desativar' : 'ativar');
   }
 
@@ -200,12 +204,38 @@ export function MonstruosoBotao({ personagem, setPersonagem, onRolar }) {
         </div>
       )}
 
+      {modal === 'permanente' && (
+        <div className="modal-fundo" style={{ zIndex: 100 }} onClick={(e) => e.target === e.currentTarget && setModal(null)}>
+          <div className="modal" style={{ maxWidth: 420, textAlign: 'center' }}>
+            <div className="modal-topo">
+              <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>Sempre Ativo ({elemento})</h3>
+              <button className="fechar" onClick={() => setModal(null)}>×</button>
+            </div>
+            <div className="modal-corpo">
+              <p style={{ color: 'var(--txt-dim)', fontSize: 14.5, marginBottom: 8 }}>
+                Ultrapassaste o patamar em que a Trilha do Monstruoso fica sempre ligada (Ser Aterrorizante, 99%)
+                — todos os bónus e penalidades da etapa de hoje ficam permanentemente em efeito, mesmo sem os
+                ativar manualmente. Não há nada para ligar ou desligar aqui.
+              </p>
+              <p style={{ color: 'var(--txt-fraco)', fontSize: 12.5, marginBottom: 22 }}>
+                (Continuas a precisar de fazer a etapa ritualística para não sofreres os efeitos de fome e sede
+                do livro — só não muda mais nada na ficha.)
+              </p>
+              <div style={{ display: 'flex', gap: 14, justifyContent: 'center' }}>
+                <button type="button" onClick={() => setModal('confirmarMudarElemento')} title="Trocar de elemento (não é suposto — só para engano ou exceção do mestre)" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--txt-fraco)', textDecoration: 'underline' }}>Trocar de elemento</button>
+                <button className="btn" onClick={() => setModal(null)}>Entendido</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {modal === 'confirmarMudarElemento' && (
         <div className="modal-fundo" style={{ zIndex: 100 }}>
           <div className="modal" style={{ maxWidth: 420, textAlign: 'center' }}>
             <div className="modal-topo">
               <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>Trocar de elemento?</h3>
-              <button className="fechar" onClick={() => setModal(ativo ? 'desativar' : 'ativar')}>×</button>
+              <button className="fechar" onClick={() => setModal(permanente ? 'permanente' : ativo ? 'desativar' : 'ativar')}>×</button>
             </div>
             <div className="modal-corpo">
               <p style={{ color: 'var(--txt-dim)', fontSize: 14.5, marginBottom: 22 }}>
@@ -214,7 +244,7 @@ export function MonstruosoBotao({ personagem, setPersonagem, onRolar }) {
                 permitir uma exceção.
               </p>
               <div style={{ display: 'flex', gap: 14, justifyContent: 'center' }}>
-                <button className="btn ghost" onClick={() => setModal(ativo ? 'desativar' : 'ativar')}>Cancelar</button>
+                <button className="btn ghost" onClick={() => setModal(permanente ? 'permanente' : ativo ? 'desativar' : 'ativar')}>Cancelar</button>
                 <button className="btn" style={{ borderColor: 'var(--sangue)', background: 'var(--sangue)' }} onClick={() => setModal('escolher')}>Sim, escolher outro elemento</button>
               </div>
             </div>
@@ -337,6 +367,8 @@ export function MonstruosoPainel({ personagem, setPersonagem, onRolar }) {
   // desativar) — os dois hooks abaixo estavam depois dos "return null".
   const [peModalAberto, setPeModalAberto] = useState(false);
   const [peRascunho, setPeRascunho] = useState(1);
+  const [periciaBancoEscolha, setPericiaBancoEscolha] = useState('');
+  const [erroBanco, setErroBanco] = useState('');
 
   const classe = classeMonstruosa(personagem);
   if (!classe) return null;
@@ -430,6 +462,26 @@ export function MonstruosoPainel({ personagem, setPersonagem, onRolar }) {
     }));
   }
 
+  // Combatente-Conhecimento 65% (Ser Assustador): deixar de ser treinado
+  // numa perícia para abrir um banco de dados de bónus (= Intelecto);
+  // gastar 1 dado dá +1 ao pool do PRÓXIMO teste de perícia rolado (ver
+  // TabelaPericias.jsx). Recupera a perícia e esvazia o banco sozinho no
+  // próximo interlúdio (engine/interludio.js).
+  function confirmarDestreinar() {
+    setErroBanco('');
+    if (!periciaBancoEscolha) return;
+    const r = escolherPericiaParaDestreinar(personagem, periciaBancoEscolha, nex);
+    if (r.erro) { setErroBanco(r.erro); return; }
+    setPersonagem((p) => ({ ...p, ...r.patch }));
+    setPericiaBancoEscolha('');
+  }
+
+  function confirmarGastarDadoBanco() {
+    const r = gastarDadoBanco(personagem);
+    if (r.erro) { setErroBanco(r.erro); return; }
+    setPersonagem((p) => ({ ...p, ...r.patch }));
+  }
+
   // Combatente-Sangue 65% (Ser Assustador): 50% de chance de ignorar o dano
   // adicional de um crítico ou ataque furtivo — 1d2, 1 falha e 2 sucesso.
   function rolarChanceIgnorarDano() {
@@ -442,6 +494,28 @@ export function MonstruosoPainel({ personagem, setPersonagem, onRolar }) {
       notas: [sucesso ? 'Sucesso (2) — ignora o dano adicional do crítico/ataque furtivo' : 'Falha (1) — sofre o dano adicional normalmente'],
       sofreu: !sucesso,
     });
+  }
+
+  // Combatente-Energia 65% (Ser Assustador): ação de movimento + tocar uma
+  // fonte de eletricidade — recupera PE conforme o tamanho da fonte e
+  // descarrega-a por completo (livro: 1d4 portátil / 2d4 grande / 4d4 do
+  // tamanho de uma casa). Sem estado a guardar — é uma ação pontual.
+  const FONTES_ENERGIA = [
+    { id: 'portatil', nome: 'Dispositivo portátil (telemóvel, tablet)', dados: '1d4' },
+    { id: 'grande', nome: 'Dispositivo grande (mota, carro elétrico)', dados: '2d4' },
+    { id: 'casa', nome: 'Fonte do tamanho de uma casa', dados: '4d4' },
+  ];
+
+  function extrairEnergiaFonte(fonte) {
+    const r = rolarExpressao(fonte.dados);
+    if (!r) return;
+    onRolar({
+      ...r,
+      nome: `Ser Assustador — extrair energia (${fonte.nome})`,
+      notas: [`Recupera ${r.total} PE — a fonte fica completamente descarregada.`],
+    });
+    const max = calcMaximos(personagem);
+    setPersonagem((p) => ({ ...p, peAtual: Math.min(max.pe, Number(p.peAtual ?? max.pe) + r.total) }));
   }
 
   const cartaoAberto = aberto('cartao', true);
@@ -520,6 +594,69 @@ export function MonstruosoPainel({ personagem, setPersonagem, onRolar }) {
               >
                 Rolar 1d2 (ignorar dano adicional)
               </button>
+            )}
+            {aberto && classe === 'combatente' && elemento === 'Energia' && b.patamar === 65 && (
+              <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {FONTES_ENERGIA.map((fonte) => (
+                  <button
+                    key={fonte.id}
+                    className="btn ghost sm"
+                    title={`Ação de movimento + tocar a fonte — recupera ${fonte.dados} PE e descarrega-a por completo`}
+                    onClick={() => extrairEnergiaFonte(fonte)}
+                  >
+                    Extrair de {fonte.nome} ({fonte.dados} PE)
+                  </button>
+                ))}
+              </div>
+            )}
+            {aberto && classe === 'combatente' && elemento === 'Conhecimento' && b.patamar === 65 && (
+              <div style={{ marginTop: 8 }}>
+                {!personagem.monstruosoPericiaDestreinada ? (
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <select
+                      value={periciaBancoEscolha}
+                      onChange={(e) => setPericiaBancoEscolha(e.target.value)}
+                      style={{ fontSize: 12 }}
+                    >
+                      <option value="">-- escolhe uma perícia treinada --</option>
+                      {PERICIAS.filter((per) => {
+                        const g = personagem.pericias?.[per.id]?.grau;
+                        return g && g !== 'destreinado';
+                      }).map((per) => (
+                        <option key={per.id} value={per.id}>{per.nome}</option>
+                      ))}
+                    </select>
+                    <button
+                      className="btn ghost sm"
+                      disabled={!periciaBancoEscolha}
+                      title="Deixa de ser treinado nessa perícia e abre um banco de dados de bónus igual ao Intelecto"
+                      onClick={confirmarDestreinar}
+                    >
+                      Deixar de ser treinado (banco = Intelecto)
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 13, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span style={{ color: 'var(--txt-dim)' }}>
+                      <b>{PERICIAS.find((per) => per.id === personagem.monstruosoPericiaDestreinada)?.nome}</b> destreinada
+                      · banco: <b>{Number(personagem.monstruosoBancoDados || 0)}</b> dado(s)
+                      {' '}(recupera a perícia e o banco no próximo interlúdio)
+                    </span>
+                    <button
+                      className="btn ghost sm"
+                      disabled={!(Number(personagem.monstruosoBancoDados || 0) > 0)}
+                      title="Gasta 1 dado do banco — o PRÓXIMO teste de perícia rolado ganha +1 dado no pool"
+                      onClick={confirmarGastarDadoBanco}
+                    >
+                      Gastar 1 dado (+1 no próximo teste)
+                    </button>
+                    {personagem.monstruosoBancoPendente && (
+                      <span style={{ color: cor, fontSize: 12.5 }}>pronto — o próximo teste de perícia leva +1 dado</span>
+                    )}
+                  </div>
+                )}
+                {erroBanco && <p style={{ color: 'var(--sangue-claro)', fontSize: 12.5, marginTop: 6 }}>{erroBanco}</p>}
+              </div>
             )}
           </div>
         );

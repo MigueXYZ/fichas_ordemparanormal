@@ -39,7 +39,7 @@ const CIRCULOS = {
  * temporário de hoje". Quando o valor efetivo difere do base, o número
  * fica colorido (verde a subir, vermelho a descer) para ficar óbvio.
  */
-export default function RodaAtributos({ atributos, efetivos, onChange, onRolar, mini = false, podeSubir, podeDescer }) {
+export default function RodaAtributos({ atributos, efetivos, permanentes, onChange, onRolar, mini = false, podeSubir, podeDescer }) {
   return (
     <svg
       className={mini ? 'roda roda-mini' : 'roda'}
@@ -54,13 +54,14 @@ export default function RodaAtributos({ atributos, efetivos, onChange, onRolar, 
         const valorBase = Number(atributos[a.id] ?? 0);
         const valorEfetivo = Number((efetivos ? efetivos[a.id] : valorBase) ?? valorBase);
         const alterado = efetivos != null && valorEfetivo !== valorBase;
+        const perdaPermanente = Number((permanentes && permanentes[a.id]) || 0);
         const podeMais = podeSubir ? podeSubir(a.id) : true;
         const podeMenos = podeDescer ? podeDescer(a.id) : true;
         const yBotoes = c.cy + c.r + 20;
         return (
           <g key={a.id}>
             <text
-              className={'atr-valor' + (alterado ? (valorEfetivo > valorBase ? ' atr-buff' : ' atr-debuff') : '')}
+              className={'atr-valor' + (alterado ? (valorEfetivo > valorBase ? ' atr-buff' : ' atr-debuff') : (perdaPermanente > 0 ? ' atr-debuff' : ''))}
               data-attr={a.id}
               x={c.cx}
               y={c.ny}
@@ -71,6 +72,7 @@ export default function RodaAtributos({ atributos, efetivos, onChange, onRolar, 
               <title>
                 {onRolar ? `Rolar ${a.nome}: ${valorEfetivo}d20` : a.nome}
                 {alterado ? ` (base ${valorBase}, ${valorEfetivo > valorBase ? '+' : ''}${valorEfetivo - valorBase} da Trilha do Monstruoso)` : ''}
+                {!alterado && perdaPermanente > 0 ? ` (-${perdaPermanente} permanente da Trilha do Monstruoso, já aplicado ao valor base)` : ''}
               </title>
               {valorEfetivo}
             </text>

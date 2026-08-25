@@ -19,7 +19,7 @@ import GuiaCombate from './GuiaCombate.jsx';
 import { ajustarRecursos } from '../../engine/character.js';
 import { lerImagem } from '../../engine/armazenamento.js';
 import { rolarTeste } from '../../engine/dados.js';
-import { atributosEfetivos, reducaoDanoTrilhaAtiva } from '../../engine/monstruoso.js';
+import { atributosEfetivos, reducaoDanoTrilhaAtiva, aplicarPresencaPendente } from '../../engine/monstruoso.js';
 import {
   lerLayoutFicha,
   guardarLayoutFicha,
@@ -167,6 +167,18 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
   // ou desativar o poder, porque é sempre calculada ao vivo, nunca guardada.
   const rdTrilha = reducaoDanoTrilhaAtiva(personagem, nexUtil);
 
+  // Perda permanente de Presença da Trilha do Monstruoso (65%/99%, ver
+  // engine/monstruoso.js): normalmente dispara ao clicar "ativar" a etapa de
+  // hoje, mas o Combatente aos 99% já não tem esse clique (tudo fica sempre
+  // ligado, ver `tudoPermanente`) — por isso aplica-se aqui sozinha, sempre
+  // que a ficha é aberta/atualizada, em vez de depender de um componente
+  // específico do cabeçalho. Idempotente: só mexe em algo quando há mesmo
+  // um patamar por aplicar (ver `aplicarPresencaPendente`).
+  useEffect(() => {
+    const r = aplicarPresencaPendente(personagem, nexUtil);
+    if (r) setPersonagem((p) => ({ ...p, ...r.patch }));
+  }, [personagem, nexUtil, setPersonagem]);
+
   const max = calcMaximos(personagem);
   const d = calcDefesas(personagem);
 
@@ -267,6 +279,7 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
             <RodaAtributos
               atributos={personagem.atributos}
               efetivos={atributosEfetivos(personagem, nexUtil)}
+              permanentes={{ pre: (personagem.monstruosoPresencaPerdida || []).length }}
               mini
               onRolar={(a, valor) => onRolar(rolarTeste({ nome: a.nome, dados: valor, bonus: 0, detalhe: a.sigla }))}
               onChange={(attrId, v) => {

@@ -8,10 +8,10 @@ import { ORIGENS_POR_ID } from '../../data/origens.js';
 import { calcCarga, calcItensPorCategoria, nexEfetivo, calcMaximos, calcDtRitual, detalheDtRitual } from '../../engine/calc.js';
 import { PATENTES, PATENTES_POR_ID, CATEGORIAS, categoriaRomana } from '../../data/patentes.js';
 import { novoAtaque, novoItem, novaHabilidade, novoRitual } from '../../engine/character.js';
-import { rolarAtaqueCompleto, rolarDano, rolarTeste } from '../../engine/dados.js';
+import { rolarAtaqueCompleto, rolarDano, rolarTeste, quantidadeDados } from '../../engine/dados.js';
 import { estatisticasArma, interpretarCritico, armaDoItem, ehArma, formulaTeste } from '../../engine/armas.js';
 import { precoDoRitual } from '../../engine/rituais.js';
-import { ataquesNaturaisAtivos, rituaisAtivos, temComponentesDoElemento, classeMonstruosa, elementoAtual, patamarAtual } from '../../engine/monstruoso.js';
+import { ataquesNaturaisAtivos, rituaisAtivos, temComponentesDoElemento, classeMonstruosa, elementoAtual, patamarAtual, efetivamenteAtivo, atributosEfetivos } from '../../engine/monstruoso.js';
 import { ELEMENTOS_MONSTRUOSO, COR_ELEMENTO } from '../../data/monstruoso.js';
 import EditorArma from './EditorArma.jsx';
 import { calcPericias } from '../../engine/calc.js';
@@ -124,6 +124,21 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
   const lista = [...listaPropria, ...naturais];
   const [acertos, setAcertos] = useState({});
   const [aEditarArma, setAEditarArma] = useState(null); // { indice, arma } ou null
+  const [peEnergia, setPeEnergia] = useState({}); // { [indice]: quantidade de PE a gastar no próximo dano }
+
+  // Combatente-Energia 40% (Ser Macabro): ao acertar um ataque corpo a
+  // corpo, pode gastar 1+ PE (limitado pela Agilidade) por +1d6 de dano de
+  // Energia por PE gasto — verbatim data/classes/combatente.js.
+  const podeGastarPeEnergia = classeMonstruosa(personagem) === 'combatente'
+    && elementoAtual(personagem) === 'Energia' && patamarAtual(nex) >= 40
+    && efetivamenteAtivo(personagem, nex);
+
+  function limitePeEnergia() {
+    const max = calcMaximos(personagem);
+    const peAtualAgora = Number(personagem.peAtual ?? max.pe);
+    const agilidade = Number(atributosEfetivos(personagem, nex).agi || 0);
+    return Math.max(0, Math.min(peAtualAgora, agilidade));
+  }
 
   // Combatente Sangue 99% ("Ser Aterrorizante"): sempre que causa dano com a
   // mordida, recupera 5 PV (x2 em crítico) — automático, sem botão.
@@ -165,14 +180,26 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
   function danificar(a, i) {
     const e = estatisticasArma(personagem, a);
     const critico = Boolean(acertos[i]?.critico);
+    const corpoACorpo = a.pericia === 'luta';
+    const nEnergia = podeGastarPeEnergia && corpoACorpo
+      ? Math.max(0, Math.min(Number(peEnergia[i]) || 0, limitePeEnergia()))
+      : 0;
+    const extras = nEnergia > 0
+      ? [...e.extras, { expr: `${nEnergia}d6`, elemental: true, tipoDano: 'Energia' }]
+      : e.extras;
     const r = rolarDano({
       nome: `${a.nome || 'Ataque'} — dano`,
-      dano: e.dano, bonus: e.bonusDano, extras: e.extras,
+      dano: e.dano, bonus: e.bonusDano, extras,
       critico, multiplicador: e.multiplicador,
     });
     if (r) {
       onRolar(r);
       if (a.nome === 'Mordida (Monstruoso)') recuperarPvMordida(r.critico);
+      if (nEnergia > 0) {
+        const max = calcMaximos(personagem);
+        setPersonagem((p) => ({ ...p, peAtual: Number(p.peAtual ?? max.pe) - nEnergia }));
+        setPeEnergia((prev) => ({ ...prev, [i]: 0 }));
+      }
     }
     else onRolar({ id: String(Math.random()), tipo: 'dano', nome: 'Dano inválido', rolagens: [], bonus: 0, total: 0 });
   }
@@ -198,10 +225,10 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
                       {a._monstruoso && <span className="pill" style={{ marginLeft: 8, fontSize: 10 }} title={a.notas}>MONSTRUOSO</span>}
                     </b>
                     <div className="arma-stats" style={{ fontSize: '14px' }}>
-                      <span title={`Teste de ${e.pericia.nome} com ${NOME_ATRIBUTO[e.atributoTeste] || ''}${e.dados > 0 ? '' : ' — com o atributo a 0 rolas 2 dados e fica o pior'}`}>
+                      <span title={`Teste de ${e.pericia.nome} com ${NOME_ATRIBUTO[e.atributoTeste] || ''}${e.dados > 0 ? '' : ` — dados reduzidos: rolas ${quantidadeDados(e.dados)}d20 e fica o pior`}`}>
                         {e.pericia.nome}{' '}
-                        <span style={{ color: e.dados === 0 ? '#ef4444' : '#22c55e' }}>
-                          {e.dados === 0 ? 2 : e.dados}d20
+                        <span style={{ color: e.dados <= 0 ? '#ef4444' : '#22c55e' }}>
+                          {quantidadeDados(e.dados)}d20
                         </span>
                         {e.bonusAtaque ? (e.bonusAtaque > 0 ? ` +${e.bonusAtaque}` : ` ${e.bonusAtaque}`) : ''}
                         {e.dadosExtraAtaque.length > 0 && ` + ${e.dadosExtraAtaque.join(' + ')}`}
@@ -249,6 +276,17 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
                       >
                         Ataque extra (1 PE)
                       </button>
+                    )}
+                    {podeGastarPeEnergia && a.pericia === 'luta' && (
+                      <span title="Ser Macabro (40%) — gasta 1+ PE (limitado pela Agilidade) por +1d6 de dano de Energia por PE gasto, no PRÓXIMO dano rolado" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5 }}>
+                        <span style={{ color: 'var(--txt-dim)' }}>PE p/ dano Energia:</span>
+                        <input
+                          type="number" min={0} max={limitePeEnergia()}
+                          value={peEnergia[i] || 0}
+                          onChange={(ev) => setPeEnergia((prev) => ({ ...prev, [i]: Math.max(0, Math.min(limitePeEnergia(), Number(ev.target.value) || 0)) }))}
+                          style={{ width: 44, fontSize: 12.5 }}
+                        />
+                      </span>
                     )}
                     <button
                       className={'btn sm' + (acerto?.critico ? '' : ' ghost')}
@@ -716,7 +754,7 @@ export function AbaRituais({ personagem, setPersonagem }) {
             DT de ritual{' '}
             <span
               className="info-icone"
-              title={`10 + ${dtDetalhe.bonusNex} (bónus de NEX ${dtDetalhe.nex}%) + ${dtDetalhe.presenca} (Presença) = ${dtDetalhe.total}`}
+              title={`10 + ${dtDetalhe.bonusNex} (bónus de NEX ${dtDetalhe.nex}%) + ${dtDetalhe.presenca} (${dtDetalhe.atributoDt ? NOME_ATRIBUTO[dtDetalhe.atributoDt] || dtDetalhe.atributoDt : 'Presença'}${dtDetalhe.atributoDt ? ' — Trilha do Monstruoso' : ''}) = ${dtDetalhe.total}`}
             >
               i
             </span>

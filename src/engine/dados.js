@@ -3,8 +3,20 @@ function d20() {
 }
 
 /**
+ * Quantos d20 uma pool de "n" rola. Acima de 0, rolas "n" e ficas com o
+ * melhor. Em 0 ou menos, a pool passa a ser "fica com o pior" e CRESCE
+ * conforme desces abaixo de 0 — não fica sempre presa em 2: com 0 rolas 2,
+ * com -1 rolas 3, com -2 rolas 4, etc. (cada dado de penalidade a mais some
+ * um dado extra à pool do pior, em vez de desaparecer sem efeito).
+ */
+export function quantidadeDados(n) {
+  return n > 0 ? n : 2 - n;
+}
+
+/**
  * Teste em Ordem Paranormal: rolas tantos d20 quantos o valor do atributo e
- * ficas com o melhor. Com atributo 0 rolas 2 e ficas com o pior.
+ * ficas com o melhor. Com atributo 0 (ou menos, por penalidade de dado)
+ * rolas 2+ e ficas com o pior — ver quantidadeDados acima.
  * Crítico = o dado escolhido saiu 20. Falha crítica = saiu 1.
  */
 /**
@@ -15,7 +27,7 @@ function d20() {
  */
 export function rolarTeste({ nome, dados, bonus = 0, detalhe = '', dadosExtra = [] }) {
   const n = Number(dados) || 0;
-  const quantidade = n > 0 ? n : 2;
+  const quantidade = quantidadeDados(n);
   const rolagens = Array.from({ length: quantidade }, d20);
   const escolhido = n > 0 ? Math.max(...rolagens) : Math.min(...rolagens);
   const b = Number(bonus) || 0;
@@ -39,7 +51,7 @@ export function rolarTeste({ nome, dados, bonus = 0, detalhe = '', dadosExtra = 
     nome,
     detalhe,
     dados: quantidade,
-    piorDeDois: n === 0,
+    piorDeDois: n <= 0,
     rolagens,
     escolhido,
     bonus: b,

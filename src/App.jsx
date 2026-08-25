@@ -9,6 +9,7 @@ import HistoricoRolagens from './components/HistoricoRolagens.jsx';
 import PainelOverlay from './components/PainelOverlay.jsx';
 import EditorOverlay from './components/EditorOverlay.jsx';
 import FichaAmeaca from './components/ficha/FichaAmeaca.jsx';
+import ModoMestre from './components/mestre/ModoMestre.jsx';
 import ModalDefinicoes from './components/ModalDefinicoes.jsx';
 import BuscaGlobal from './components/ficha/BuscaGlobal.jsx';
 import { IconeOBS, IconeHistorico, IconeEngrenagem, IconeBusca } from './components/Icones.jsx';
@@ -21,7 +22,7 @@ import { lerConfig, guardarConfig, publicar } from './overlay/transporte.js';
 import { lerLayout, guardarLayout } from './overlay/layoutConfig.js';
 
 export default function App() {
-  const [vista, setVista] = useState('inicio'); // inicio | wizard | ficha
+  const [vista, setVista] = useState('inicio'); // inicio | wizard | ficha | mestre
   const [personagem, setPersonagem] = useState(null);
   const [rolagens, setRolagens] = useState([]);
   const [erro, setErro] = useState(null);
@@ -145,6 +146,10 @@ export default function App() {
     setVista('ficha');
   }
 
+  function abrirMestre() {
+    setVista('mestre');
+  }
+
   function voltarAoInicio() {
     if (personagem && !(!obterAgente(personagem.id) && personagemEhRascunhoVazio(personagem))) {
       guardarAgente(personagem);
@@ -208,7 +213,6 @@ export default function App() {
           <button type="button" className="busca-topbar" onClick={() => setVerBusca(true)} title="Busca rápida — rituais, poderes, perícias, itens, condições">
             <IconeBusca size={15} className="busca-topbar-icone" />
             <span className="busca-topbar-texto">Busca rápida…</span>
-            <span className="busca-topbar-atalho">Ctrl+K</span>
           </button>
         )}
 
@@ -278,7 +282,7 @@ export default function App() {
 
       {erro && <div className="container" style={{ paddingBottom: 0 }}><div className="aviso"><strong>Erro:</strong> {erro}</div></div>}
 
-      {vista === 'inicio' && <Inicio aoCriar={criar} aoAbrir={abrir} />}
+      {vista === 'inicio' && <Inicio aoCriar={criar} aoAbrir={abrir} aoAbrirMestre={abrirMestre} />}
       {vista === 'wizard' && personagem && (
         <Wizard personagem={personagem} setPersonagem={setPersonagem} onRolar={rolar} onFinalizar={() => setVista('ficha')} onSair={sairDoWizard} />
       )}
@@ -288,6 +292,8 @@ export default function App() {
       {vista === 'ficha' && personagem && personagem.tipo !== 'ameaca' && (
         <Ficha personagem={personagem} setPersonagem={setPersonagem} onRolar={rolar} />
       )}
+
+      {vista === 'mestre' && <ModoMestre aoAbrir={abrir} />}
 
       {verDefinicoes && (
         <ModalDefinicoes
