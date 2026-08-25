@@ -110,6 +110,24 @@ export const RESISTENCIA_TIPOS_COMBATENTE = {
   Energia: 'corte, eletricidade, fogo e Energia',
 };
 
+/**
+ * Os mesmos tipos de RESISTENCIA_TIPOS_COMBATENTE acima, mas como ids de
+ * `TIPOS_DANO` (engine/danoRecetor.js) — usado para somar automaticamente
+ * este valor à Redução de Dano da ficha (ver `reducaoDanoTrilhaAtiva` em
+ * engine/monstruoso.js). "Resistência a Dano X" no livro é RD fixa (desconta
+ * X do dano), não a Resistência (½ dano) da ficha — por pedido explícito do
+ * utilizador.
+ */
+export const RESISTENCIA_TIPOS_COMBATENTE_IDS = {
+  Sangue: ['balistico', 'sangue'],
+  Morte: ['perfuracao', 'morte'],
+  Conhecimento: ['balistico', 'conhecimento'],
+  Energia: ['corte', 'eletricidade', 'fogo', 'energia'],
+};
+
+/** Energia (Combatente), 65%+: "Resistência a dano passa a cobrir também dano químico" — soma-se a RESISTENCIA_TIPOS_COMBATENTE_IDS.Energia a partir deste patamar. */
+export const RESISTENCIA_ENERGIA_QUIMICO_DESDE = 65;
+
 /** O que cada classe recupera ao fazer a etapa ritualística, por patamar. */
 export const RECUPERACAO_POR_PATAMAR = {
   combatente: { 10: null, 40: null, 65: null, 99: null }, // Combatente não recupera PV/PE ao fazer a etapa

@@ -8,6 +8,7 @@ import {
   elementoAtual as elementoAtualMonstruoso,
 } from './monstruoso.js';
 import { ATRIBUTO_DO_ELEMENTO } from '../data/monstruoso.js';
+import { PROTECOES } from '../data/itens.js';
 
 export const NEX_TRACK = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 99];
 
@@ -173,6 +174,21 @@ export function calcDeslocamento(personagem) {
   return finalDesloc;
 }
 
+/**
+ * Bónus de Defesa das Proteções marcadas (checkboxes de `personagem.protecao`
+ * — ids de `PROTECOES`, ver data/itens/geral.js). Substitui o antigo campo
+ * "Equipamento" escrito à mão: a Defesa passa a somar sozinha o que a
+ * Proteção Leve/Pesada/Escudo já dá no livro, sem precisar de intervenção
+ * manual — ao contrário do Bloqueio/Esquiva, a Defesa não tem um valor à
+ * mão que substitua o cálculo.
+ */
+export function defesaDasProtecoes(personagem) {
+  const marcadas = Array.isArray(personagem.protecao) ? personagem.protecao : [];
+  return PROTECOES
+    .filter((p) => marcadas.includes(p.id))
+    .reduce((total, p) => total + (Number(p.defesa) || 0), 0);
+}
+
 export function calcDefesa(personagem) {
   const conds = calcPenalidadesCondicoes(personagem);
   const carga = calcCarga(personagem);
@@ -182,11 +198,31 @@ export function calcDefesa(personagem) {
   return (
     10 +
     Number(a.agi || 0) +
-    Number(personagem.defesaEquipamento || 0) +
+    defesaDasProtecoes(personagem) +
     Number(personagem.defesaOutros || 0) +
     conds.penalidadeDefesa +
     penalidadeCarga
   );
+}
+
+/**
+ * DT para resistir a um ritual — "calculada como a DT de qualquer
+ * habilidade... usando como atributo Presença" (Livro Base, pág. 78):
+ * 10 + bónus de NEX (posição no NEX_TRACK, 1 no 1º degrau 5% até 20 no
+ * último 99%) + Presença. Ex.: Presença 3, NEX 5% -> 14 (10+1+3);
+ * Presença 5, NEX 99% -> 35 (10+20+5).
+ */
+export function calcDtRitual(personagem) {
+  return detalheDtRitual(personagem).total;
+}
+
+/** Mesmo cálculo de `calcDtRitual`, mas devolve as parcelas para mostrar a conta (tooltip). */
+export function detalheDtRitual(personagem) {
+  const nex = nexEfetivo(personagem);
+  const a = atributosEfetivosMonstruoso(personagem, nex);
+  const bonusNex = nexIndex(nex) + 1;
+  const presenca = Number(a.pre || 0);
+  return { nex, bonusNex, presenca, total: 10 + bonusNex + presenca };
 }
 
 export function calcDefesas(personagem) {
@@ -194,10 +230,12 @@ export function calcDefesas(personagem) {
   const bonusDe = (id) => pericias.find((p) => p.id === id) || { treino: 0, bonus: 0 };
   const fortitude = bonusDe('fortitude');
   const reflexos = bonusDe('reflexos');
-  const defesa = calcDefesa(personagem);
+  const defesaAuto = calcDefesa(personagem);
   const nex = nexEfetivo(personagem);
 
   const manual = (v) => (v === null || v === undefined || v === '' ? null : Number(v));
+  const defesaManual = manual(personagem.defesaManual);
+  const defesa = defesaManual !== null ? defesaManual : defesaAuto;
   const bloqueioManual = manual(personagem.bloqueioManual);
   const esquivaManual = manual(personagem.esquivaManual);
 
@@ -216,6 +254,8 @@ export function calcDefesas(personagem) {
 
   return {
     defesa,
+    defesaAuto,
+    defesaManual: defesaManual !== null,
     bloqueio: {
       disponivel: bloqueioManual !== null || fortitude.treino > 0 || rdTrilhaGeral > 0,
       manual: bloqueioManual !== null,
@@ -348,7 +388,7 @@ export function espacosDasArmas(personagem) {
 
 export function calcCarga(personagem) {
   const max = calcCargaMaxima(personagem);
-  const dosItens = (personagem.inventario || []).reduce((t, i) => t + (Number(i.espacos) || 0), 0);
+  const dosItens = (personagem.inventario || []).reduce((t, i) => t + (Number(i.espacos) || 0) * (Number(i.quantidade) || 1), 0);
   const dasArmas = espacosDasArmas(personagem);
   const usados = dosItens + dasArmas;
   return {
@@ -363,6 +403,10 @@ export function calcItensPorCategoria(personagem) {
   const usados = { 0: 0, I: 0, II: 0, III: 0, IV: 0 };
   for (const item of personagem.inventario || []) {
     const cat = categoriaRomana(item.categoria);
+    if (cat) usados[cat] = (usados[cat] || 0) + (Number(item.quantidade) || 1);
+  }
+  for (const arma of personagem.ataques || []) {
+    const cat = categoriaRomana(arma.categoria);
     if (cat) usados[cat] = (usados[cat] || 0) + 1;
   }
   const linhas = CATEGORIAS.map((cat) => ({

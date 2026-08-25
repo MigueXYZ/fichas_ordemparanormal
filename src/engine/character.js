@@ -46,15 +46,19 @@ export function personagemVazio() {
     pdTemp: 0,
     sanTemp: 0,     // NOVO: Sanidade temporária
 
-    defesaEquipamento: 0,
+    condicoes: [],          // ids de CONDICOES (data/condicoes.js) ativas
+    turnosMorrendo: 0,      // condição "morrendo": turnos começados a 0 PV nesta cena (3 = morre)
+    tenacidadeTestes: 0,    // poder Tenacidade: testes de Fortitude já feitos nesta cena (DT 20 + 10 por anterior)
+
     defesaOutros: 0,
     bloqueioExtra: 0,
     esquivaExtra: 0,
-    bloqueioManual: null,   // se preenchido, manda sobre o cálculo automático
+    defesaManual: null,     // se preenchido, manda sobre o cálculo automático — igual a bloqueio/esquiva
+    bloqueioManual: null,
     esquivaManual: null,
-    protecao: '',
-    resistencias: '',
-    proficiencias: '',
+    protecao: [],           // ids de PROTECOES marcados (checkboxes) — a Defesa soma-os sozinha
+    resistencias: [],       // Resistências (checkboxes): id puro (ex.: "sangue") = sem número, esse dano fica a metade (arredondado p/ baixo); "Nome N" (ex.: "Sangue 5") = com número, desconta N ao dano em vez da metade — ver engine/danoRecetor.js → repartirResistenciasFicha
+    proficiencias: [],      // etiquetas de PROFICIENCIAS_OP marcadas (checkboxes)
     deslocamento: 9,
     penalidadeCarga: 0,
 
@@ -80,6 +84,41 @@ export function personagemVazio() {
     descricao: { aparencia: '', personalidade: '', historico: '', objetivo: '' },
     anotacoes: '',
   };
+}
+
+/**
+ * Verifica se o personagem ainda está exatamente como personagemVazio() o
+ * deixou — ou seja, se o jogador abriu "criar novo agente" e fechou sem
+ * mexer em nada. Só olha para os campos que o assistente deixa preencher
+ * (nome, atributos, origem, classe, ...); campos técnicos como `id` ou
+ * `historico` ficam de fora — comparar tudo seria frágil.
+ */
+export function personagemEhRascunhoVazio(p) {
+  if (!p) return true;
+  const vazio = personagemVazio();
+  const atributosIguais = Object.keys(vazio.atributos).every(
+    (k) => Number(p.atributos?.[k] ?? vazio.atributos[k]) === vazio.atributos[k]
+  );
+  const descricaoVazia = Object.keys(vazio.descricao).every((k) => !p.descricao?.[k]);
+  return (
+    !p.nome?.trim() &&
+    !p.jogador?.trim() &&
+    Number(p.nex) === vazio.nex &&
+    !p.origemId &&
+    !p.origemCustom &&
+    !p.classeId &&
+    !p.trilhaId &&
+    atributosIguais &&
+    !(p.tags && p.tags.length) &&
+    !p.imagem &&
+    !p.token &&
+    !p.patente?.trim() &&
+    !p.creditoLimite?.trim?.() &&
+    !p.pontosPrestigio?.trim?.() &&
+    !p.patenteTexto?.trim?.() &&
+    !p.anotacoes?.trim() &&
+    descricaoVazia
+  );
 }
 
 /** Depois de mudar classe/NEX/atributos, garante que os atuais não passam do máximo. */

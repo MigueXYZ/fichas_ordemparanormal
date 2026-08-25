@@ -2,26 +2,32 @@
  * Conteúdo dos Arquivos Secretos 1–7, extraído livro a livro (ver os ficheiros
  * as01.js … as07.js, cada um com a proveniência das suas entradas).
  *
- * Os pacotes 2, 4 e 6 não trazem trilhas nem origens novas: o 2 e o 6 só têm
- * poderes, itens, rituais e regras, e as origens do 4 e do 6 já vinham de
- * outros livros. Ficam na mesma como ficheiros vazios documentados, para se
- * saber que foram lidos.
+ * O pacote 2 e o 6 não trazem trilhas nem origens novas: só têm poderes,
+ * itens, rituais e regras. Ficam na mesma como ficheiros vazios documentados,
+ * para se saber que foram lidos.
+ *
+ * Correção: o pacote 4 (Complexo 0413) foi lido antes a partir de uma fonte
+ * errada, que levou a duas "origens" inventadas ("Antepassado Jurássico" e
+ * "Conhecimento Galináceo", nunca publicadas pela Jambô) a viverem soltas em
+ * origens.js. Foram removidas depois de ler o PDF real do pacote — que traz,
+ * sim, duas origens novas e uma trilha, agora em as04.js.
  */
 import { TRILHAS_AS01, ORIGENS_AS01 } from './as01.js';
 import { TRILHAS_AS02, ORIGENS_AS02 } from './as02.js';
 import { TRILHAS_AS03, ORIGENS_AS03 } from './as03.js';
+import { TRILHAS_AS04, ORIGENS_AS04 } from './as04.js';
 import { TRILHAS_AS05, ORIGENS_AS05 } from './as05.js';
 import { TRILHAS_AS06, ORIGENS_AS06 } from './as06.js';
 import { TRILHAS_AS07, ORIGENS_AS07 } from './as07.js';
 
 export const ORIGENS_EXTRA = [
-  ...ORIGENS_AS01, ...ORIGENS_AS02, ...ORIGENS_AS03,
+  ...ORIGENS_AS01, ...ORIGENS_AS02, ...ORIGENS_AS03, ...ORIGENS_AS04,
   ...ORIGENS_AS05, ...ORIGENS_AS06, ...ORIGENS_AS07,
 ];
 
 /** Todas as trilhas dos suplementos, cada uma com o campo `classe`. */
 const TRILHAS_EXTRA = [
-  ...TRILHAS_AS01, ...TRILHAS_AS02, ...TRILHAS_AS03,
+  ...TRILHAS_AS01, ...TRILHAS_AS02, ...TRILHAS_AS03, ...TRILHAS_AS04,
   ...TRILHAS_AS05, ...TRILHAS_AS06, ...TRILHAS_AS07,
 ];
 

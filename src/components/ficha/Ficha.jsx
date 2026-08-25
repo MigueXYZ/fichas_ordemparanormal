@@ -3,18 +3,23 @@ import RodaAtributos from '../RodaAtributos.jsx';
 import BarraRecurso from './BarraRecurso.jsx';
 import TabelaPericias from './TabelaPericias.jsx';
 import PainelCondicoes from './PainelCondicoes.jsx';
+import PainelMorrendo from './PainelMorrendo.jsx';
 import { AbaCombate, AbaHabilidades, AbaRituais, AbaInventario, AbaDescricao } from './Abas.jsx';
 import CabecalhoSeta from './CabecalhoSeta.jsx';
 import { MonstruosoBotao, MonstruosoPainel } from './Monstruoso.jsx';
 import { CLASSES, trilhasDaClasse } from '../../data/classes.js';
 import { ORIGENS } from '../../data/origens.js';
 import { REGRAS_ATRIBUTOS } from '../../data/atributos.js';
-import { calcMaximos, calcDefesas, calcPePorRodada, calcDeslocamento, degrauNex, nexEfetivo, NEX_TRACK } from '../../engine/calc.js';
+import { calcMaximos, calcDefesas, defesaDasProtecoes, calcPePorRodada, calcDeslocamento, degrauNex, nexEfetivo, NEX_TRACK } from '../../engine/calc.js';
+import { PROTECOES, PROFICIENCIAS_OP } from '../../data/itens.js';
+import { TIPOS_DANO } from '../../engine/danoRecetor.js';
 import RegrasOpcionais from './RegrasOpcionais.jsx';
+import Alteracoes from './Alteracoes.jsx';
+import GuiaCombate from './GuiaCombate.jsx';
 import { ajustarRecursos } from '../../engine/character.js';
 import { lerImagem } from '../../engine/armazenamento.js';
 import { rolarTeste } from '../../engine/dados.js';
-import { atributosEfetivos } from '../../engine/monstruoso.js';
+import { atributosEfetivos, reducaoDanoTrilhaAtiva } from '../../engine/monstruoso.js';
 import {
   lerLayoutFicha,
   guardarLayoutFicha,
@@ -76,13 +81,48 @@ const ABAS = [
   { id: 'descricao', nome: 'Descrição' },
 ];
 
+// Medo (entre os TIPOS_DANO de engine/danoRecetor.js) ignora Resistências por
+// definição — fica fora da lista de checkboxes.
+const TIPOS_DANO_FICHA = TIPOS_DANO.filter((t) => !t.ignoraRd);
+
+/**
+ * Lê o estado de Resistência de `tipo` na lista da ficha (`personagem.resistencias`):
+ * `null` = não marcada; `{ valor: null }` = marcada sem número (½ dano);
+ * `{ valor: N }` = marcada com número (desconta N ao dano, em vez da metade).
+ */
+function estadoResistencia(lista, tipo) {
+  const arr = Array.isArray(lista) ? lista : [];
+  if (arr.includes(tipo.id)) return { valor: null };
+  const entrada = arr.find((e) => e === tipo.nome || e.startsWith(tipo.nome + ' '));
+  if (!entrada) return null;
+  const m = entrada.match(/(\d+)\s*$/);
+  return { valor: m ? Number(m[1]) : null };
+}
+
+/**
+ * Marca/desmarca ou muda o número da Resistência de `tipo` na lista.
+ * `valor`: `null` = desmarcar; `undefined` = marcar sem número (½ dano);
+ * um número = marcar com esse número (RD fixa).
+ */
+function definirResistencia(lista, tipo, valor) {
+  const atual = (Array.isArray(lista) ? lista : []).filter((e) => e !== tipo.id && e !== tipo.nome && !e.startsWith(tipo.nome + ' '));
+  if (valor === null) return atual;
+  if (valor === undefined) return [...atual, tipo.id];
+  return [...atual, `${tipo.nome} ${valor}`];
+}
+
 export default function Ficha({ personagem, setPersonagem, onRolar }) {
   const [aba, setAba] = useState('combate');
   const [erroFoto, setErroFoto] = useState(null);
   const [verRegras, setVerRegras] = useState(false);
+  const [verAlteracoes, setVerAlteracoes] = useState(false);
+  const [verGuiaCombate, setVerGuiaCombate] = useState(false);
   const [contasDefesaAberta, setContasDefesaAberta] = useState(false);
   const [contasBloqueioAberta, setContasBloqueioAberta] = useState(false);
   const [contasEsquivaAberta, setContasEsquivaAberta] = useState(false);
+  const [abertaProtecao, setAbertaProtecao] = useState(false);
+  const [abertaResistencias, setAbertaResistencias] = useState(false);
+  const [abertaProficiencias, setAbertaProficiencias] = useState(false);
   const [menuAvatarAberto, setMenuAvatarAberto] = useState(false);
   const [layoutFicha, setLayoutFicha] = useState(lerLayoutFicha);
   const [modoEdicaoLayout, setModoEdicaoLayout] = useState(false);
@@ -121,6 +161,11 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
 
   const regras = personagem.regras || {};
   const nexUtil = nexEfetivo(personagem);
+  // Resistência a Dano concedida automaticamente pela Trilha do Monstruoso
+  // (Combatente) — mostra-se já marcada na aba de Resistências, ligada em
+  // tempo real ao mesmo cálculo do Recetor de Dano; some sozinha ao perder
+  // ou desativar o poder, porque é sempre calculada ao vivo, nunca guardada.
+  const rdTrilha = reducaoDanoTrilhaAtiva(personagem, nexUtil);
 
   const max = calcMaximos(personagem);
   const d = calcDefesas(personagem);
@@ -231,10 +276,16 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
               podeSubir={(attrId) => personagem.atributos[attrId] < REGRAS_ATRIBUTOS.maximoAbsoluto}
               podeDescer={(attrId) => personagem.atributos[attrId] > 0}
             />
-            <div className="linha-regras" style={{ width: '100%', textAlign: 'center' }}>
+            <div className="linha-regras" style={{ width: '100%', textAlign: 'center', display: 'flex', gap: 8, justifyContent: 'center' }}>
               <button type="button" className="btn ghost sm" onClick={() => setVerRegras(true)}>
                 Regras opcionais
                 {(regras.nivelSeparado || regras.semSanidade) && <span className="ponto-ligado" title="Há regras ligadas" />}
+              </button>
+              <button type="button" className="btn ghost sm" onClick={() => setVerAlteracoes(true)}>
+                Alterações
+              </button>
+              <button type="button" className="btn ghost sm" onClick={() => setVerGuiaCombate(true)} title="Guia rápido de ações de combate">
+                Guia de Combate
               </button>
             </div>
           </div>
@@ -340,24 +391,28 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
           <div className="seccao-bloco defesas" style={{ width: '100%' }}>
             <div className="defesa-caixa">
               <div className="rotulo">Defesa</div>
-              <span className="num">{d.defesa}</span>
+              <InputNumeroScroll
+                className="num"
+                value={d.defesaManual ? personagem.defesaManual : d.defesa}
+                placeholder=""
+                title="Escreve o valor à mão ou roda o scroll; deixa vazio para voltar ao automático"
+                onChange={(v) => set({ defesaManual: v })}
+              />
               <div style={{ display: 'flex', justifyContent: 'center', marginTop: 4 }}>
                 <CabecalhoSeta estaAberto={contasDefesaAberta} onClick={() => setContasDefesaAberta((v) => !v)} />
               </div>
               {contasDefesaAberta && (
                 <div className="conta">
-                  10 + AGI +
-                  <InputNumeroScroll
-                    value={personagem.defesaEquipamento}
-                    onChange={(v) => set({ defesaEquipamento: v ?? 0 })}
-                    title="Equipamento · Altera com o scroll"
-                  />
-                  +
-                  <InputNumeroScroll
+                  10 + AGI + Proteção ({defesaDasProtecoes(personagem)})
+                  <br />
+                  extra <InputNumeroScroll
                     value={personagem.defesaOutros}
                     onChange={(v) => set({ defesaOutros: v ?? 0 })}
                     title="Outros · Altera com o scroll"
                   />
+                  {d.defesaManual && (
+                    <button type="button" className="voltar-auto" onClick={() => set({ defesaManual: null })}>auto ({d.defesaAuto})</button>
+                  )}
                 </div>
               )}
             </div>
@@ -366,7 +421,7 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
               <div className="rotulo">Bloqueio</div>
               <InputNumeroScroll
                 className="num"
-                value={d.bloqueio.manual ? personagem.bloqueioManual : (d.bloqueio.disponivel ? d.bloqueio.valor : '')}
+                value={d.bloqueio.manual ? personagem.bloqueioManual : d.bloqueio.valor}
                 placeholder=""
                 title="Escreve o valor à mão ou roda o scroll; deixa vazio para voltar ao automático"
                 onChange={(v) => set({ bloqueioManual: v })}
@@ -397,7 +452,7 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
               <div className="rotulo">Esquiva</div>
               <InputNumeroScroll
                 className="num"
-                value={d.esquiva.manual ? personagem.esquivaManual : (d.esquiva.disponivel ? d.esquiva.valor : '')}
+                value={d.esquiva.manual ? personagem.esquivaManual : d.esquiva.valor}
                 placeholder=""
                 title="Escreve o valor à mão ou roda o scroll; deixa vazio para voltar ao automático"
                 onChange={(v) => set({ esquivaManual: v })}
@@ -429,11 +484,120 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
               condicoes={personagem.condicoes || []}
               aoMudar={(novas) => set({ condicoes: novas })}
             />
+            <PainelMorrendo personagem={personagem} nex={nexUtil} onRolar={onRolar} aoMudar={set} />
 
             <div style={{ marginTop: 16 }}>
-              <div className="campo-linha"><label>Proteção</label><input type="text" value={personagem.protecao} onChange={(e) => set({ protecao: e.target.value })} /></div>
-              <div className="campo-linha"><label>Resistências</label><input type="text" value={personagem.resistencias} onChange={(e) => set({ resistencias: e.target.value })} /></div>
-              <div className="campo-linha"><label>Proficiências</label><input type="text" value={personagem.proficiencias} onChange={(e) => set({ proficiencias: e.target.value })} /></div>
+              <CabecalhoSeta estaAberto={abertaProtecao} onClick={() => setAbertaProtecao((v) => !v)}>
+                Proteção
+              </CabecalhoSeta>
+              {abertaProtecao && (
+                <div className="grupo-checkboxes-ficha">
+                  {PROTECOES.map((p) => {
+                    const marcado = (personagem.protecao || []).includes(p.id);
+                    return (
+                      <label key={p.id} className={'item-checkbox-ficha' + (marcado ? ' marcado' : '')}>
+                        <input
+                          type="checkbox"
+                          checked={marcado}
+                          onChange={(e) => {
+                            const marcadas = personagem.protecao || [];
+                            set({ protecao: e.target.checked ? [...marcadas, p.id] : marcadas.filter((id) => id !== p.id) });
+                          }}
+                        />
+                        {p.nome}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginTop: 16 }}>
+              <CabecalhoSeta estaAberto={abertaResistencias} onClick={() => setAbertaResistencias((v) => !v)}>
+                Resistências
+              </CabecalhoSeta>
+              {abertaResistencias && (
+                <>
+                  {['Físico', 'Elemental', 'Mental', 'Geral'].map((categoria) => {
+                    const doGrupo = TIPOS_DANO_FICHA.filter((t) => t.categoria === categoria);
+                    if (doGrupo.length === 0) return null;
+                    return (
+                      <div key={categoria}>
+                        <div className="subtitulo-grupo-checkbox">{categoria}</div>
+                        <div className="grupo-checkboxes-ficha" style={{ marginTop: 0 }}>
+                          {doGrupo.map((t) => {
+                            const estado = estadoResistencia(personagem.resistencias, t);
+                            const valorTrilha = rdTrilha[t.id]; // número ou undefined
+                            const soTrilha = estado === null && valorTrilha !== undefined; // nada marcado à mão — mostra só o automático
+                            const marcado = estado !== null || valorTrilha !== undefined;
+                            return (
+                              <label
+                                key={t.id}
+                                className={'item-checkbox-ficha' + (marcado ? ' marcado' : '')}
+                                title={soTrilha ? 'Concedido automaticamente pela Trilha do Monstruoso — desliga sozinho ao perder ou desativar o poder' : undefined}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={marcado}
+                                  disabled={soTrilha}
+                                  onChange={(e) => {
+                                    set({ resistencias: definirResistencia(personagem.resistencias, t, e.target.checked ? undefined : null) });
+                                  }}
+                                />
+                                <span style={{ color: marcado ? t.cor : undefined }}>{t.nome}</span>
+                                {marcado && (
+                                  <span className="cauda-item-resistencia">
+                                    {estado !== null && (
+                                      <InputNumeroScroll
+                                        className="input-valor-resistencia"
+                                        value={estado.valor}
+                                        placeholder="½"
+                                        onChange={(v) => set({ resistencias: definirResistencia(personagem.resistencias, t, v === null ? undefined : v) })}
+                                        title={`Resistência a ${t.nome} · vazio = metade do dano (arredondado p/ baixo), com número = desconta esse valor · Altera com o scroll`}
+                                      />
+                                    )}
+                                    {valorTrilha !== undefined && (
+                                      <span className="valor-trilha-resistencia" title="Concedido pela Trilha do Monstruoso — soma-se ao que marcares à mão">
+                                        {estado !== null ? `+${valorTrilha}` : valorTrilha}
+                                      </span>
+                                    )}
+                                  </span>
+                                )}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+            </div>
+
+            <div style={{ marginTop: 16 }}>
+              <CabecalhoSeta estaAberto={abertaProficiencias} onClick={() => setAbertaProficiencias((v) => !v)}>
+                Proficiências
+              </CabecalhoSeta>
+              {abertaProficiencias && (
+                <div className="grupo-checkboxes-ficha">
+                  {PROFICIENCIAS_OP.map((nome) => {
+                    const marcado = (personagem.proficiencias || []).includes(nome);
+                    return (
+                      <label key={nome} className={'item-checkbox-ficha' + (marcado ? ' marcado' : '')}>
+                        <input
+                          type="checkbox"
+                          checked={marcado}
+                          onChange={(e) => {
+                            const marcadas = personagem.proficiencias || [];
+                            set({ proficiencias: e.target.checked ? [...marcadas, nome] : marcadas.filter((n) => n !== nome) });
+                          }}
+                        />
+                        {nome}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -608,15 +772,33 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
       </div>
 
       <div className="cabecalho-ficha">
-        <div>
-          <label className="retrato" style={personagem.imagem ? { backgroundImage: `url(${personagem.imagem})` } : undefined}>
-            {!personagem.imagem && 'Foto ou GIF'}
-            <input type="file" accept="image/*,image/gif" onChange={escolherFoto} />
-          </label>
-          {personagem.imagem && (
-            <button className="btn ghost sm" style={{ marginTop: 6, width: '100%' }} onClick={() => set({ imagem: null })}>
-              Tirar foto
-            </button>
+        <div ref={containerAvatarRef} style={{ position: 'relative' }}>
+          <div
+            className="retrato"
+            style={personagem.imagem ? { backgroundImage: `url(${personagem.imagem})` } : undefined}
+            onClick={() => {
+              if (personagem.imagem) setMenuAvatarAberto((v) => !v);
+              else fileInputRef.current?.click();
+            }}
+          >
+            {!personagem.imagem && 'Avatar'}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,image/gif"
+              style={{ display: 'none' }}
+              onChange={escolherFoto}
+            />
+          </div>
+          {menuAvatarAberto && personagem.imagem && (
+            <div className="menu-avatar">
+              <button type="button" onClick={() => { setMenuAvatarAberto(false); fileInputRef.current?.click(); }}>
+                Trocar imagem
+              </button>
+              <button type="button" className="remover" onClick={() => { setMenuAvatarAberto(false); set({ imagem: null }); }}>
+                Remover imagem
+              </button>
+            </div>
           )}
           {erroFoto && <div className="aviso" style={{ maxWidth: 200, fontSize: 11 }}>{erroFoto}</div>}
         </div>
@@ -679,6 +861,14 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
         />
       )}
 
+      {verAlteracoes && (
+        <Alteracoes nex={personagem.nex} aoFechar={() => setVerAlteracoes(false)} />
+      )}
+
+      {verGuiaCombate && (
+        <GuiaCombate aoFechar={() => setVerGuiaCombate(false)} />
+      )}
+
       {/* Grelha Modular por Widgets da Ficha */}
       <div className={`ficha colunas-${layoutFicha.numColunas || 3}`}>
         {layoutFicha.colunas.slice(0, layoutFicha.numColunas).map((col, colIdx) => (
@@ -732,6 +922,7 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
           personagem={personagem}
           max={max}
           defesas={d}
+          nex={nexUtil}
           aoAplicarDano={(patch) => set(patch)}
           aoFechar={() => setModalDanoAberto(false)}
         />

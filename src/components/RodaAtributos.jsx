@@ -22,11 +22,11 @@ import { ATRIBUTOS } from '../data/atributos.js';
 const BASE = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/';
 
 const CIRCULOS = {
-  agi: { cx: 490.0, cy: 199.5, r: 114, ny: 157 },
-  for: { cx: 185.5, cy: 427.0, r: 122, ny: 374 },
-  int: { cx: 800.0, cy: 425.0, r: 120, ny: 370 },
-  pre: { cx: 281.5, cy: 791.5, r: 121, ny: 740 },
-  vig: { cx: 688.5, cy: 792.0, r: 122, ny: 740 },
+  agi: { cx: 480.0, cy: 190.0, r: 135, ny: 148 },
+  for: { cx: 175.0, cy: 418.0, r: 135, ny: 362 },
+  int: { cx: 785.0, cy: 418.0, r: 135, ny: 362 },
+  pre: { cx: 270.0, cy: 778.0, r: 135, ny: 724 },
+  vig: { cx: 690.0, cy: 778.0, r: 135, ny: 724 },
 };
 
 /**
@@ -43,11 +43,11 @@ export default function RodaAtributos({ atributos, efetivos, onChange, onRolar, 
   return (
     <svg
       className={mini ? 'roda roda-mini' : 'roda'}
-      viewBox="0 0 1000 1004"
+      viewBox="0 0 960 968"
       role="group"
       aria-label="Atributos"
     >
-      <image href={`${BASE}img/roda-atributos-v2.png`} x="0" y="0" width="1000" height="1004" />
+      <image href={`${BASE}img/roda-atributos-v2.png`} x="0" y="0" width="960" height="968" />
 
       {ATRIBUTOS.map((a) => {
         const c = CIRCULOS[a.id];
@@ -56,7 +56,7 @@ export default function RodaAtributos({ atributos, efetivos, onChange, onRolar, 
         const alterado = efetivos != null && valorEfetivo !== valorBase;
         const podeMais = podeSubir ? podeSubir(a.id) : true;
         const podeMenos = podeDescer ? podeDescer(a.id) : true;
-        const yBotoes = c.cy + c.r + 36;
+        const yBotoes = c.cy + c.r + 20;
         return (
           <g key={a.id}>
             <text

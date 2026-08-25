@@ -1,6 +1,7 @@
 // RITUAIS — agregador dos ficheiros extraídos dos livros.
 import { RITUAIS_PARTE1 } from './rituais/parte1.js';
 import { RITUAIS_PARTE2 } from './rituais/parte2.js';
+import { RITUAIS_AS04 } from './rituais/as04.js';
 
 // Alguns rituais têm mais do que um elemento possível (o elemento é escolhido
 // ao aprender). Guardamos a lista em `elementos` e usamos 'variavel' no campo simples.
@@ -10,7 +11,7 @@ function normalizar(r) {
   return { ...r, elemento: 'variavel', elementos: partes };
 }
 
-export const RITUAIS = [...RITUAIS_PARTE1, ...RITUAIS_PARTE2]
+export const RITUAIS = [...RITUAIS_PARTE1, ...RITUAIS_PARTE2, ...RITUAIS_AS04]
   .map(normalizar)
   .sort((a, b) => a.circulo - b.circulo || a.nome.localeCompare(b.nome, 'pt'));
 

@@ -1,6 +1,6 @@
 // Armas de Ordem Paranormal RPG.
 // Extraido de: Livro Base (cap. 3 - Equipamento), Sobrevivendo ao Horror,
-// Arquivos Secretos 3.
+// Arquivos Secretos 3, Arquivos Secretos 4.
 // Legenda de tipo de dano do livro: C = corte, I = impacto, P = perfuracao,
 // B = balistico. Aqui os tipos aparecem por extenso.
 
@@ -577,6 +577,23 @@ export const ARMAS = [
   // ==========================================================
   // Armas Pesadas - À Distância - Duas Mãos
   // ==========================================================
+  {
+    id: 'lancador-de-granadas',
+    nome: 'Lançador de Granadas',
+    grupo: 'Arma Pesada à Distância',
+    categoria: 2,
+    dano: null,
+    critico: null,
+    alcance: 'Longo',
+    tipoDano: null,
+    espacos: 2,
+    empunhadura: 'Duas mãos',
+    pericia: 'pontaria',
+    propriedades: ['Comporta até 6 granadas de modelo 40mm', 'Recarga: ação de movimento por granada'],
+    descricao:
+      'Essa arma é projetada para lançar granadas à longas distâncias, atingindo alvos com maior precisão e velocidade. Um lançador de granadas é uma arma de fogo pesada de duas mãos com alcance longo. Ele comporta até 6 granadas de modelo 40mm. Recarregá-lo com 1 granada gasta uma ação de movimento. As granadas 40mm são modelos específicos de granada que funcionam com as regras descritas em OPRPG (pp. 63-64), com a exceção de que elas não funcionam se arremessadas, apenas se atiradas por um lançador. Além disso, o lançador de granadas não dispara granadas de modelo arremessável. O lançador de granadas causa seu dano no alvo atingido (teste de ataque à distância contra Defesa resolvido normalmente) e em todos os seres num raio descrito pela granada usada. Esses seres (mas não o alvo atingido diretamente) têm direito a fazer o teste de resistência oferecido pela granada. Você pode disparar a granada num ponto qualquer em alcance longo, em vez de num ser específico; nesse caso, não precisa rolar ataque e não tem chance de errar (mas também não acerta nenhum ser diretamente, todos na área podem fazer o teste de resistência).',
+    livro: 'Arquivos Secretos 4',
+  },
   {
     id: 'bazuca',
     nome: 'Bazuca',

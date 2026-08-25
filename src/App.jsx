@@ -11,9 +11,9 @@ import EditorOverlay from './components/EditorOverlay.jsx';
 import FichaAmeaca from './components/ficha/FichaAmeaca.jsx';
 import ModalDefinicoes from './components/ModalDefinicoes.jsx';
 import { IconeOBS, IconeHistorico, IconeEngrenagem } from './components/Icones.jsx';
-import { personagemVazio } from './engine/character.js';
+import { personagemVazio, personagemEhRascunhoVazio } from './engine/character.js';
 import { descarregarPdf } from './export/pdf.js';
-import { guardarAgente, exportarJson, novoId } from './engine/armazenamento.js';
+import { guardarAgente, obterAgente, exportarJson, novoId } from './engine/armazenamento.js';
 import { tocarRolagem, alternarSom, somLigado, alternarCoracao, coracaoLigado } from './engine/som.js';
 import { calcMaximos } from './engine/calc.js';
 import { lerConfig, guardarConfig, publicar } from './overlay/transporte.js';
@@ -28,9 +28,13 @@ export default function App() {
   const [guardadoEm, setGuardadoEm] = useState(null);
   const temporizador = useRef(null);
 
-  // guarda sozinho, 800 ms depois da última alteração
+  // guarda sozinho, 800 ms depois da última alteração — mas nunca cria um
+  // agente novo só porque o assistente ficou aberto: se ainda não existia
+  // guardado e continua tal como personagemVazio() o deixou, não há nada
+  // para guardar (ver personagemEhRascunhoVazio em engine/character.js)
   useEffect(() => {
     if (!personagem || vista === 'inicio') return undefined;
+    if (!obterAgente(personagem.id) && personagemEhRascunhoVazio(personagem)) return undefined;
     clearTimeout(temporizador.current);
     temporizador.current = setTimeout(() => {
       const guardado = guardarAgente(personagem);
@@ -39,6 +43,15 @@ export default function App() {
     }, 800);
     return () => clearTimeout(temporizador.current);
   }, [personagem, vista]);
+
+  // enquanto o assistente de criação está aberto, a página em si não rola —
+  // só o interior da "TV" (.crt-tela, ver CrtEcra.jsx) — para ela ficar
+  // sempre centrada no ecrã em vez de se poder perder a rolar por trás dela
+  useEffect(() => {
+    if (vista !== 'wizard') return undefined;
+    document.body.classList.add('sem-scroll');
+    return () => document.body.classList.remove('sem-scroll');
+  }, [vista]);
 
   const [som, setSom] = useState(somLigado);
   const [coracao, setCoracao] = useState(coracaoLigado);
@@ -116,7 +129,16 @@ export default function App() {
   }
 
   function voltarAoInicio() {
-    if (personagem) guardarAgente(personagem);
+    if (personagem && !(!obterAgente(personagem.id) && personagemEhRascunhoVazio(personagem))) {
+      guardarAgente(personagem);
+    }
+    setPersonagem(null);
+    setVista('inicio');
+  }
+
+  // a cruz da TV (ver Wizard.jsx) já decide sozinha se guarda ou apaga o
+  // rascunho antes de chamar isto — aqui é só mesmo sair, sem voltar a mexer
+  function sairDoWizard() {
     setPersonagem(null);
     setVista('inicio');
   }
@@ -138,7 +160,7 @@ export default function App() {
   const comToken = vista !== 'inicio' && Boolean(personagem) && personagem.tipo !== 'ameaca';
 
   return (
-    <div className="app">
+    <div className={'app' + (vista === 'wizard' ? ' app-wizard-fixo' : '')}>
       <Fundo />
       {comToken && (
         <EspacoToken
@@ -231,7 +253,7 @@ export default function App() {
 
       {vista === 'inicio' && <Inicio aoCriar={criar} aoAbrir={abrir} />}
       {vista === 'wizard' && personagem && (
-        <Wizard personagem={personagem} setPersonagem={setPersonagem} onRolar={rolar} onFinalizar={() => setVista('ficha')} />
+        <Wizard personagem={personagem} setPersonagem={setPersonagem} onRolar={rolar} onFinalizar={() => setVista('ficha')} onSair={sairDoWizard} />
       )}
       {vista === 'ficha' && personagem && personagem.tipo === 'ameaca' && (
         <FichaAmeaca ameaca={personagem} setAmeaca={setPersonagem} onRolar={rolar} />

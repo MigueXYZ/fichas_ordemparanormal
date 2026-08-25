@@ -1,9 +1,9 @@
 // ITENS — agregador de armas, proteções, equipamento geral e itens amaldiçoados.
 import { ARMAS } from './itens/armas.js';
-import { ITENS_GERAIS, PROTECOES, GRUPOS_ITENS_GERAIS, MODIFICACOES_PROTECAO, MODIFICACOES_ACESSORIO } from './itens/geral.js';
+import { ITENS_GERAIS, PROTECOES, GRUPOS_ITENS_GERAIS, MODIFICACOES_PROTECAO, MODIFICACOES_ACESSORIO, MODIFICACOES_GRANADA } from './itens/geral.js';
 import { ITENS_AMALDICOADOS } from './itens/amaldicoados.js';
 
-export { ARMAS, ITENS_GERAIS, PROTECOES, ITENS_AMALDICOADOS, GRUPOS_ITENS_GERAIS, MODIFICACOES_PROTECAO, MODIFICACOES_ACESSORIO };
+export { ARMAS, ITENS_GERAIS, PROTECOES, ITENS_AMALDICOADOS, GRUPOS_ITENS_GERAIS, MODIFICACOES_PROTECAO, MODIFICACOES_ACESSORIO, MODIFICACOES_GRANADA };
 
 // atenção: alguns itens já trazem um campo `tipo` do livro (ex.: proteção "Leve",
 // item amaldiçoado "Arma"). Guardamos esse valor em `subtipo` para não o perder.
@@ -57,6 +57,12 @@ export const TIPOS_DANO = [
   { id: 'energia', nome: 'Energia', pdf: 'energia' },
   { id: 'conhecimento', nome: 'Conhecimento', pdf: 'conhecimento' },
 ];
+
+// As 5 categorias de proficiência oficiais do livro (armas e proteções) —
+// usadas como checkboxes no campo "Proficiências" da ficha, em vez de texto
+// livre. As mesmas etiquetas já vêm nos catálogos de classe (ex.:
+// data/classes/combatente.js: `proficiencias: ['Armas simples', ...]`).
+export const PROFICIENCIAS_OP = ['Armas simples', 'Armas táticas', 'Armas pesadas', 'Proteções leves', 'Proteções pesadas'];
 
 export function itensFiltrados({ tipo = null, texto = '' } = {}) {
   const t = texto.trim().toLowerCase();

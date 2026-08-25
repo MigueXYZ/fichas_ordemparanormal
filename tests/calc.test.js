@@ -51,10 +51,10 @@ teste('defesa = 10 + AGI (print: 11 com AGI 1)', () => {
   assert.equal(calcDefesa(p), 11);
 });
 
-teste('defesa soma equipamento e outros', () => {
+teste('defesa soma a Proteção marcada (checkbox) e outros', () => {
   const p = personagemVazio();
   p.atributos.agi = 3;
-  p.defesaEquipamento = 5;
+  p.protecao = ['protecao-leve']; // +5 Defesa — ver PROTECOES em data/itens/geral.js
   p.defesaOutros = 2;
   assert.equal(calcDefesa(p), 20);
 });
@@ -150,6 +150,24 @@ teste('extras manuais somam a bloqueio e esquiva', () => {
   const d = calcDefesas(p);
   assert.equal(d.bloqueio.valor, 7);
   assert.equal(d.esquiva.valor, 11 + 5 + 3);
+});
+
+teste('valor escrito à mão também manda sobre a Defesa, igual a bloqueio e esquiva', () => {
+  const p = personagemVazio();
+  p.atributos.agi = 1; // Defesa automática = 11
+  p.pericias.reflexos.grau = 'treinado';
+  p.defesaManual = 25;
+  const d = calcDefesas(p);
+  assert.equal(d.defesaManual, true);
+  assert.equal(d.defesa, 25);
+  assert.equal(d.defesaAuto, 11);
+  // a Esquiva ("Defesa + Reflexos") segue a Defesa atual, manual ou não
+  assert.equal(d.esquiva.valor, 25 + d.esquiva.base);
+  // apagar o campo devolve o automático
+  p.defesaManual = null;
+  const d2 = calcDefesas(p);
+  assert.equal(d2.defesaManual, false);
+  assert.equal(d2.defesa, 11);
 });
 
 
@@ -655,7 +673,7 @@ teste('interpretarResistencias extrai valores de texto e arrays', async () => {
   assert.equal(r2.geral, 2);
 });
 
-teste('calcularDanoRecebido abate resistências do agente no dano combinado', async () => {
+teste('calcularDanoRecebido abate a Resistência (nº) marcada na ficha no dano combinado', async () => {
   const { calcularDanoRecebido } = await import('../src/engine/danoRecetor.js');
 
   const personagem = {
@@ -736,6 +754,138 @@ teste('calcularDanoRecebido desconta dano mental na Sanidade', async () => {
   assert.equal(res.totalLiquidoPv, 10);
   assert.equal(res.novoSanAtual, 14); // 24 - 10 = 14
   assert.equal(res.novoPvAtual, 20); // 30 - 10 = 20
+});
+
+teste('calcularDanoRecebido: Resistência marcada SEM número corta o dano do tipo a metade', async () => {
+  const { calcularDanoRecebido, tiposComResistencia } = await import('../src/engine/danoRecetor.js');
+
+  const personagem = {
+    pvAtual: 40,
+    resistencias: ['sangue'], // checkbox marcada, sem número
+  };
+  const max = { pv: 40 };
+
+  const res = calcularDanoRecebido({
+    parcelas: [{ valor: 7, tipoId: 'sangue' }],
+    personagem,
+    max,
+  });
+
+  // 7 de Sangue com Resistência: metade arredondada para baixo = 3.
+  assert.equal(res.detalhesParcelas[0].resistente, true);
+  assert.equal(res.totalLiquidoPv, 3);
+  assert.equal(res.novoPvAtual, 37); // 40 - 3
+
+  assert.equal(tiposComResistencia(['sangue', 'nao-existe']).has('sangue'), true);
+  assert.equal(tiposComResistencia(['sangue', 'nao-existe']).has('nao-existe'), false);
+});
+
+teste('calcularDanoRecebido: Resistência marcada COM número desconta esse valor, em vez de cortar a metade', async () => {
+  const { calcularDanoRecebido } = await import('../src/engine/danoRecetor.js');
+
+  const personagem = {
+    pvAtual: 40,
+    resistencias: ['Sangue 2'], // checkbox marcada COM número — RD fixa, não os 50%
+  };
+  const max = { pv: 40 };
+
+  const res = calcularDanoRecebido({
+    parcelas: [{ valor: 9, tipoId: 'sangue' }],
+    personagem,
+    max,
+  });
+
+  // 9 de Sangue - 2 (RD fixa marcada) = 7 — NÃO corta a metade, porque tem número.
+  assert.equal(res.detalhesParcelas[0].resistente, false);
+  assert.equal(res.detalhesParcelas[0].danoLiquido, 7);
+  assert.equal(res.novoPvAtual, 33); // 40 - 7
+});
+
+teste('calcularDanoRecebido: a Redução de Dano automática da Trilha soma-se mesmo quando a Resistência manual do tipo é só a metade (½)', async () => {
+  const { calcularDanoRecebido } = await import('../src/engine/danoRecetor.js');
+
+  const personagem = { pvAtual: 40, resistencias: ['sangue'] }; // ½, sem número
+  const max = { pv: 40 };
+
+  const res = calcularDanoRecebido({
+    parcelas: [{ valor: 20, tipoId: 'sangue' }],
+    personagem,
+    max,
+    rdTrilha: { sangue: 4 },
+  });
+
+  // 20 -> metade (10, Resistência) -> -4 (RD da Trilha) = 6.
+  assert.equal(res.detalhesParcelas[0].resistente, true);
+  assert.equal(res.detalhesParcelas[0].danoLiquido, 6);
+});
+
+teste('reducaoDanoTrilhaAtiva: Combatente-Sangue concede RD automática a balístico e Sangue, só com a etapa ativa', async () => {
+  const { reducaoDanoTrilhaAtiva, escolherElemento, ativarHoje, desativarHoje } = await import('../src/engine/monstruoso.js');
+  const { personagemVazio } = await import('../src/engine/character.js');
+
+  let p = { ...personagemVazio(), classeId: 'combatente', trilhaId: 'monstruoso' };
+  p = { ...p, ...escolherElemento('Sangue').patch };
+
+  // Ainda sem ativar a etapa de hoje: nada.
+  assert.deepEqual(reducaoDanoTrilhaAtiva(p, 40), {});
+
+  const r = ativarHoje(p, 40, {});
+  p = { ...p, ...r.patch };
+  // 40% (Ser Macabro): RD 10 em balístico e Sangue (RESISTENCIA_POR_PATAMAR/RESISTENCIA_TIPOS_COMBATENTE).
+  assert.deepEqual(reducaoDanoTrilhaAtiva(p, 40), { balistico: 10, sangue: 10 });
+  // Outro tipo de dano não coberto por este elemento não entra.
+  assert.equal(reducaoDanoTrilhaAtiva(p, 40).morte, undefined);
+
+  p = { ...p, ...desativarHoje().patch };
+  assert.deepEqual(reducaoDanoTrilhaAtiva(p, 40), {});
+});
+
+teste('reducaoDanoTrilhaAtiva: Combatente-Energia 65%+ passa a cobrir também dano químico', async () => {
+  const { reducaoDanoTrilhaAtiva, escolherElemento, ativarHoje } = await import('../src/engine/monstruoso.js');
+  const { personagemVazio } = await import('../src/engine/character.js');
+
+  let p = { ...personagemVazio(), classeId: 'combatente', trilhaId: 'monstruoso' };
+  p = { ...p, ...escolherElemento('Energia').patch };
+  const r = ativarHoje(p, 65, {});
+  p = { ...p, ...r.patch };
+
+  const rd = reducaoDanoTrilhaAtiva(p, 65);
+  assert.equal(rd.quimico, 15); // RESISTENCIA_POR_PATAMAR[65]
+  assert.equal(rd.corte, 15);
+  assert.equal(rd.eletricidade, 15);
+  assert.equal(rd.fogo, 15);
+  assert.equal(rd.energia, 15);
+});
+
+teste('calcularDanoRecebido: a Redução de Dano da Trilha soma-se à marcada à mão no Recetor de Dano', async () => {
+  const { calcularDanoRecebido } = await import('../src/engine/danoRecetor.js');
+  const { reducaoDanoTrilhaAtiva, escolherElemento, ativarHoje } = await import('../src/engine/monstruoso.js');
+  const { personagemVazio } = await import('../src/engine/character.js');
+
+  let p = { ...personagemVazio(), classeId: 'combatente', trilhaId: 'monstruoso', pvAtual: 40 };
+  p = { ...p, ...escolherElemento('Sangue').patch };
+  const r = ativarHoje(p, 40, {});
+  p = { ...p, ...r.patch, resistencias: ['Sangue 5'] }; // + 5 marcados à mão na ficha (Resistência com número)
+
+  const max = { pv: 40 };
+  const res = calcularDanoRecebido({
+    parcelas: [{ valor: 20, tipoId: 'sangue' }],
+    personagem: p,
+    max,
+    rdTrilha: reducaoDanoTrilhaAtiva(p, 40),
+  });
+
+  // RD da trilha (10) + RD à mão (5) = 15 de Redução de Dano em Sangue.
+  assert.equal(res.detalhesParcelas[0].danoLiquido, 5); // 20 - 15
+  assert.equal(res.novoPvAtual, 35); // 40 - 5
+
+  // Sem rdTrilha (ex.: modal não ligado), só os 5 manuais contariam — confirma que o campo é mesmo necessário.
+  const semTrilha = calcularDanoRecebido({
+    parcelas: [{ valor: 20, tipoId: 'sangue' }],
+    personagem: p,
+    max,
+  });
+  assert.equal(semTrilha.detalhesParcelas[0].danoLiquido, 15); // 20 - 5
 });
 
 console.log('\nSistema de Interlúdio e Descanso (US #84)');

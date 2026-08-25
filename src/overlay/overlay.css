@@ -58,10 +58,11 @@ body.corpo-overlay::before, body.corpo-overlay::after { display: none !important
   animation: ov-dado-entra-some 6s ease-in-out forwards;
 }
 @keyframes ov-dado-entra-some {
-  0% { opacity: 0; transform: translateY(-20px) scale(0.8); }
-  15% { opacity: 1; transform: translateY(0) scale(1); }
-  80% { opacity: 1; transform: translateY(0) scale(1); }
-  100% { opacity: 0; transform: translateY(20px) scale(0.9); }
+  0% { opacity: 0; transform: translateY(-20px) scale(0.8) rotate(-55deg); }
+  15% { opacity: 1; transform: translateY(0) scale(1) rotate(8deg); }
+  22% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+  80% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+  100% { opacity: 0; transform: translateY(20px) scale(0.9) rotate(35deg); }
 }
 
 .ov-dado-forma {
@@ -106,8 +107,31 @@ body.corpo-overlay::before, body.corpo-overlay::after { display: none !important
 @keyframes ov-entrar { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
 .ov-rolagem.critico { border-color: var(--ok); box-shadow: 0 0 26px rgba(74,222,128,.3), 0 10px 30px rgba(0,0,0,.8); }
 .ov-rolagem.falha { border-color: #7a1016; }
-.ov-rolagem .icone { width: 34px; height: 34px; color: var(--sangue); }
+.ov-rolagem .icone { width: 34px; height: 34px; color: var(--sangue); animation: dado-rola .45s ease-out; }
 .ov-rolagem.critico .icone { color: var(--ok); }
+@keyframes dado-rola {
+  0% { opacity: 0; transform: rotate(-160deg) scale(.6); }
+  70% { opacity: 1; transform: rotate(12deg) scale(1.05); }
+  100% { opacity: 1; transform: rotate(0deg) scale(1); }
+}
+/* d2: a "moeda" tem a sua própria animação 3D (vira de face), por isso não
+   soma o giro 2D genérico dos outros dados. */
+.ov-rolagem .icone.icone-d2 { animation: none; }
+.icone-d2 { display: inline-block; perspective: 220px; }
+.icone-d2 .moeda-interior {
+  display: block; position: relative; width: 100%; height: 100%;
+  transform-style: preserve-3d;
+  animation: moeda-vira .6s ease-out;
+}
+.icone-d2 .moeda-face { display: block; position: absolute; inset: 0; width: 100%; height: 100%; backface-visibility: hidden; }
+.icone-d2 .moeda-face-b { transform: rotateY(180deg); }
+@keyframes moeda-vira {
+  0% { opacity: 0; transform: rotateY(0deg) scale(.6); }
+  20% { opacity: 1; transform: rotateY(180deg) scale(1); }
+  50% { transform: rotateY(540deg) scale(1); }
+  80% { transform: rotateY(900deg) scale(1); }
+  100% { opacity: 1; transform: rotateY(900deg) scale(1); }
+}
 .ov-r-nome { font-family: var(--display); font-size: 19px; line-height: 1.2; }
 .ov-rolagem .conta { font-size: 13px; color: var(--txt-dim); }
 .ov-rolagem .conta .melhor { color: var(--txt); font-weight: 700; }

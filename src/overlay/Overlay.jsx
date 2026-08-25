@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { subscrever } from './transporte.js';
 import { LAYOUT_PADRAO } from './layoutConfig.js';
 import IconeD20 from '../components/IconeD20.jsx';
+import IconeDado from '../components/IconesDados.jsx';
 import { Dados } from '../components/PainelRolagem.jsx';
 import { ExibirDanoSeparado } from '../components/ExibirDano.jsx';
 
@@ -38,7 +39,7 @@ function DadoResultado({ rolagem, cor, corTexto }) {
 
   return (
     <div className={classe} key={rolagem.id} title={rolagem.nome}>
-      <IconeD20 className="ov-dado-forma" style={estiloDado} />
+      <IconeDado faces={rolagem.faces} className="ov-dado-forma" style={estiloDado} />
       <span className="ov-dado-total" style={estiloTexto}>{rolagem.total}</span>
     </div>
   );
@@ -392,7 +393,7 @@ export default function Overlay({ config, semDiagnostico = false }) {
             <div className="ov-rolagens" style={{ opacity: opacidade }}>
               {rolagens.map((r) => (
                 <div key={r.id} className={'ov-rolagem' + (r.critico ? ' critico' : '') + (r.falhaCritica ? ' falha' : '')} style={{ borderColor: corBorda }}>
-                  <IconeD20 className="icone" />
+                  <IconeDado faces={r.faces} className="icone" />
                   <div className="ov-corpo">
                     <div className="ov-r-nome">
                       {r.nome}{r.critico ? ' · crítico' : ''}{r.falhaCritica ? ' · falha crítica' : ''}

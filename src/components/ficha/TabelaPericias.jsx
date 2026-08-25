@@ -154,7 +154,7 @@ export default function TabelaPericias({ personagem, setPersonagem, onRolar }) {
             </button>
           </div>
           <div className="rolador-livre-atalhos">
-            {['1d20', '2d20', '1d100', '1d12', '1d10', '1d8', '1d6', '1d4'].map((d) => (
+            {['1d20', '2d20', '1d100', '1d12', '1d10', '1d8', '1d6', '1d4', '1d2'].map((d) => (
               <button
                 key={d}
                 type="button"

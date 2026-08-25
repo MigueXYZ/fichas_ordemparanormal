@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { PERICIAS } from '../../data/pericias.js';
 import { RITUAIS, ELEMENTOS, CIRCULOS, circuloMaximoPorNex } from '../../data/rituais.js';
 import { ITENS, TIPOS_ITEM } from '../../data/itens.js';
 import { PODERES } from '../../data/poderes.js';
 import { CLASSES_POR_ID, TRILHAS_POR_ID } from '../../data/classes.js';
 import { ORIGENS_POR_ID } from '../../data/origens.js';
-import { calcCarga, calcItensPorCategoria, nexEfetivo, calcMaximos } from '../../engine/calc.js';
+import { calcCarga, calcItensPorCategoria, nexEfetivo, calcMaximos, calcDtRitual, detalheDtRitual } from '../../engine/calc.js';
 import { PATENTES, PATENTES_POR_ID, CATEGORIAS, categoriaRomana } from '../../data/patentes.js';
 import { novoAtaque, novoItem, novaHabilidade, novoRitual } from '../../engine/character.js';
 import { rolarAtaqueCompleto, rolarDano, rolarTeste } from '../../engine/dados.js';
@@ -33,6 +33,47 @@ function Campo({ label, valor, onChange, tipo = 'text', opcoes, readOnly = false
       ) : (
         <input type={tipo} value={valor ?? ''} onChange={(e) => onChange(e.target.value)} readOnly={readOnly} />
       )}
+    </div>
+  );
+}
+
+/**
+ * Contador de quantidade (− / nº / +), com o número também ajustável a
+ * rodar o scroll do rato por cima do campo — mesmo padrão usado noutras
+ * partes da ficha (perícias, descanso) para campos numéricos.
+ */
+function SeletorQuantidade({ valor, onChange, min = 1, max = 99 }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const aoRodarScroll = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const delta = e.deltaY < 0 ? 1 : -1;
+      onChange(Math.max(min, Math.min(max, valor + delta)));
+    };
+    el.addEventListener('wheel', aoRodarScroll, { passive: false });
+    return () => el.removeEventListener('wheel', aoRodarScroll);
+  }, [onChange, valor, min, max]);
+
+  return (
+    <div className="seletor-quantidade">
+      <button type="button" onClick={() => onChange(Math.max(min, valor - 1))} aria-label="Diminuir quantidade">−</button>
+      <input
+        ref={ref}
+        type="number"
+        value={valor}
+        min={min}
+        max={max}
+        title="Altera digitando ou com o scroll do rato"
+        onChange={(e) => {
+          const n = Number(e.target.value);
+          onChange(Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : min);
+        }}
+      />
+      <button type="button" onClick={() => onChange(Math.min(max, valor + 1))} aria-label="Aumentar quantidade">+</button>
     </div>
   );
 }
@@ -269,6 +310,14 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
 }
 
 function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
+  // Regra dos Hooks: têm de vir antes de qualquer "return null" condicional
+  // — senão, no momento em que a personagem ganha o primeiro ritual (ex.:
+  // ao chegar a Combatente-Sangue 99%, "Forma Monstruosa"), este componente
+  // passa a chamar mais hooks do que na renderização anterior (0 → 2) e o
+  // React crasha ("Rendered more hooks than during the previous render").
+  const [modalVontade, setModalVontade] = useState(null); // ritual (r) ou null
+  const [danoRascunho, setDanoRascunho] = useState(0);
+
   // Rituais concedidos pela Trilha do Monstruoso só existem enquanto a
   // etapa de hoje está ativa — somam-se aos rituais próprios da personagem.
   const rituais = [...(personagem.rituais || []), ...rituaisAtivos(personagem, nexEfetivo(personagem))];
@@ -277,7 +326,7 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
   const max = calcMaximos(personagem);
   const usaPd = max.semSanidade;
   const atual = usaPd ? (personagem.pdAtual ?? max.pd) : (personagem.peAtual ?? max.pe);
-  const dt = Number(personagem.dtRitual) || null;
+  const dt = calcDtRitual(personagem);
 
   // "Componentes ritualísticos são necessários para a conjuração de rituais
   // do elemento em questão" (Livro Base) — precisa dos componentes DESSE
@@ -363,9 +412,7 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
   // Combatente Sangue 99% ("Ser Aterrorizante"): sempre que sofre dano, teste
   // de Vontade DT 10+dano — falhar obriga a próxima ação padrão a ser
   // conjurar Forma Monstruosa, por isso ao falhar aqui já se conjura sozinho.
-  const [modalVontade, setModalVontade] = useState(null); // ritual (r) ou null
-  const [danoRascunho, setDanoRascunho] = useState(0);
-
+  // (modalVontade/danoRascunho estão declarados no topo da função — Regra dos Hooks.)
   function abrirModalVontade(r) {
     setDanoRascunho(0);
     setModalVontade(r);
@@ -594,6 +641,8 @@ export function AbaRituais({ personagem, setPersonagem }) {
   const lista = [...listaPropria, ...concedidos];
   const [aEscolher, setAEscolher] = useState(false);
   const circuloMax = circuloMaximoPorNex(nexEfetivo(personagem));
+  const dtDetalhe = detalheDtRitual(personagem);
+  const dt = dtDetalhe.total;
   // Um ritual trazido do catálogo já vem com tudo certo (é conteúdo oficial)
   // — por isso aparece normal, só de consulta, com um botão "Editar" ao
   // lado para quem quiser mesmo assim ajustar algo. Um ritual em branco
@@ -648,8 +697,16 @@ export function AbaRituais({ personagem, setPersonagem }) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
         <div className="campo" style={{ maxWidth: 140, marginBottom: 0 }}>
-          <label>DT de ritual</label>
-          <input type="number" value={personagem.dtRitual ?? ''} onChange={(e) => setPersonagem({ ...personagem, dtRitual: e.target.value })} />
+          <label>
+            DT de ritual{' '}
+            <span
+              className="info-icone"
+              title={`10 + ${dtDetalhe.bonusNex} (bónus de NEX ${dtDetalhe.nex}%) + ${dtDetalhe.presenca} (Presença) = ${dtDetalhe.total}`}
+            >
+              i
+            </span>
+          </label>
+          <input type="text" readOnly value={dt} />
         </div>
         <span className="pill">Círculo máximo em NEX {nexEfetivo(personagem)}%: {circuloMax}º</span>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -857,11 +914,39 @@ export function AbaInventario({ personagem, setPersonagem }) {
   // elementos — antes de o meter no inventário, pergunta-se qual (mesmo
   // popup de escolha usado no elemento do Monstruoso).
   const [aEscolherElementoComponente, setAEscolherElementoComponente] = useState(null);
+  // Depois de escolher um item do catálogo (não arma, não ritual) pergunta-se
+  // quantos meter de uma vez — { item, quantidade, nomeOverride }.
+  const [aEscolherQtd, setAEscolherQtd] = useState(null);
   const catalogoArmas = ITENS.filter(ehArma);
   const catalogoItens = ITENS.filter((i) => !ehArma(i));
   const carga = calcCarga(personagem);
   const cats = calcItensPorCategoria(personagem);
   const set = (patch) => setPersonagem({ ...personagem, ...patch });
+
+  /**
+   * Mete `qtd` unidades de `i` no inventário. Se já houver uma entrada igual
+   * (mesmo nome, vinda do catálogo) faz stack somando à quantidade em vez de
+   * duplicar a linha.
+   */
+  function adicionarItemComQtd(i, qtd, nomeOverride) {
+    const nome = nomeOverride || i.nome;
+    const indiceExistente = lista.findIndex((x) => x.manual !== true && x.nome === nome);
+    if (indiceExistente !== -1) {
+      editar(indiceExistente, { quantidade: (Number(lista[indiceExistente].quantidade) || 1) + qtd });
+    } else {
+      adicionar({
+        nome,
+        categoria: categoriaRomana(i.categoria) ?? '',
+        espacos: i.espacos ?? 1,
+        cargaBonus: i.cargaBonus ?? 0,
+        descricao: i.descricao || '',
+        manual: false,
+        itemId: i.id,
+        quantidade: qtd,
+      });
+    }
+    setAviso(null);
+  }
 
   return (
     <div>
@@ -1010,22 +1095,13 @@ export function AbaInventario({ personagem, setPersonagem }) {
             </>
           )}
           onEscolher={(i) => {
+            setAEscolher(false);
             if (i.id === 'componentes-ritualisticos-de-elemento') {
               // Este item serve para os 4 elementos — pergunta qual antes de o
               // meter no inventário, em vez de ficar com "(Elemento)" no nome.
-              setAEscolher(false);
               setAEscolherElementoComponente(i);
             } else {
-              adicionar({
-                nome: i.nome,
-                categoria: categoriaRomana(i.categoria) ?? '',
-                espacos: i.espacos ?? 1,
-                cargaBonus: i.cargaBonus ?? 0,
-                descricao: i.descricao || '',
-                manual: false
-              });
-              setAviso(null);
-              setAEscolher(false);
+              setAEscolherQtd({ item: i, quantidade: 1, nomeOverride: null });
             }
           }}
           onFechar={() => setAEscolher(false)}
@@ -1049,16 +1125,7 @@ export function AbaInventario({ personagem, setPersonagem }) {
                     key={el} className="btn ghost"
                     style={{ borderColor: COR_ELEMENTO[el], color: COR_ELEMENTO[el], padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center' }}
                     onClick={() => {
-                      const i = aEscolherElementoComponente;
-                      adicionar({
-                        nome: `Componentes Ritualísticos de ${el}`,
-                        categoria: categoriaRomana(i.categoria) ?? '',
-                        espacos: i.espacos ?? 1,
-                        cargaBonus: i.cargaBonus ?? 0,
-                        descricao: i.descricao || '',
-                        manual: false,
-                      });
-                      setAviso(null);
+                      setAEscolherQtd({ item: aEscolherElementoComponente, quantidade: 1, nomeOverride: `Componentes Ritualísticos de ${el}` });
                       setAEscolherElementoComponente(null);
                     }}
                   >
@@ -1072,7 +1139,68 @@ export function AbaInventario({ personagem, setPersonagem }) {
         </div>
       )}
 
+      {aEscolherQtd && (
+        <div className="modal-fundo" style={{ zIndex: 100 }} onClick={(e) => e.target === e.currentTarget && setAEscolherQtd(null)}>
+          <div className="modal" style={{ maxWidth: 360, textAlign: 'center' }}>
+            <div className="modal-topo">
+              <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>
+                {aEscolherQtd.nomeOverride || aEscolherQtd.item.nome}
+              </h3>
+              <button className="fechar" onClick={() => setAEscolherQtd(null)}>×</button>
+            </div>
+            <div className="modal-corpo">
+              <p style={{ color: 'var(--txt-dim)', fontSize: 13.5, marginBottom: 16 }}>Quantos queres meter no inventário?</p>
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <SeletorQuantidade
+                  valor={aEscolherQtd.quantidade}
+                  onChange={(v) => setAEscolherQtd({ ...aEscolherQtd, quantidade: v })}
+                />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 22 }}>
+                <button className="btn ghost" onClick={() => setAEscolherQtd(null)}>Cancelar</button>
+                <button
+                  className="btn"
+                  onClick={() => {
+                    adicionarItemComQtd(aEscolherQtd.item, aEscolherQtd.quantidade, aEscolherQtd.nomeOverride);
+                    setAEscolherQtd(null);
+                  }}
+                >
+                  Adicionar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {aviso && <div className="aviso"><strong>Arma:</strong> {aviso}</div>}
+
+      {armas.lista.length > 0 && (
+        <div className="armas-carregadas">
+          <div className="rotulo-lista">Armas ({carga.dasArmas} espaços)</div>
+          <ul>
+            {armas.lista.map((a, i) => {
+              const equipado = a.equipado !== false;
+              return (
+                <li key={i}>
+                  <button
+                    type="button"
+                    className={'ponto botao' + (equipado ? ' equipado' : '')}
+                    title={equipado ? 'Equipada — carrega para guardar' : 'Guardada — carrega para equipar'}
+                    onClick={() => armas.editar(i, { equipado: !equipado })}
+                  />
+                  <span className="nome" style={{ fontSize: '18px', fontWeight: 'bold' }}>{a.nome || 'Sem nome'}</span>
+                  <span className="estado">{equipado ? 'equipada' : 'guardada'}</span>
+                  <span className="esp">{Number(a.espacos) || 0} esp.</span>
+                  <button className="btn ghost sm" onClick={() => setAEditarArma({ indice: i, arma: a })}>Editar</button>
+                  <button className="btn danger sm" onClick={() => armas.remover(i)}>Remover</button>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="dica">Usam-se no separador Combate. Uma arma pesa na carga esteja equipada ou guardada.</div>
+        </div>
+      )}
 
       {lista.length === 0 ? (
         <div className="painel-vazio">Inventário vazio</div>
@@ -1096,6 +1224,10 @@ export function AbaInventario({ personagem, setPersonagem }) {
                         <TextoExpandivel texto={it.descricao} />
                       </div>
                     )}
+                    <SeletorQuantidade
+                      valor={Number(it.quantidade) || 1}
+                      onChange={(v) => editar(i, { quantidade: v })}
+                    />
                     <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
                       <button className="btn ghost sm" onClick={() => setAEditarItem({ indice: i, item: it })}>Editar</button>
                       <button className="btn danger sm" onClick={() => remover(i)}>Remover</button>
