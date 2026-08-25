@@ -189,7 +189,6 @@ export default function Inicio({ aoCriar, aoAbrir }) {
       {/* Barra de Pesquisa */}
       {lista.length > 0 && (
         <div className="barra-pesquisa-home">
-          <span className="icone-lupa" aria-hidden="true">🔍</span>
           <input
             type="text"
             placeholder="Pesquisar por nome, jogador, classe, trilha, tags..."

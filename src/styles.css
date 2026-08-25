@@ -1556,7 +1556,7 @@ body.bate-forte .barra-recurso .preenchido::before {
 }
 .barra-pesquisa-home input {
   width: 100%;
-  padding: 10px 38px 10px 38px;
+  padding: 10px 38px 10px 14px;
   background: var(--bg-2);
   border: 1px solid var(--linha-forte);
   border-radius: var(--raio);
@@ -1568,14 +1568,6 @@ body.bate-forte .barra-recurso .preenchido::before {
   border-color: var(--sangue-claro);
   box-shadow: 0 0 12px rgba(240, 70, 83, 0.25);
   outline: none;
-}
-.barra-pesquisa-home .icone-lupa {
-  position: absolute;
-  left: 12px;
-  pointer-events: none;
-  font-size: 15px;
-  color: var(--txt-dim);
-  opacity: 0.7;
 }
 .barra-pesquisa-home .limpar-pesquisa {
   position: absolute;
@@ -2063,55 +2055,112 @@ body.bate-forte .barra-recurso .preenchido::before {
   align-items: center;
   justify-content: center;
   pointer-events: auto;
+  width: 100%;
   max-width: 100%;
 }
 
-/* sem token: só o contorno do modelo, esbatido */
+/* sem token: contorno do modelo visível e clicável para carregar */
 .espaco-token .modelo {
-  display: block; position: relative; cursor: pointer;
-  width: min(220px, 85%); height: min(62vh, 560px);
-  opacity: .16; transition: opacity .3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  width: min(220px, 85%);
+  height: min(62vh, 560px);
+  opacity: .35;
+  transition: opacity .3s ease, transform .2s ease;
 }
-.espaco-token .modelo:hover { opacity: .4; }
+.espaco-token .modelo:hover {
+  opacity: .8;
+  transform: translateY(-2px);
+}
 .espaco-token .modelo input { display: none; }
 .espaco-token .modelo .figura {
-  display: block; width: 100%; height: 100%;
+  display: block;
+  width: 100%;
+  height: 100%;
   background: var(--txt);
-  -webkit-mask: url('/img/token-modelo.png') center / contain no-repeat;
-  mask: url('/img/token-modelo.png') center / contain no-repeat;
+  -webkit-mask-image: url('/img/token-modelo.png');
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-image: url('/img/token-modelo.png');
+  mask-position: center;
+  mask-size: contain;
+  mask-repeat: no-repeat;
   transform: scaleX(-1);   /* o modelo passa a olhar para a ficha */
 }
 .espaco-token .dica-token {
-  position: absolute; left: 0; right: 0; bottom: -18px; text-align: center;
-  font-family: var(--corpo); font-size: 10px; letter-spacing: .22em; text-transform: uppercase;
-  color: var(--txt-fraco); opacity: 0; transition: opacity .3s ease;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -22px;
+  text-align: center;
+  font-family: var(--corpo);
+  font-size: 11px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--txt-dim);
+  opacity: .6;
+  transition: opacity .3s ease, color .3s ease;
+  pointer-events: none;
 }
-.espaco-token .modelo:hover .dica-token { opacity: 1; }
+.espaco-token .modelo:hover .dica-token {
+  opacity: 1;
+  color: var(--sangue-claro);
+}
 
 /* com token: a imagem e mais nada */
 .espaco-token .token-img {
-  display: block; max-width: min(250px, 85%); width: auto;
-  max-height: min(65vh, 580px); object-fit: contain; object-position: center;
+  display: block;
+  max-width: min(250px, 85%);
+  width: auto;
+  max-height: min(65vh, 580px);
+  object-fit: contain;
+  object-position: center;
   filter: drop-shadow(0 10px 22px rgba(0,0,0,.8));
 }
 .espaco-token .acoes-token {
-  position: absolute; top: 0; right: -10px; display: flex; flex-direction: column; gap: 6px;
-  opacity: 0; transform: translateX(6px); transition: opacity .2s, transform .2s;
+  position: absolute;
+  top: 0;
+  right: -10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  opacity: 0;
+  transform: translateX(6px);
+  transition: opacity .2s, transform .2s;
 }
 .espaco-token:hover .acoes-token,
 .espaco-token-conteudo:hover .acoes-token { opacity: 1; transform: none; }
 .espaco-token .acao-token {
-  width: 28px; height: 28px; border-radius: 50%; padding: 0;
-  display: grid; place-items: center; cursor: pointer;
-  background: rgba(10,7,8,.9); border: 1px solid var(--linha-forte); color: var(--txt-dim);
-  font-size: 14px; line-height: 1; font-family: var(--corpo);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  background: rgba(10,7,8,.9);
+  border: 1px solid var(--linha-forte);
+  color: var(--txt-dim);
+  font-size: 14px;
+  line-height: 1;
+  font-family: var(--corpo);
   transition: color .15s, border-color .15s;
 }
 .espaco-token .acao-token:hover { color: var(--sangue-claro); border-color: var(--sangue); }
 .espaco-token .acao-token input { display: none; }
 .espaco-token .erro-token {
-  position: absolute; bottom: -22px; left: 0; right: 0;
-  font-size: 11px; color: var(--sangue-claro); text-align: center;
+  position: absolute;
+  bottom: -22px;
+  left: 0;
+  right: 0;
+  font-size: 11px;
+  color: var(--sangue-claro);
+  text-align: center;
 }
 
 /* O token vive na margem que já existe — a ficha continua centrada, sem empurrões.
