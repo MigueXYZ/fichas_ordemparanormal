@@ -3,12 +3,7 @@ import { CONDICOES_POR_ID } from '../../data/condicoes.js';
 import { calcPericias } from '../../engine/calc.js';
 import { efeitosDiarios } from '../../engine/monstruoso.js';
 import { rolarTeste } from '../../engine/dados.js';
-
-/** Procura um poder pelo nome em `personagem.habilidades` (lista de texto livre). */
-function temPoder(personagem, nome) {
-  const alvo = nome.trim().toLowerCase();
-  return (personagem.habilidades || []).some((h) => (h.nome || '').trim().toLowerCase() === alvo);
-}
+import { temPoder } from '../../engine/character.js';
 
 /**
  * Morrendo (Livro de Regras): 0 PV, indefeso, sem ações. Três turnos morrendo

@@ -117,28 +117,40 @@ export function IconeD8({ titulo = 'Rolar d8', ...props }) {
   );
 }
 
-export function IconeD10({ titulo = 'Rolar d10', ...props }) {
+/**
+ * d10: estrela de 10 pontas (5 compridas + 5 curtas, alternadas a cada 36°) —
+ * as 10 pontas à vista, sem ambiguidade nenhuma com o d8 ou o d12. Faceta
+ * central destacada + 5 raios até às pontas compridas, no mesmo estilo de
+ * "silhueta + face + arestas" dos outros ícones desta família.
+ * Fica dentro de um `span` próprio (não um `<svg>` solto) para poder ter a
+ * sua própria animação 3D (ver .icone-d10 / @keyframes dado-d10-gira).
+ */
+export function IconeD10({ titulo = 'Rolar d10', className, style, ...props }) {
   return (
-    <svg viewBox="0 0 64 64" role="img" aria-label={titulo} {...props}>
-      {/* silhueta em "pião" (kite assimétrico: cintura acima do centro),
-          mais alta que larga — não se confunde com o losango simétrico do d8 */}
-      <polygon
-        points="32,3 52,24 32,61 12,24"
-        fill="currentColor" fillOpacity="0.10"
-        stroke="currentColor" strokeWidth="3.2" strokeLinejoin="round"
-      />
-      <polygon
-        points="32,18 42,28 32,46 22,28"
-        fill="currentColor" fillOpacity="0.22"
-        stroke="currentColor" strokeWidth="3" strokeLinejoin="round"
-      />
-      <g stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" fill="none" opacity="0.95">
-        <path d="M32,3 32,18" />
-        <path d="M52,24 42,28" />
-        <path d="M32,61 32,46" />
-        <path d="M12,24 22,28" />
-      </g>
-    </svg>
+    <span className={'icone-d10' + (className ? ' ' + className : '')} style={style} role="img" aria-label={titulo} {...props}>
+      <svg viewBox="0 0 64 64" className="d10-svg">
+        {/* silhueta exterior: 10 pontas, 5 compridas + 5 curtas alternadas */}
+        <polygon
+          points="32,5 43.2,16.6 57.7,23.7 50.1,37.9 47.9,53.8 32,51 16.1,53.8 13.9,37.9 6.3,23.7 20.8,16.6"
+          fill="currentColor" fillOpacity="0.10"
+          stroke="currentColor" strokeWidth="2.6" strokeLinejoin="round"
+        />
+        {/* faceta central, a apanhar a luz */}
+        <polygon
+          points="32,20 40,26.5 37,36 27,36 24,26.5"
+          fill="currentColor" fillOpacity="0.24"
+          stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round"
+        />
+        {/* raios da faceta central até às 5 pontas compridas */}
+        <g stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" fill="none" opacity="0.8">
+          <path d="M32,20 32,5" />
+          <path d="M40,26.5 57.7,23.7" />
+          <path d="M37,36 47.9,53.8" />
+          <path d="M27,36 16.1,53.8" />
+          <path d="M24,26.5 6.3,23.7" />
+        </g>
+      </svg>
+    </span>
   );
 }
 

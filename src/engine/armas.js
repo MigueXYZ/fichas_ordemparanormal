@@ -2,6 +2,7 @@ import { calcPericias, calcPenalidadesCondicoes, nexEfetivo } from './calc.js';
 import { aplicarModificacoes, ALCANCES } from '../data/modificacoesArma.js';
 import { aplicarMaldicoesArma } from '../data/maldicoes.js';
 import { atributosEfetivos } from './monstruoso.js';
+import { quantidadeDados } from './dados.js';
 
 /** Lê o crítico como vem nos livros: "x2", "19/x2", "19", "18/x3". */
 export function interpretarCritico(texto) {
@@ -52,9 +53,9 @@ export function estatisticasArma(personagem, arma) {
   if (agilAtiva) {
     const dadosBaseAgi = Number(atributosEf.agi || 0);
     const penAgi = conds.dadosGeral + (conds.dadosAttr['agi'] || 0) + (conds.dadosPericia[arma.pericia] || 0);
-    dados = Math.max(0, dadosBaseAgi + penAgi);
+    dados = dadosBaseAgi + penAgi;
   }
-  dados = Math.max(0, dados + dadosAtaquePenalidade);
+  dados = dados + dadosAtaquePenalidade;
 
   const atributoDano = agilAtiva && arma.atributoDano === 'for' ? 'agi' : arma.atributoDano;
   const bonusAtributoDano = atributoDano ? Number(atributosEf[atributoDano] || 0) : 0;
@@ -150,5 +151,5 @@ export function formulaTeste(dados, bonus) {
   const n = Number(dados) || 0;
   const b = Number(bonus) || 0;
   const sinal = b === 0 ? '' : ` ${b > 0 ? '+' : '−'}${Math.abs(b)}`;
-  return n > 0 ? `${n}d20${sinal}` : `2d20 pior${sinal}`;
+  return n > 0 ? `${n}d20${sinal}` : `${quantidadeDados(n)}d20 pior${sinal}`;
 }

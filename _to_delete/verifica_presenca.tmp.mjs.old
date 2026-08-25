@@ -1,0 +1,29 @@
+import { classeMonstruosa, ativarHoje, aplicarPresencaPendente, tudoPermanente } from './src/engine/monstruoso.js';
+
+const personagem = {
+  classeId: 'combatente',
+  trilhaId: 'monstruoso',
+  monstruosoElemento: 'Morte',
+  atributos: { for: 2, agi: 2, int: 2, pre: 3, vig: 2 },
+  nex: 65,
+};
+
+// 1) Aos 65%: ativar a etapa a primeira vez -> perde 1 Presença (3 -> 2)
+let r = ativarHoje(personagem, 65, {});
+console.log('Aos 65% ativarHoje ->', JSON.stringify(r.patch.atributos), r.patch.monstruosoPresencaPerdida);
+Object.assign(personagem, r.patch);
+
+// 2) Chega aos 99% SEM nunca mais clicar no botão (tudoPermanente = true,
+//    o botão deixa de abrir modal) -> antes do fix, a 2ª perda (Morte, 99%)
+//    nunca acontecia. Agora simula o useEffect chamando aplicarPresencaPendente diretamente.
+console.log('tudoPermanente aos 99%?', tudoPermanente(personagem, 99));
+const r2 = aplicarPresencaPendente(personagem, 99);
+console.log('aplicarPresencaPendente aos 99% ->', r2 ? JSON.stringify(r2.patch.atributos) : 'null (nada pendente)');
+if (r2) Object.assign(personagem, r2.patch);
+
+console.log('Presença final:', personagem.atributos.pre, '(esperado: 1, começou em 3, perde 1 aos 65% e mais 1 aos 99%)');
+console.log('monstruosoPresencaPerdida final:', personagem.monstruosoPresencaPerdida);
+
+// 3) Chamar outra vez não deve perder mais nada (não repete)
+const r3 = aplicarPresencaPendente(personagem, 99);
+console.log('Chamar de novo aos 99% ->', r3 ? 'ERRO: aplicou outra vez!' : 'OK, nada pendente (correto)');

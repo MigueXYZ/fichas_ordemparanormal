@@ -169,3 +169,9 @@ export function novaHabilidade() {
 export function novoRitual() {
   return { nome: '', circulo: 1, elemento: 'energia', execucao: '', alcance: '', alvo: '', duracao: '', resistencia: '', custo: '', descricao: '' };
 }
+
+/** Procura um poder pelo nome em `personagem.habilidades` (lista de texto livre — não há id). */
+export function temPoder(personagem, nome) {
+  const alvo = nome.trim().toLowerCase();
+  return (personagem.habilidades || []).some((h) => (h.nome || '').trim().toLowerCase() === alvo);
+}

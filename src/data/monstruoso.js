@@ -160,7 +160,11 @@ export const CONSOME_COMPONENTE = {
 /**
  * A partir de que patamar o atributo do elemento passa a determinar os PE
  * (em vez de Presença) — e, para o Especialista/Ocultista, também a DT dos
- * seus rituais (não automatizado, é só nota).
+ * seus rituais ("...para determinar seus PE e a DT dos seus rituais", AS7
+ * p. 85). As duas contas estão automatizadas: os PE em `calcMaximos` e a DT
+ * em `detalheDtRitual` (ambas em engine/calc.js), as duas a ler o mesmo
+ * `peAtributo` de `efeitosDiarios`. O Combatente NÃO troca o atributo da DT
+ * — o texto dele só fala dos PE.
  *
  * Especialista/Ocultista: sempre desde os 10%, nos 4 elementos.
  * Combatente: é POR ELEMENTO, não uma regra única da classe — Sangue, Morte e
@@ -329,6 +333,7 @@ export const TUDO_PERMANENTE_DESDE = {
  *   'flat-pericia'    -> { pericia, flat }   (bónus/penalidade plana numa perícia nomeada)
  *   'ataque-bonus-dado' -> { faces, alvo: 'corpo-a-corpo'|'todos' } (dado extra somado ao TOTAL do teste de ataque, não à pool)
  *   'ataque-natural'  -> { nome, dano, critico, tipoDano }
+ *   'poder'           -> { nome } (poder concedido pela trilha — aparece nas Habilidades)
  *   'ritual'          -> { nome } (fixo, sem escolha)
  *   'ritual-escolha'  -> { elemento, circulo } (a personagem escolhe; a escolha fica guardada)
  *   'pericias-livres' -> { quantidade } (escolher N perícias para treinar; a escolha fica guardada)
@@ -391,12 +396,14 @@ export const EFEITOS_POR_PATAMAR = {
   ocultista: {
     Sangue: [
       { patamar: 10, tipo: 'atributo', atributo: 'for', delta: 1 },
+      { patamar: 40, tipo: 'poder', nome: 'Tatuagem Ritualística' },
       { patamar: 99, tipo: 'atributo', atributo: 'for', delta: 1 },
       { patamar: 99, tipo: 'ritual-escolha', elemento: 'sangue', circulo: 4 },
       { patamar: 99, tipo: 'ritual-escolha', elemento: 'medo', circulo: 4 },
     ],
     Morte: [
       { patamar: 10, tipo: 'atributo', atributo: 'vig', delta: 1 },
+      { patamar: 40, tipo: 'poder', nome: 'Tatuagem Ritualística' },
       { patamar: 65, tipo: 'ritual', nome: 'Cicatrização' },
       { patamar: 99, tipo: 'atributo', atributo: 'vig', delta: 1 },
       { patamar: 99, tipo: 'ritual-escolha', elemento: 'morte', circulo: 4 },
@@ -404,12 +411,14 @@ export const EFEITOS_POR_PATAMAR = {
     ],
     Conhecimento: [
       { patamar: 10, tipo: 'atributo', atributo: 'int', delta: 1 },
+      { patamar: 40, tipo: 'poder', nome: 'Tatuagem Ritualística' },
       { patamar: 99, tipo: 'atributo', atributo: 'int', delta: 1 },
       { patamar: 99, tipo: 'ritual-escolha', elemento: 'conhecimento', circulo: 4 },
       { patamar: 99, tipo: 'ritual-escolha', elemento: 'medo', circulo: 4 },
     ],
     Energia: [
       { patamar: 10, tipo: 'atributo', atributo: 'agi', delta: 1 },
+      { patamar: 40, tipo: 'poder', nome: 'Tatuagem Ritualística' },
       { patamar: 99, tipo: 'atributo', atributo: 'agi', delta: 1 },
       { patamar: 99, tipo: 'ritual-escolha', elemento: 'energia', circulo: 4 },
       { patamar: 99, tipo: 'ritual-escolha', elemento: 'medo', circulo: 4 },
@@ -482,22 +491,30 @@ export const TEXTOS_POR_PATAMAR = {
   },
   ocultista: {
     Sangue: [
-      { patamar: 40, texto: 'Tatuagem Ritualística: rituais de Sangue marcados na pele aplicam-se a todos os alvos ao alcance, não só a si mesmo. 1x/cena, se machucado ou fatigado, conjura um ritual marcado como reação. +5 em testes de concentração com rituais de Sangue marcados.' },
-      { patamar: 65, texto: '1x/cena: gasta ação de movimento + 2d8+2 PV para servir sangue a um aliado adjacente — se aceitar, +Ø em testes de Agilidade/Força/Vigor até o fim da cena. DT dos rituais de Sangue marcados +2.' },
+      { patamar: 40, texto: 'Tatuagem Ritualística: os rituais de Sangue marcados na pele passam a aplicar-se a todos os alvos ao alcance, não só aos de alcance pessoal que te têm a ti como alvo.' },
+      { patamar: 40, texto: 'Reação (1x por cena): se estiveres machucado ou sob uma condição de fadiga (Debilitado, Exausto, Fatigado, Fraco), podes conjurar um ritual marcado na pele como reação, em vez da ação que ele normalmente exige.' },
+      { patamar: 40, texto: '+5 em testes de concentração com rituais de Sangue marcados na pele — sempre, sem depender de condição nenhuma.' },
+      { patamar: 65, texto: 'Ao conjurar um ritual de Sangue: gasta ação de movimento + 2d8+2 PV para servir esse sangue a um aliado adjacente — se ele aceitar e ingerir como reação, recebe +1d20 em testes baseados em Agilidade, Força e Vigor até o fim da cena. DT dos rituais de Sangue marcados +2.' },
       { patamar: 99, texto: 'Conjura rituais de Sangue marcados sem fala, gestos ou componentes.' },
     ],
     Morte: [
-      { patamar: 40, texto: 'Tatuagem Ritualística: rituais de Morte marcados aplicam-se a todos os alvos ao alcance. 1x/cena, se morrendo ou com sentidos afetados, conjura um ritual marcado como reação. +5 em testes de concentração com rituais de Morte marcados.' },
+      { patamar: 40, texto: 'Tatuagem Ritualística: os rituais de Morte marcados na pele passam a aplicar-se a todos os alvos ao alcance, não só aos de alcance pessoal que te têm a ti como alvo.' },
+      { patamar: 40, texto: 'Reação (1x por cena): se estiveres morrendo ou sob uma condição de sentidos (Cego, Ofuscado, Surdo), podes conjurar um ritual marcado na pele como reação, em vez da ação que ele normalmente exige.' },
+      { patamar: 40, texto: '+5 em testes de concentração com rituais de Morte marcados na pele — sempre, sem depender de condição nenhuma.' },
       { patamar: 65, texto: 'Rituais de Morte diferentes de Cicatrização podem ser conjurados como ação de movimento. DT dos rituais de Morte marcados +2.' },
       { patamar: 99, texto: 'Conjura rituais de Morte marcados sem fala, gestos ou componentes.' },
     ],
     Conhecimento: [
-      { patamar: 40, texto: 'Tatuagem Ritualística: rituais de Conhecimento marcados aplicam-se a todos os alvos ao alcance. 1x/cena, sob condição mental ou de medo, conjura um ritual marcado como reação. +5 em testes de concentração com rituais de Conhecimento marcados.' },
+      { patamar: 40, texto: 'Tatuagem Ritualística: os rituais de Conhecimento marcados na pele passam a aplicar-se a todos os alvos ao alcance, não só aos de alcance pessoal que te têm a ti como alvo.' },
+      { patamar: 40, texto: 'Reação (1x por cena): se estiveres sob uma condição mental ou de medo, podes conjurar um ritual marcado na pele como reação, em vez da ação que ele normalmente exige.' },
+      { patamar: 40, texto: '+5 em testes de concentração com rituais de Conhecimento marcados na pele — sempre, sem depender de condição nenhuma.' },
       { patamar: 65, texto: 'Ao conjurar um ritual de Conhecimento: gasta ação de movimento + 2 PE por 5 perguntas sim/não sobre o alvo (ou visão do oculto, se o alvo for a própria personagem). DT dos rituais de Conhecimento marcados +2.' },
       { patamar: 99, texto: 'Conjura rituais de Conhecimento marcados sem fala, gestos ou componentes.' },
     ],
     Energia: [
-      { patamar: 40, texto: 'Tatuagem Ritualística: rituais de Energia marcados aplicam-se a todos os alvos ao alcance. 1x/cena, sob paralisia ou sentidos afetados, conjura um ritual marcado como reação. +5 em testes de concentração com rituais de Energia marcados.' },
+      { patamar: 40, texto: 'Tatuagem Ritualística: os rituais de Energia marcados na pele passam a aplicar-se a todos os alvos ao alcance, não só aos de alcance pessoal que te têm a ti como alvo.' },
+      { patamar: 40, texto: 'Reação (1x por cena): se estiveres sob uma condição de paralisia ou de sentidos, podes conjurar um ritual marcado na pele como reação, em vez da ação que ele normalmente exige.' },
+      { patamar: 40, texto: '+5 em testes de concentração com rituais de Energia marcados na pele — sempre, sem depender de condição nenhuma.' },
       { patamar: 65, texto: 'Ao conjurar um ritual de Energia: gasta ação de movimento + 3 PE para teletransportar-se 3m e ganhar Defesa igual ao PE gasto no ritual, por 1 rodada. DT dos rituais de Energia marcados +2.' },
       { patamar: 99, texto: 'Conjura rituais de Energia marcados sem fala, gestos ou componentes.' },
     ],
@@ -549,3 +566,89 @@ export const NOME_PODER_POR_PATAMAR = {
   especialista: { 10: 'Ser Experimentado', 40: 'Ser Testado', 65: 'Ser Expurgado', 99: 'Ser Apavorante' },
   ocultista: { 10: 'Ser Escarificado', 40: 'Ser Perfurado', 65: 'Ser Rasgado', 99: 'Ser Mutilado' },
 };
+
+/**
+ * TATUAGEM RITUALÍSTICA — Ocultista, "Ser Perfurado" (AS7, p. 86), 40%+.
+ *
+ * O livro concede o poder nos QUATRO elementos, não só no Sangue: "Você
+ * recebe o poder Tatuagem Ritualística, mas diferente do normal, ele também
+ * se aplica a todos os rituais de <Elemento> marcados em sua pele, não
+ * apenas aos de alcance pessoal que têm você como alvo (se já tiver o poder,
+ * apenas altere a maneira como ele funciona)". Ou seja: nunca duplica — ou
+ * ganha o poder, ou o poder que já tinha muda de comportamento.
+ */
+export const TATUAGEM_DESDE = 40;
+
+/** O poder base (Livro Base, poder de Ocultista) — mesma redação da lista de poderes da classe. */
+export const PODER_TATUAGEM = {
+  id: 'tatuagem-ritualistica',
+  nome: 'Tatuagem Ritualística',
+  descricao: 'Símbolos marcados em sua pele reduzem em –1 PE o custo de rituais de alcance pessoal que têm você como alvo.',
+};
+
+/** Bónus em testes de concentração com rituais do elemento marcados na pele (40%+). */
+export const BONUS_CONCENTRACAO_TATUAGEM = 5;
+
+/**
+ * Condições que destravam, 1x/cena, conjurar um ritual marcado como REAÇÃO —
+ * uma lista diferente por elemento (verbatim AS7, p. 86). `condicoes` são ids
+ * de condição concretos; `tipos` são famílias de condição (ver
+ * data/condicoes.js), que apanham qualquer condição desse tipo.
+ */
+export const REACAO_TATUAGEM = {
+  Sangue: { condicoes: ['machucado'], tipos: ['fadiga'], texto: 'machucado ou sob condição de fadiga' },
+  Morte: { condicoes: ['morrendo'], tipos: ['sentidos'], texto: 'morrendo ou sob condição de sentidos' },
+  Conhecimento: { condicoes: [], tipos: ['mental', 'medo'], texto: 'sob condição mental ou de medo' },
+  Energia: { condicoes: [], tipos: ['paralisia', 'sentidos'], texto: 'sob condição de paralisia ou de sentidos' },
+};
+
+/**
+ * SERVIR SANGUE — Ocultista-Sangue, "Ser Rasgado" (AS7, p. 87), 65%+.
+ *
+ * Verbatim: "Quando conjura um ritual de Sangue, você pode gastar uma ação de
+ * movimento e 2d8+2 PV para servir esse sangue a um aliado adjacente. Se o
+ * alvo aceitá-lo e ingeri-lo como reação, ele recebe +Ø em testes baseados em
+ * Agilidade, Força e Vigor até o fim da cena."
+ *
+ * NÃO é 1x/cena — o livro não põe limite nenhum de usos; o gatilho é ter
+ * acabado de conjurar um ritual de Sangue, e o travão é o PV. O "+Ø" do livro
+ * é o símbolo do dado de bónus: +1d20 no pool do teste do aliado.
+ */
+export const SERVIR_SANGUE = {
+  desde: 65,
+  custoPv: '2d8+2',
+  bonus: '+1d20',
+  bonusEm: 'testes baseados em Agilidade, Força e Vigor até o fim da cena',
+};
+
+/**
+ * REVELAÇÕES DO CONHECIMENTO — Ocultista-Conhecimento, "Ser Rasgado" (AS7, p. 87), 65%+.
+ *
+ * Verbatim: "Quando conjura um ritual de Conhecimento, você pode gastar uma ação de
+ * movimento e 2 PE para obter revelações sobre o alvo do ritual (o mestre deve
+ * responder a 5 perguntas sobre a ficha, história e/ou personalidade do alvo com
+ * 'sim' ou 'não'). Se você mesmo for o alvo, em vez disso, você se torna capaz de
+ * ver coisas incorpóreas, invisíveis ou ocultas de outra forma pelo paranormal,
+ * até o fim da cena."
+ */
+export const REVELACAO_CONHECIMENTO = {
+  desde: 65,
+  custoPe: 2,
+  descricao: 'Ação de movimento + 2 PE: 5 perguntas sim/não ao mestre sobre o alvo do ritual (ficha, história, personalidade); ou visão de coisas incorpóreas/invisíveis até ao fim da cena se o alvo fores tu.',
+};
+
+/**
+ * TELETRANSPORTE E DEFESA DA ENERGIA — Ocultista-Energia, "Ser Rasgado" (AS7, p. 87), 65%+.
+ *
+ * Verbatim: "Quando conjura um ritual de Energia, você pode gastar uma ação de
+ * movimento e 3 PE para se teletransportar 3m e ganhar Defesa igual ao PE gasto no
+ * ritual, por 1 rodada. Além disso, a DT dos seus rituais de Energia marcados na pele
+ * aumenta em +2."
+ */
+export const DEFESA_ENERGIA = {
+  desde: 65,
+  custoPe: 3,
+  distancia: '3m',
+  descricao: 'Ação de movimento + 3 PE: teletransporta-se 3m e recebe Defesa igual aos PE gastos no ritual conjurado até ao fim da rodada.',
+};
+

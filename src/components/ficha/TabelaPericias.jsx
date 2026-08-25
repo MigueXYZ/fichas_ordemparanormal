@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { GRAUS_TREINO } from '../../data/pericias.js';
 import { ATRIBUTOS } from '../../data/atributos.js';
 import { calcPericias } from '../../engine/calc.js';
-import { rolarTeste, rolarExpressao } from '../../engine/dados.js';
+import { rolarTeste, rolarExpressao, quantidadeDados } from '../../engine/dados.js';
 import IconeD20 from '../IconeD20.jsx';
 
 function InputNumeroScroll({ value, onChange, ...props }) {
@@ -185,8 +185,14 @@ export default function TabelaPericias({ personagem, setPersonagem, onRolar }) {
                 <div className="nome-pericia">
                   <button
                     className="dado-btn"
-                    title={l.bloqueada ? 'Perícia somente treinada — sem treino não podes usar' : `Rolar ${l.nome}: ${l.dados}d20 ${l.bonus >= 0 ? '+' : '−'}${Math.abs(l.bonus)}${l.dadosExtra?.length ? ` + ${l.dadosExtra.join(' + ')} (${l.dadosExtraDescricao})` : ''}`}
-                    onClick={() => onRolar(rolarTeste({ nome: l.nome, dados: l.dados, bonus: l.bonus, dadosExtra: l.dadosExtra }))}
+                    title={(personagem.monstruosoBancoPendente
+                      ? `+1 dado do banco da Trilha do Monstruoso pronto a gastar — `
+                      : '') + (l.bloqueada ? 'Perícia somente treinada — sem treino não podes usar' : `Rolar ${l.nome}: ${quantidadeDados(personagem.monstruosoBancoPendente ? Number(l.dados) + 1 : l.dados)}d20 ${l.bonus >= 0 ? '+' : '−'}${Math.abs(l.bonus)}${l.dadosExtra?.length ? ` + ${l.dadosExtra.join(' + ')} (${l.dadosExtraDescricao})` : ''}`)}
+                    onClick={() => {
+                      const comBonus = Boolean(personagem.monstruosoBancoPendente);
+                      onRolar(rolarTeste({ nome: l.nome, dados: comBonus ? Number(l.dados) + 1 : l.dados, bonus: l.bonus, dadosExtra: l.dadosExtra }));
+                      if (comBonus) setPersonagem((p) => ({ ...p, monstruosoBancoPendente: false }));
+                    }}
                   >
                     <IconeD20 />
                   </button>

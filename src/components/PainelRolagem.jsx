@@ -4,8 +4,8 @@ import { ExibirDanoSeparado, obterInfoTipoDano } from './ExibirDano.jsx';
 
 /** A conta que deu origem ao resultado, conforme o tipo de rolagem. */
 export function Dados({ r }) {
-  if (r.semTeste) {
-    return <span className="conta">poder de toque — sem teste de Ocultismo</span>;
+  if (r.semTeste || r.tipo === 'habilidade' || r.tipo === 'efeito') {
+    return <span className="conta">{r.detalhe || 'sem teste'}</span>;
   }
   if (r.tipo === 'dano') {
     if (r.partes && r.partes.length > 0) {
@@ -35,7 +35,7 @@ export function Dados({ r }) {
           const info = obterInfoTipoDano(e.tipoDano || (e.elemental ? 'Sangue' : ''));
           return (
             <span key={i} style={info.cor ? { color: info.cor } : undefined} title={e.elemental ? 'Dano Elemental' : undefined}>
-              {` + ${e.expr} [${e.rolagens.join(', ')}]${info.abrev ? ` ${info.abrev}` : ''}`}
+              {` + ${e.expr} [${(e.rolagens || []).join(', ')}]${info.abrev ? ` ${info.abrev}` : ''}`}
             </span>
           );
         })}
@@ -65,9 +65,12 @@ export function Dados({ r }) {
     }
     return (
       <span className="conta">
-        [{r.rolagens.join(', ')}]{r.bonus ? ` ${r.bonus > 0 ? '+' : '−'} ${Math.abs(r.bonus)}` : ''}
+        [{(r.rolagens || []).join(', ')}]{r.bonus ? ` ${r.bonus > 0 ? '+' : '−'} ${Math.abs(r.bonus)}` : ''}
       </span>
     );
+  }
+  if (!r.rolagens || !Array.isArray(r.rolagens)) {
+    return <span className="conta">{r.detalhe || ''}</span>;
   }
   // teste de perícia / atributo / ataque
   return (
@@ -82,7 +85,7 @@ export function Dados({ r }) {
       ] → {r.piorDeDois ? 'pior' : 'maior'} <span className="melhor">{r.escolhido}</span>
       {r.bonus ? ` ${r.bonus > 0 ? '+' : '−'} ${Math.abs(r.bonus)}` : ''}
       {(r.dadosExtra || []).map((d, i) => (
-        <span key={i}>{` + ${d.expr} [${d.rolagens.join(', ')}]`}</span>
+        <span key={i}>{` + ${d.expr} [${(d.rolagens || []).join(', ')}]`}</span>
       ))}
     </span>
   );

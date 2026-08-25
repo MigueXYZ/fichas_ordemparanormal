@@ -34,7 +34,13 @@ export const ITENS = juntar(
   comTipo(ARMAS, 'arma'),
   comTipo(PROTECOES, 'protecao'),
   comTipo(ITENS_GERAIS, 'geral'),
-  comTipo(ITENS_AMALDICOADOS, 'amaldicoado'),
+  // As entradas com `maldicao: true` são só definições de maldição
+  // (modificadores para aplicar a uma arma/proteção/acessório já existente,
+  // ver MALDICOES_ARMAS em data/maldicoes.js e o seletor em EditorArma.jsx) —
+  // não são itens que se possam meter no inventário sozinhos, por isso ficam
+  // de fora do catálogo geral (senão apareciam nos seletores de "Armas do
+  // Catálogo"/"Itens do Catálogo" como se fossem armas/itens normais).
+  comTipo(ITENS_AMALDICOADOS.filter((i) => i.maldicao !== true), 'amaldicoado'),
 );
 
 export const ITENS_POR_ID = Object.fromEntries(ITENS.map((i) => [i.id, i]));

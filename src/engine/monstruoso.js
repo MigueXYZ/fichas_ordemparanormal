@@ -31,10 +31,13 @@ import {
   RESISTENCIA_TIPOS_COMBATENTE_IDS, RESISTENCIA_ENERGIA_QUIMICO_DESDE,
   DRENAGEM_ATRIBUTO, COR_ELEMENTO, TAMANHO_ESPECIALISTA_SANGUE,
   patamaresPresencaPermanente, TUDO_PERMANENTE_DESDE,
+  TATUAGEM_DESDE, PODER_TATUAGEM, BONUS_CONCENTRACAO_TATUAGEM, REACAO_TATUAGEM,
+  SERVIR_SANGUE, REVELACAO_CONHECIMENTO, DEFESA_ENERGIA,
 } from '../data/monstruoso.js';
 import { PERICIAS } from '../data/pericias.js';
 import { RITUAIS, RITUAIS_POR_ID } from '../data/rituais.js';
 import { rolarDano } from './dados.js';
+import { CONDICOES_POR_ID } from '../data/condicoes.js';
 
 const CLASSES_MONSTRUOSAS = ['combatente', 'especialista', 'ocultista'];
 const ATRIBUTOS_BASE = { for: 0, agi: 0, int: 0, pre: 0, vig: 0 };
@@ -135,6 +138,429 @@ export function escolherPericiasConhecimento(personagem, periciaIds) {
 }
 
 export { quantidadePericiasLivresConhecimento };
+
+/**
+ * Combatente-Conhecimento, 65%+ (Ser Assustador): pode deixar de ser
+ * treinado numa perícia para ganhar um banco de dados de bónus (= Intelecto)
+ * — até ao fim da cena, gasta 1 de cada vez para +1 dado no pool de um
+ * teste. Recupera a perícia (e esvazia o banco) no próximo interlúdio —
+ * ver `calcularInterludio`/`aplicarDescansoPleno` em engine/interludio.js.
+ */
+export function podeUsarBancoConhecimento(personagem, nex) {
+  return classeMonstruosa(personagem) === 'combatente'
+    && elementoAtual(personagem) === 'Conhecimento'
+    && patamarAtual(nex) >= 65
+    && efetivamenteAtivo(personagem, nex);
+}
+
+/**
+ * Escolhe a perícia a destreinar e abre o banco de dados. O tamanho do banco
+ * usa o Intelecto EFETIVO (`atributosEfetivos`, não o atributo base) — o
+ * próprio Combatente-Conhecimento já tem +1 Intelecto vivo desde os 40% e
+ * outro +1 (total +2) aos 99%, e esse bónus tem de entrar na conta. Só uma
+ * perícia destreinada de cada vez.
+ */
+export function escolherPericiaParaDestreinar(personagem, periciaId, nex) {
+  if (personagem.monstruosoPericiaDestreinada) {
+    return { erro: 'Já tens uma perícia destreinada por esta habilidade — recupera-a num interlúdio antes de escolher outra.' };
+  }
+  const atual = personagem.pericias?.[periciaId];
+  if (!atual || !atual.grau || atual.grau === 'destreinado') {
+    return { erro: 'Escolhe uma perícia que já esteja treinada.' };
+  }
+  const intelecto = Math.max(0, Number(atributosEfetivos(personagem, nex).int || 0));
+  return {
+    patch: {
+      pericias: { ...(personagem.pericias || {}), [periciaId]: { ...atual, grau: 'destreinado' } },
+      monstruosoPericiaDestreinada: periciaId,
+      monstruosoBancoDados: intelecto,
+      monstruosoBancoPendente: false,
+    },
+  };
+}
+
+/** Gasta 1 dado do banco — fica pendente para somar +1 ao pool do PRÓXIMO teste rolado. */
+export function gastarDadoBanco(personagem) {
+  const banco = Number(personagem.monstruosoBancoDados || 0);
+  if (banco <= 0) return { erro: 'Não tens dados no banco.' };
+  return { patch: { monstruosoBancoDados: banco - 1, monstruosoBancoPendente: true } };
+}
+
+/** Soma o dado pendente do banco (se houver) ao tamanho do pool de um teste prestes a ser rolado. */
+export function comBancoPendente(personagem, dados) {
+  return personagem?.monstruosoBancoPendente ? Number(dados || 0) + 1 : Number(dados || 0);
+}
+
+/**
+ * TATUAGEM RITUALÍSTICA — Ocultista, "Ser Perfurado" (AS07, p. 86), 40%+.
+ *
+ * A partir daqui o poder aplica-se a QUALQUER ritual do elemento escolhido
+ * marcado na pele, não só aos de alcance Pessoal com você como alvo.
+ * Verbatim: "ele também se aplica a todos os rituais de <Elemento> marcados
+ * em sua pele, não apenas aos de alcance pessoal que têm você como alvo".
+ *
+ * O livro dá isto nos QUATRO elementos (Sangue, Morte, Conhecimento e
+ * Energia) — a versão anterior desta função estava fechada só ao Sangue.
+ */
+export function tatuagemAlargada(personagem, nex) {
+  return classeMonstruosa(personagem) === 'ocultista'
+    && Boolean(elementoAtual(personagem))
+    && patamarAtual(nex) >= TATUAGEM_DESDE
+    && efetivamenteAtivo(personagem, nex);
+}
+
+/** O ritual é do elemento paranormal escolhido para a trilha? */
+function ritualDoElemento(personagem, ritual) {
+  const el = elementoAtual(personagem);
+  if (!el || !ritual?.elemento) return false;
+  return normalizar(ritual.elemento) === normalizar(el);
+}
+
+/**
+ * A personagem tem mesmo o poder Tatuagem Ritualística? Ou porque o escolheu
+ * (está na lista de habilidades da ficha), ou porque a trilha lho concedeu
+ * aos 40%. Sem o poder não há redução de PE nenhuma — o livro é explícito em
+ * que a trilha não duplica o poder, só "altera a maneira como ele funciona"
+ * a quem já o tinha.
+ */
+export function temTatuagemRitualistica(personagem, nex) {
+  if (tatuagemAlargada(personagem, nex)) return true;
+  const nome = normalizar(PODER_TATUAGEM.nome);
+  return (personagem?.habilidades || []).some((h) => normalizar(h?.nome) === nome);
+}
+
+/**
+ * O ritual cabe na regra BASE do poder: "rituais de alcance pessoal que têm
+ * você como alvo" (Livro Base, p. 34). O catálogo escreve o alvo ora "Você"
+ * ora "você" — daí a comparação normalizada.
+ */
+function ritualPessoalEmSi(ritual) {
+  return normalizar(ritual?.alcance) === 'pessoal' && normalizar(ritual?.alvo) === 'voce';
+}
+
+/**
+ * Este ritual PODE sequer ser marcado na pele?
+ *
+ * O poder só fala de duas famílias de rituais, e marcar fora delas não teria
+ * efeito nenhum:
+ *   1. Regra base (qualquer conjurador com o poder, qualquer elemento):
+ *      rituais de alcance Pessoal que te têm a ti como alvo.
+ *   2. Ocultista Monstruoso, 40%+: qualquer ritual do ELEMENTO da trilha
+ *      ("...também se aplica a todos os rituais de <Elemento> marcados em sua
+ *      pele, não apenas aos de alcance pessoal que têm você como alvo").
+ *
+ * Não depende da escarificação do dia: marcar é uma escolha que fica, não um
+ * efeito diário — senão o jogador perdia a lista sempre que a desligasse.
+ */
+export function podeSerMarcadoNaPele(personagem, nex, ritual) {
+  if (!ritual) return false;
+  if (ritualPessoalEmSi(ritual)) return true;
+  return classeMonstruosa(personagem) === 'ocultista'
+    && patamarAtual(nex) >= TATUAGEM_DESDE
+    && ritualDoElemento(personagem, ritual);
+}
+
+/**
+ * -1 PE se o ritual estiver marcado (tatuado) na pele: pela regra base do
+ * poder (alcance Pessoal + alvo "você", qualquer elemento) ou, alargado por
+ * `tatuagemAlargada`, por qualquer ritual do elemento da trilha.
+ */
+export function reducaoTatuagemRitualistica(personagem, nex, ritual, marcado) {
+  if (!marcado || !ritual) return 0;
+  if (!temTatuagemRitualistica(personagem, nex)) return 0;
+  const basico = ritualPessoalEmSi(ritual);
+  const alargado = tatuagemAlargada(personagem, nex) && ritualDoElemento(personagem, ritual);
+  return (basico || alargado) ? 1 : 0;
+}
+
+/**
+ * Ocultista 40%+: +5 em testes de Concentração ao conjurar/manter um ritual
+ * do elemento escolhido marcado na pele (verbatim AS07). Devolve 0 se não se
+ * aplicar (elemento diferente, ritual não marcado, ou patamar insuficiente).
+ */
+export function bonusConcentracaoTatuagem(personagem, nex, ritual, marcado) {
+  if (!marcado || !ritual) return 0;
+  if (!tatuagemAlargada(personagem, nex) || !ritualDoElemento(personagem, ritual)) return 0;
+  return BONUS_CONCENTRACAO_TATUAGEM;
+}
+
+/**
+ * Ocultista 40%+: 1x/cena, sob as condições próprias do elemento (ver
+ * REACAO_TATUAGEM em data/monstruoso.js), pode conjurar como reação (em vez
+ * da ação normal exigida) um ritual marcado na pele — continua a gastar o
+ * custo de PE normal. "Cena" não tem fronteira automática nesta app (ver
+ * nota geral em engine/interludio.js) — o próprio jogador repõe à mão.
+ */
+export function podeReagirTatuagem(personagem, nex, ritual, marcado) {
+  if (!marcado || !ritual) return false;
+  if (!tatuagemAlargada(personagem, nex) || !ritualDoElemento(personagem, ritual)) return false;
+  if (personagem.monstruosoReacaoTatuagemUsada) return false;
+  const regra = REACAO_TATUAGEM[elementoAtual(personagem)];
+  if (!regra) return false;
+  const condicoes = personagem.condicoes || [];
+  return condicoes.some((id) => regra.condicoes.includes(id) || regra.tipos.includes(CONDICOES_POR_ID[id]?.tipo));
+}
+
+/** O texto da condição que destrava a reação (para a dica do botão), ou null. */
+export function textoReacaoTatuagem(personagem) {
+  const regra = REACAO_TATUAGEM[elementoAtual(personagem)];
+  return regra ? regra.texto : null;
+}
+
+/**
+ * Qual das condições que destravam a reação está neste momento ligada na
+ * ficha? Devolve o NOME da condição (para mostrar), ou null. Cada elemento
+ * tem a sua lista (REACAO_TATUAGEM): Sangue machucado/fadiga, Morte
+ * morrendo/sentidos, Conhecimento mental/medo, Energia paralisia/sentidos.
+ */
+export function condicaoReacaoTatuagem(personagem) {
+  const regra = REACAO_TATUAGEM[elementoAtual(personagem)];
+  if (!regra) return null;
+  const id = (personagem?.condicoes || []).find(
+    (c) => regra.condicoes.includes(c) || regra.tipos.includes(CONDICOES_POR_ID[c]?.tipo),
+  );
+  return id ? (CONDICOES_POR_ID[id]?.nome || id) : null;
+}
+
+/**
+ * Estado da reação 1x/cena da Tatuagem Ritualística, pronto para a interface.
+ * Devolve null se a personagem nem sequer tem o efeito (não é Ocultista
+ * Monstruoso 40%+ com a escarificação de hoje feita).
+ *
+ * ATENÇÃO — isto NÃO tem nada a ver com o +5 em testes de concentração. O
+ * livro junta as duas frases no mesmo parágrafo, mas são efeitos separados:
+ * o +5 vale sempre (ver `bonusConcentracaoTatuagem`), a reação é que depende
+ * da condição estar ligada.
+ */
+export function estadoReacaoTatuagem(personagem, nex) {
+  if (!tatuagemAlargada(personagem, nex)) return null;
+  const regra = REACAO_TATUAGEM[elementoAtual(personagem)];
+  const condicao = condicaoReacaoTatuagem(personagem);
+  const usada = Boolean(personagem?.monstruosoReacaoTatuagemUsada);
+  return {
+    gatilho: regra?.texto || '',
+    condicao,
+    usada,
+    disponivel: Boolean(condicao) && !usada,
+  };
+}
+
+/** Gasta a reação da cena. */
+export function usarReacaoTatuagem() {
+  return { patch: { monstruosoReacaoTatuagemUsada: true } };
+}
+
+/** Repõe a reação (cena nova) — a app não tem fronteira automática de cena. */
+export function reporReacaoTatuagem() {
+  return { patch: { monstruosoReacaoTatuagemUsada: false } };
+}
+
+/**
+ * SERVIR SANGUE — Ocultista-Sangue 65%+ ("Ser Rasgado", AS7 p. 87).
+ *
+ * O gatilho é ter acabado de conjurar um ritual de Sangue: só aí é que há
+ * "esse sangue" para servir. `personagem.monstruosoRitualSangueConjurado`
+ * guarda esse gatilho — liga-se ao conjurar um ritual de Sangue e apaga-se
+ * assim que se serve. O livro NÃO põe limite de usos por cena; o travão é o
+ * PV que custa.
+ */
+export function podeServirSangue(personagem, nex) {
+  return classeMonstruosa(personagem) === 'ocultista'
+    && elementoAtual(personagem) === 'Sangue'
+    && patamarAtual(nex) >= SERVIR_SANGUE.desde
+    && efetivamenteAtivo(personagem, nex);
+}
+
+/** O gatilho está armado (conjuraste um ritual de Sangue e ainda não serviste)? */
+export function servirSangueArmado(personagem, nex) {
+  return podeServirSangue(personagem, nex) && Boolean(personagem.monstruosoRitualSangueConjurado);
+}
+
+/** Arma o gatilho — chamado ao conjurar um ritual de Sangue. */
+export function armarServirSangue(personagem, nex, ritual) {
+  if (!podeServirSangue(personagem, nex)) return {};
+  if (normalizar(ritual?.elemento) !== 'sangue') return {};
+  return { monstruosoRitualSangueConjurado: true };
+}
+
+/**
+ * Serve o sangue: rola 2d8+2, tira esse valor ao PV atual (os PV temporários
+ * aguentam primeiro, como em qualquer perda de PV) e desarma o gatilho.
+ * Devolve `{ patch, rolo }` ou `{ erro }`.
+ */
+export function servirSangue(personagem, nex, { onRolar, pvMax = 0 } = {}) {
+  if (!servirSangueArmado(personagem, nex)) {
+    return { erro: 'Precisas de conjurar um ritual de Sangue primeiro.' };
+  }
+  const rolo = rolarDano({ nome: 'Ser Rasgado — servir sangue a um aliado', dano: '2d8', bonus: 2 });
+  const custo = rolo ? rolo.total : 0;
+  const temp = Math.max(0, Number(personagem.pvTemp || 0));
+  const doTemp = Math.min(temp, custo);
+  const doPv = custo - doTemp;
+  if (rolo && onRolar) {
+    onRolar({
+      ...rolo,
+      notas: [
+        `Custa ${custo} PV${doTemp ? ` (${doTemp} dos temporários)` : ''}`,
+        `O aliado que aceitar e ingerir como reação recebe ${SERVIR_SANGUE.bonus} em ${SERVIR_SANGUE.bonusEm}.`,
+      ],
+      sofreu: true,
+    });
+  }
+  return {
+    rolo,
+    patch: {
+      pvTemp: temp - doTemp,
+      pvAtual: Math.max(0, Number(personagem.pvAtual ?? pvMax) - doPv),
+      monstruosoRitualSangueConjurado: false,
+    },
+  };
+}
+
+/**
+ * REVELAÇÕES DO CONHECIMENTO — Ocultista-Conhecimento 65%+ ("Ser Rasgado", AS7 p. 87).
+ *
+ * Gatilho: ter acabado de conjurar um ritual de Conhecimento.
+ * Gasta ação de movimento e 2 PE para obter revelações sobre o alvo (5 perguntas
+ * sim/não ao mestre) ou visão do oculto/invisível se o alvo for você mesmo.
+ */
+export function podeRevelacaoConhecimento(personagem, nex) {
+  return classeMonstruosa(personagem) === 'ocultista'
+    && elementoAtual(personagem) === 'Conhecimento'
+    && patamarAtual(nex) >= REVELACAO_CONHECIMENTO.desde
+    && efetivamenteAtivo(personagem, nex);
+}
+
+/** O gatilho está armado (conjuraste um ritual de Conhecimento e ainda não usaste a revelação)? */
+export function revelacaoConhecimentoArmada(personagem, nex) {
+  return podeRevelacaoConhecimento(personagem, nex) && Boolean(personagem.monstruosoRitualConhecimentoConjurado);
+}
+
+/** Arma o gatilho — chamado ao conjurar um ritual de Conhecimento. */
+export function armarRevelacaoConhecimento(personagem, nex, ritual) {
+  if (!podeRevelacaoConhecimento(personagem, nex)) return {};
+  if (normalizar(ritual?.elemento) !== 'conhecimento') return {};
+  return { monstruosoRitualConhecimentoConjurado: true };
+}
+
+/**
+ * Obtém revelações: gasta 2 PE (ou 2 PD se sem Sanidade), desarma o gatilho
+ * e emite o log detalhado no histórico de rolagens.
+ */
+export function obterRevelacaoConhecimento(personagem, nex, { onRolar, peMax = 0 } = {}) {
+  if (!revelacaoConhecimentoArmada(personagem, nex)) {
+    return { erro: 'Precisas de conjurar um ritual de Conhecimento primeiro.' };
+  }
+  const usaPd = Boolean(personagem?.regras?.semSanidade);
+  const peAtual = usaPd ? Number(personagem.pdAtual ?? peMax) : Number(personagem.peAtual ?? peMax);
+  if (peAtual < REVELACAO_CONHECIMENTO.custoPe) {
+    return { erro: `PE insuficiente (precisas de ${REVELACAO_CONHECIMENTO.custoPe} ${usaPd ? 'PD' : 'PE'}).` };
+  }
+  if (onRolar) {
+    onRolar({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      tipo: 'habilidade',
+      semTeste: true,
+      nome: 'Ser Rasgado — Revelações do Conhecimento',
+      detalhe: 'Ação de movimento · Trilha do Monstruoso (65%)',
+      notas: [
+        `${REVELACAO_CONHECIMENTO.custoPe} ${usaPd ? 'PD' : 'PE'} gastos`,
+        '• Alvo externo: o mestre deve responder a 5 perguntas sobre a ficha, história e/ou personalidade do alvo com "sim" ou "não".',
+        '• Próprio conjurador como alvo: tornas-te capaz de ver coisas incorpóreas, invisíveis ou ocultas de outra forma pelo paranormal até ao fim da cena.',
+      ],
+      total: 'revelado',
+      critico: false,
+      falhaCritica: false,
+    });
+  }
+  return {
+    patch: {
+      [usaPd ? 'pdAtual' : 'peAtual']: peAtual - REVELACAO_CONHECIMENTO.custoPe,
+      monstruosoRitualConhecimentoConjurado: false,
+    },
+  };
+}
+
+/**
+ * TELETRANSPORTE E DEFESA DA ENERGIA — Ocultista-Energia 65%+ ("Ser Rasgado", AS7 p. 87).
+ *
+ * Gatilho: ter acabado de conjurar um ritual de Energia.
+ * Gasta ação de movimento e 3 PE para se teletransportar 3m e ganhar Defesa
+ * igual aos PE gastos no ritual conjurado até ao fim da rodada.
+ */
+export function podeDefesaEnergia(personagem, nex) {
+  return classeMonstruosa(personagem) === 'ocultista'
+    && elementoAtual(personagem) === 'Energia'
+    && patamarAtual(nex) >= DEFESA_ENERGIA.desde
+    && efetivamenteAtivo(personagem, nex);
+}
+
+/** O gatilho está armado (conjuraste um ritual de Energia e ainda não ativaste o teletransporte/defesa)? */
+export function defesaEnergiaArmada(personagem, nex) {
+  return podeDefesaEnergia(personagem, nex) && Boolean(personagem?.monstruosoRitualEnergiaConjurado);
+}
+
+/** Quanto PE foi gasto no último ritual de Energia conjurado? */
+export function peGastoRitualEnergia(personagem) {
+  return Number(personagem?.monstruosoRitualEnergiaPeGasto || 0);
+}
+
+/** Arma o gatilho — chamado ao conjurar um ritual de Energia. */
+export function armarDefesaEnergia(personagem, nex, ritual, peGasto = 0) {
+  if (!podeDefesaEnergia(personagem, nex)) return {};
+  if (normalizar(ritual?.elemento) !== 'energia') return {};
+  return {
+    monstruosoRitualEnergiaConjurado: true,
+    monstruosoRitualEnergiaPeGasto: Math.max(0, Number(peGasto) || 0),
+  };
+}
+
+/**
+ * Ativa o teletransporte e o bónus de Defesa: gasta 3 PE (ou 3 PD), aplica o bónus
+ * de Defesa igual aos PE gastos no ritual, e desarma o gatilho.
+ */
+export function ativarDefesaEnergia(personagem, nex, { peMax = 0 } = {}) {
+  if (!defesaEnergiaArmada(personagem, nex)) {
+    return { erro: 'Precisas de conjurar um ritual de Energia primeiro.' };
+  }
+  const usaPd = Boolean(personagem?.regras?.semSanidade);
+  const peAtual = usaPd ? Number(personagem.pdAtual ?? peMax) : Number(personagem.peAtual ?? peMax);
+  if (peAtual < DEFESA_ENERGIA.custoPe) {
+    return { erro: `PE insuficiente (precisas de ${DEFESA_ENERGIA.custoPe} ${usaPd ? 'PD' : 'PE'}).` };
+  }
+  const bonus = peGastoRitualEnergia(personagem);
+  return {
+    patch: {
+      [usaPd ? 'pdAtual' : 'peAtual']: peAtual - DEFESA_ENERGIA.custoPe,
+      monstruosoRitualEnergiaConjurado: false,
+      monstruosoDefesaEnergiaBonus: bonus,
+    },
+    bonus,
+  };
+}
+
+/** Remove o bónus de Defesa (fim da rodada). */
+export function removerDefesaEnergia() {
+  return { patch: { monstruosoDefesaEnergiaBonus: 0 } };
+}
+
+/**
+ * Poderes concedidos pela trilha e em efeito agora (entradas `tipo: 'poder'`
+ * de EFEITOS_POR_PATAMAR) — prontos para a lista de Habilidades. Hoje só a
+ * Tatuagem Ritualística do Ocultista aos 40%.
+ */
+export function poderesAtivos(personagem, nex) {
+  return ganhosAtivos(personagem, nex)
+    .filter((g) => g.tipo === 'poder')
+    .map((g) => ({
+      nome: g.nome,
+      descricao: g.nome === PODER_TATUAGEM.nome
+        ? `${PODER_TATUAGEM.descricao}\n\nPela Trilha do Monstruoso (${elementoAtual(personagem)}, 40%+), aplica-se também a todos os rituais de ${elementoAtual(personagem)} marcados na tua pele, não só aos de alcance pessoal que te têm como alvo.`
+        : '',
+      patamar: g.patamar,
+      _monstruosoId: g.id,
+    }));
+}
 
 /**
  * Soma viva de todos os deltas de atributo em efeito agora (ganhos por
@@ -542,6 +968,29 @@ function presencaPendente(personagem, nex) {
 }
 
 /**
+ * Aplica a perda permanente de Presença ainda pendente (se houver alguma) —
+ * usada dentro de `ativarHoje` (fluxo normal, ao clicar "ativar" no dia) e
+ * também sozinha quando o Combatente atinge o patamar em que tudo fica
+ * permanente (99%, ver `tudoPermanente`): nesse ponto o botão deixa de abrir
+ * modal nenhum (nada para ligar/desligar), por isso já não há clique nenhum
+ * para disparar esta perda — ver o useEffect em `MonstruosoBotao`
+ * (components/ficha/Monstruoso.jsx). Devolve `null` se não houver nada
+ * pendente.
+ */
+export function aplicarPresencaPendente(personagem, nex) {
+  const pendentes = presencaPendente(personagem, nex);
+  if (pendentes.length === 0) return null;
+  const atributos = { ...(personagem.atributos || {}) };
+  atributos.pre = Number(atributos.pre || 0) - pendentes.length;
+  return {
+    patch: {
+      atributos,
+      monstruosoPresencaPerdida: [...(personagem.monstruosoPresencaPerdida || []), ...pendentes],
+    },
+  };
+}
+
+/**
  * Faz a etapa ritualística de hoje: consome o componente (se a classe
  * pedir), rola a recuperação de PV/PE (se houver), aplica a perda
  * permanente de Presença (se for a primeira vez neste patamar) e liga os
@@ -604,13 +1053,8 @@ export function ativarHoje(personagem, nex, { onRolar } = {}) {
 
   // Perda permanente de Presença (65%/99%, por classe/elemento) — só na
   // primeira vez, nunca reverte.
-  const pendentes = presencaPendente(personagem, nex);
-  if (pendentes.length > 0) {
-    const atributos = { ...(patch.atributos || personagem.atributos) };
-    atributos.pre = Number(atributos.pre || 0) - pendentes.length;
-    patch.atributos = atributos;
-    patch.monstruosoPresencaPerdida = [...(personagem.monstruosoPresencaPerdida || []), ...pendentes];
-  }
+  const presenca = aplicarPresencaPendente(personagem, nex);
+  if (presenca) Object.assign(patch, presenca.patch);
 
   patch.monstruosoAtivoHoje = true;
   return { patch };
@@ -621,7 +1065,17 @@ export function ativarHoje(personagem, nex, { onRolar } = {}) {
  * normal) — não mexe na Presença perdida nem no elemento escolhido.
  */
 export function desativarHoje() {
-  return { patch: { monstruosoAtivoHoje: false, monstruosoDrenagem: 0 } };
+  return {
+    patch: {
+      monstruosoAtivoHoje: false,
+      monstruosoDrenagem: 0,
+      monstruosoRitualSangueConjurado: false,
+      monstruosoRitualConhecimentoConjurado: false,
+      monstruosoRitualEnergiaConjurado: false,
+      monstruosoRitualEnergiaPeGasto: 0,
+      monstruosoDefesaEnergiaBonus: 0,
+    },
+  };
 }
 
 /** Primeira escolha de elemento (10%, permanente). */
@@ -667,13 +1121,19 @@ function linhasGeraisNoPatamar(classe, elemento, patamar) {
   const pen = PROGRESSAO_PENALIDADE[classe]?.[patamar];
   if (pen) {
     const lista = (PERICIAS_PENALIZADAS[classe]?.[elemento] || []).map(nomePericia).join(', ');
-    const valor = pen.dados ? `${pen.dados}O (${Math.abs(pen.dados)} dado${Math.abs(pen.dados) > 1 ? 's' : ''} a menos)` : `${pen.flat}`;
+    const valor = pen.dados ? `${Math.abs(pen.dados)} dado${Math.abs(pen.dados) > 1 ? 's' : ''} a menos` : `${pen.flat}`;
     linhas.push(`Penalidade em ${lista}: ${valor}`);
   }
 
   const peDesde = PE_POR_ATRIBUTO_DESDE[classe]?.[elemento];
   if (peDesde === patamar) {
-    linhas.push(`Pontos de Esforço calculados por ${NOME_ATRIBUTO[ATRIBUTO_DO_ELEMENTO[elemento]]} (em vez de Presença)`);
+    const nomeAttr = NOME_ATRIBUTO[ATRIBUTO_DO_ELEMENTO[elemento]];
+    // O Combatente só troca o atributo dos PE; Especialista e Ocultista
+    // trocam também o da DT dos rituais ("...para determinar seus PE e a DT
+    // dos seus rituais", AS7 p.85) — já automatizado em engine/calc.js.
+    linhas.push(classe === 'combatente'
+      ? `Pontos de Esforço calculados por ${nomeAttr} (em vez de Presença)`
+      : `Pontos de Esforço e DT de ritual calculados por ${nomeAttr} (em vez de Presença)`);
   }
 
   if (SOMA_ATRIBUTO_EM_PERICIAS[classe] && SOMA_ATRIBUTO_DESDE[elemento] === patamar) {
