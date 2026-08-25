@@ -31,6 +31,8 @@ import {
   RESISTENCIA_TIPOS_COMBATENTE_IDS, RESISTENCIA_ENERGIA_QUIMICO_DESDE,
   DRENAGEM_ATRIBUTO, COR_ELEMENTO, TAMANHO_ESPECIALISTA_SANGUE,
   patamaresPresencaPermanente, TUDO_PERMANENTE_DESDE,
+  TATUAGEM_DESDE, PODER_TATUAGEM, BONUS_CONCENTRACAO_TATUAGEM, REACAO_TATUAGEM,
+  SERVIR_SANGUE,
 } from '../data/monstruoso.js';
 import { PERICIAS } from '../data/pericias.js';
 import { RITUAIS, RITUAIS_POR_ID } from '../data/rituais.js';
@@ -190,58 +192,247 @@ export function comBancoPendente(personagem, dados) {
 }
 
 /**
- * Ocultista-Sangue (Trilha do Monstruoso, AS07, 40%+ "Ser Perfurado"): a
- * Tatuagem Ritualística (poder base do Ocultista) passa a aplicar-se a
- * QUALQUER ritual de Sangue marcado na pele, não só aos de alcance Pessoal
- * com você como alvo. Verbatim: "ele também se aplica a todos os rituais
- * de Sangue marcados em sua pele, não apenas aos de alcance pessoal que
- * têm você como alvo".
+ * TATUAGEM RITUALÍSTICA — Ocultista, "Ser Perfurado" (AS07, p. 86), 40%+.
+ *
+ * A partir daqui o poder aplica-se a QUALQUER ritual do elemento escolhido
+ * marcado na pele, não só aos de alcance Pessoal com você como alvo.
+ * Verbatim: "ele também se aplica a todos os rituais de <Elemento> marcados
+ * em sua pele, não apenas aos de alcance pessoal que têm você como alvo".
+ *
+ * O livro dá isto nos QUATRO elementos (Sangue, Morte, Conhecimento e
+ * Energia) — a versão anterior desta função estava fechada só ao Sangue.
  */
-export function tatuagemAlargadaSangue(personagem, nex) {
+export function tatuagemAlargada(personagem, nex) {
   return classeMonstruosa(personagem) === 'ocultista'
-    && elementoAtual(personagem) === 'Sangue'
-    && patamarAtual(nex) >= 40
+    && Boolean(elementoAtual(personagem))
+    && patamarAtual(nex) >= TATUAGEM_DESDE
     && efetivamenteAtivo(personagem, nex);
 }
 
+/** O ritual é do elemento paranormal escolhido para a trilha? */
+function ritualDoElemento(personagem, ritual) {
+  const el = elementoAtual(personagem);
+  if (!el || !ritual?.elemento) return false;
+  return normalizar(ritual.elemento) === normalizar(el);
+}
+
 /**
- * -1 PE se o ritual estiver marcado (tatuado): pela regra base (alcance
- * Pessoal + alvo "você", qualquer elemento) ou, alargado, por
- * `tatuagemAlargadaSangue` (qualquer ritual de elemento 'sangue' marcado).
+ * A personagem tem mesmo o poder Tatuagem Ritualística? Ou porque o escolheu
+ * (está na lista de habilidades da ficha), ou porque a trilha lho concedeu
+ * aos 40%. Sem o poder não há redução de PE nenhuma — o livro é explícito em
+ * que a trilha não duplica o poder, só "altera a maneira como ele funciona"
+ * a quem já o tinha.
+ */
+export function temTatuagemRitualistica(personagem, nex) {
+  if (tatuagemAlargada(personagem, nex)) return true;
+  const nome = normalizar(PODER_TATUAGEM.nome);
+  return (personagem?.habilidades || []).some((h) => normalizar(h?.nome) === nome);
+}
+
+/**
+ * O ritual cabe na regra BASE do poder: "rituais de alcance pessoal que têm
+ * você como alvo" (Livro Base, p. 34). O catálogo escreve o alvo ora "Você"
+ * ora "você" — daí a comparação normalizada.
+ */
+function ritualPessoalEmSi(ritual) {
+  return normalizar(ritual?.alcance) === 'pessoal' && normalizar(ritual?.alvo) === 'voce';
+}
+
+/**
+ * Este ritual PODE sequer ser marcado na pele?
+ *
+ * O poder só fala de duas famílias de rituais, e marcar fora delas não teria
+ * efeito nenhum:
+ *   1. Regra base (qualquer conjurador com o poder, qualquer elemento):
+ *      rituais de alcance Pessoal que te têm a ti como alvo.
+ *   2. Ocultista Monstruoso, 40%+: qualquer ritual do ELEMENTO da trilha
+ *      ("...também se aplica a todos os rituais de <Elemento> marcados em sua
+ *      pele, não apenas aos de alcance pessoal que têm você como alvo").
+ *
+ * Não depende da escarificação do dia: marcar é uma escolha que fica, não um
+ * efeito diário — senão o jogador perdia a lista sempre que a desligasse.
+ */
+export function podeSerMarcadoNaPele(personagem, nex, ritual) {
+  if (!ritual) return false;
+  if (ritualPessoalEmSi(ritual)) return true;
+  return classeMonstruosa(personagem) === 'ocultista'
+    && patamarAtual(nex) >= TATUAGEM_DESDE
+    && ritualDoElemento(personagem, ritual);
+}
+
+/**
+ * -1 PE se o ritual estiver marcado (tatuado) na pele: pela regra base do
+ * poder (alcance Pessoal + alvo "você", qualquer elemento) ou, alargado por
+ * `tatuagemAlargada`, por qualquer ritual do elemento da trilha.
  */
 export function reducaoTatuagemRitualistica(personagem, nex, ritual, marcado) {
   if (!marcado || !ritual) return 0;
-  const basico = ritual.alcance === 'Pessoal' && ritual.alvo === 'você';
-  const alargado = ritual.elemento === 'sangue' && tatuagemAlargadaSangue(personagem, nex);
+  if (!temTatuagemRitualistica(personagem, nex)) return 0;
+  const basico = ritualPessoalEmSi(ritual);
+  const alargado = tatuagemAlargada(personagem, nex) && ritualDoElemento(personagem, ritual);
   return (basico || alargado) ? 1 : 0;
 }
 
 /**
- * Ocultista-Sangue 40%+: +5 em testes de Concentração ao conjurar/manter um
- * ritual de Sangue marcado na pele (verbatim AS07). Devolve 0 se não se
+ * Ocultista 40%+: +5 em testes de Concentração ao conjurar/manter um ritual
+ * do elemento escolhido marcado na pele (verbatim AS07). Devolve 0 se não se
  * aplicar (elemento diferente, ritual não marcado, ou patamar insuficiente).
  */
 export function bonusConcentracaoTatuagem(personagem, nex, ritual, marcado) {
-  if (!marcado || !ritual || ritual.elemento !== 'sangue') return 0;
-  return tatuagemAlargadaSangue(personagem, nex) ? 5 : 0;
+  if (!marcado || !ritual) return 0;
+  if (!tatuagemAlargada(personagem, nex) || !ritualDoElemento(personagem, ritual)) return 0;
+  return BONUS_CONCENTRACAO_TATUAGEM;
 }
 
 /**
- * Ocultista-Sangue 40%+: 1x/cena, se machucado ou sob condição de fadiga,
- * pode conjurar como reação (em vez da ação normal exigida para conjurar
- * um ritual) um ritual de Sangue marcado na pele — continua a gastar o
- * custo de PE normal do ritual. "Cena" não tem fronteira automática nesta
- * app (ver nota geral em engine/interludio.js) — o próprio jogador repõe
- * manualmente.
+ * Ocultista 40%+: 1x/cena, sob as condições próprias do elemento (ver
+ * REACAO_TATUAGEM em data/monstruoso.js), pode conjurar como reação (em vez
+ * da ação normal exigida) um ritual marcado na pele — continua a gastar o
+ * custo de PE normal. "Cena" não tem fronteira automática nesta app (ver
+ * nota geral em engine/interludio.js) — o próprio jogador repõe à mão.
  */
-export function podeReagirTatuagemSangue(personagem, nex, ritual, marcado) {
-  if (!marcado || !ritual || ritual.elemento !== 'sangue') return false;
-  if (!tatuagemAlargadaSangue(personagem, nex)) return false;
+export function podeReagirTatuagem(personagem, nex, ritual, marcado) {
+  if (!marcado || !ritual) return false;
+  if (!tatuagemAlargada(personagem, nex) || !ritualDoElemento(personagem, ritual)) return false;
   if (personagem.monstruosoReacaoTatuagemUsada) return false;
+  const regra = REACAO_TATUAGEM[elementoAtual(personagem)];
+  if (!regra) return false;
   const condicoes = personagem.condicoes || [];
-  const machucado = condicoes.includes('machucado');
-  const fadigado = condicoes.some((id) => CONDICOES_POR_ID[id]?.tipo === 'fadiga');
-  return machucado || fadigado;
+  return condicoes.some((id) => regra.condicoes.includes(id) || regra.tipos.includes(CONDICOES_POR_ID[id]?.tipo));
+}
+
+/** O texto da condição que destrava a reação (para a dica do botão), ou null. */
+export function textoReacaoTatuagem(personagem) {
+  const regra = REACAO_TATUAGEM[elementoAtual(personagem)];
+  return regra ? regra.texto : null;
+}
+
+/**
+ * Qual das condições que destravam a reação está neste momento ligada na
+ * ficha? Devolve o NOME da condição (para mostrar), ou null. Cada elemento
+ * tem a sua lista (REACAO_TATUAGEM): Sangue machucado/fadiga, Morte
+ * morrendo/sentidos, Conhecimento mental/medo, Energia paralisia/sentidos.
+ */
+export function condicaoReacaoTatuagem(personagem) {
+  const regra = REACAO_TATUAGEM[elementoAtual(personagem)];
+  if (!regra) return null;
+  const id = (personagem?.condicoes || []).find(
+    (c) => regra.condicoes.includes(c) || regra.tipos.includes(CONDICOES_POR_ID[c]?.tipo),
+  );
+  return id ? (CONDICOES_POR_ID[id]?.nome || id) : null;
+}
+
+/**
+ * Estado da reação 1x/cena da Tatuagem Ritualística, pronto para a interface.
+ * Devolve null se a personagem nem sequer tem o efeito (não é Ocultista
+ * Monstruoso 40%+ com a escarificação de hoje feita).
+ *
+ * ATENÇÃO — isto NÃO tem nada a ver com o +5 em testes de concentração. O
+ * livro junta as duas frases no mesmo parágrafo, mas são efeitos separados:
+ * o +5 vale sempre (ver `bonusConcentracaoTatuagem`), a reação é que depende
+ * da condição estar ligada.
+ */
+export function estadoReacaoTatuagem(personagem, nex) {
+  if (!tatuagemAlargada(personagem, nex)) return null;
+  const regra = REACAO_TATUAGEM[elementoAtual(personagem)];
+  const condicao = condicaoReacaoTatuagem(personagem);
+  const usada = Boolean(personagem?.monstruosoReacaoTatuagemUsada);
+  return {
+    gatilho: regra?.texto || '',
+    condicao,
+    usada,
+    disponivel: Boolean(condicao) && !usada,
+  };
+}
+
+/** Gasta a reação da cena. */
+export function usarReacaoTatuagem() {
+  return { patch: { monstruosoReacaoTatuagemUsada: true } };
+}
+
+/** Repõe a reação (cena nova) — a app não tem fronteira automática de cena. */
+export function reporReacaoTatuagem() {
+  return { patch: { monstruosoReacaoTatuagemUsada: false } };
+}
+
+/**
+ * SERVIR SANGUE — Ocultista-Sangue 65%+ ("Ser Rasgado", AS7 p. 87).
+ *
+ * O gatilho é ter acabado de conjurar um ritual de Sangue: só aí é que há
+ * "esse sangue" para servir. `personagem.monstruosoRitualSangueConjurado`
+ * guarda esse gatilho — liga-se ao conjurar um ritual de Sangue e apaga-se
+ * assim que se serve. O livro NÃO põe limite de usos por cena; o travão é o
+ * PV que custa.
+ */
+export function podeServirSangue(personagem, nex) {
+  return classeMonstruosa(personagem) === 'ocultista'
+    && elementoAtual(personagem) === 'Sangue'
+    && patamarAtual(nex) >= SERVIR_SANGUE.desde
+    && efetivamenteAtivo(personagem, nex);
+}
+
+/** O gatilho está armado (conjuraste um ritual de Sangue e ainda não serviste)? */
+export function servirSangueArmado(personagem, nex) {
+  return podeServirSangue(personagem, nex) && Boolean(personagem.monstruosoRitualSangueConjurado);
+}
+
+/** Arma o gatilho — chamado ao conjurar um ritual de Sangue. */
+export function armarServirSangue(personagem, nex, ritual) {
+  if (!podeServirSangue(personagem, nex)) return {};
+  if (normalizar(ritual?.elemento) !== 'sangue') return {};
+  return { monstruosoRitualSangueConjurado: true };
+}
+
+/**
+ * Serve o sangue: rola 2d8+2, tira esse valor ao PV atual (os PV temporários
+ * aguentam primeiro, como em qualquer perda de PV) e desarma o gatilho.
+ * Devolve `{ patch, rolo }` ou `{ erro }`.
+ */
+export function servirSangue(personagem, nex, { onRolar, pvMax = 0 } = {}) {
+  if (!servirSangueArmado(personagem, nex)) {
+    return { erro: 'Precisas de conjurar um ritual de Sangue primeiro.' };
+  }
+  const rolo = rolarDano({ nome: 'Ser Rasgado — servir sangue a um aliado', dano: '2d8', bonus: 2 });
+  const custo = rolo ? rolo.total : 0;
+  const temp = Math.max(0, Number(personagem.pvTemp || 0));
+  const doTemp = Math.min(temp, custo);
+  const doPv = custo - doTemp;
+  if (rolo && onRolar) {
+    onRolar({
+      ...rolo,
+      notas: [
+        `Custa ${custo} PV${doTemp ? ` (${doTemp} dos temporários)` : ''}`,
+        `O aliado que aceitar e ingerir como reação recebe ${SERVIR_SANGUE.bonus} em ${SERVIR_SANGUE.bonusEm}.`,
+      ],
+      sofreu: true,
+    });
+  }
+  return {
+    rolo,
+    patch: {
+      pvTemp: temp - doTemp,
+      pvAtual: Math.max(0, Number(personagem.pvAtual ?? pvMax) - doPv),
+      monstruosoRitualSangueConjurado: false,
+    },
+  };
+}
+
+/**
+ * Poderes concedidos pela trilha e em efeito agora (entradas `tipo: 'poder'`
+ * de EFEITOS_POR_PATAMAR) — prontos para a lista de Habilidades. Hoje só a
+ * Tatuagem Ritualística do Ocultista aos 40%.
+ */
+export function poderesAtivos(personagem, nex) {
+  return ganhosAtivos(personagem, nex)
+    .filter((g) => g.tipo === 'poder')
+    .map((g) => ({
+      nome: g.nome,
+      descricao: g.nome === PODER_TATUAGEM.nome
+        ? `${PODER_TATUAGEM.descricao}\n\nPela Trilha do Monstruoso (${elementoAtual(personagem)}, 40%+), aplica-se também a todos os rituais de ${elementoAtual(personagem)} marcados na tua pele, não só aos de alcance pessoal que te têm como alvo.`
+        : '',
+      patamar: g.patamar,
+      _monstruosoId: g.id,
+    }));
 }
 
 /**
@@ -799,7 +990,13 @@ function linhasGeraisNoPatamar(classe, elemento, patamar) {
 
   const peDesde = PE_POR_ATRIBUTO_DESDE[classe]?.[elemento];
   if (peDesde === patamar) {
-    linhas.push(`Pontos de Esforço calculados por ${NOME_ATRIBUTO[ATRIBUTO_DO_ELEMENTO[elemento]]} (em vez de Presença)`);
+    const nomeAttr = NOME_ATRIBUTO[ATRIBUTO_DO_ELEMENTO[elemento]];
+    // O Combatente só troca o atributo dos PE; Especialista e Ocultista
+    // trocam também o da DT dos rituais ("...para determinar seus PE e a DT
+    // dos seus rituais", AS7 p.85) — já automatizado em engine/calc.js.
+    linhas.push(classe === 'combatente'
+      ? `Pontos de Esforço calculados por ${nomeAttr} (em vez de Presença)`
+      : `Pontos de Esforço e DT de ritual calculados por ${nomeAttr} (em vez de Presença)`);
   }
 
   if (SOMA_ATRIBUTO_EM_PERICIAS[classe] && SOMA_ATRIBUTO_DESDE[elemento] === patamar) {

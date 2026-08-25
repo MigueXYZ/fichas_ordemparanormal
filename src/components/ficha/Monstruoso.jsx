@@ -20,8 +20,10 @@ import {
   ativarHoje, desativarHoje, escolherElemento, limiteDrenagem, tudoPermanente,
   escolhasNecessarias, escolherRitual, escolherPericiasConhecimento, rituaisAtivos, resumoPorPatamar,
   atributosEfetivos, escolherPericiaParaDestreinar, gastarDadoBanco,
+  podeServirSangue, servirSangueArmado, servirSangue,
+  estadoReacaoTatuagem, usarReacaoTatuagem, reporReacaoTatuagem,
 } from '../../engine/monstruoso.js';
-import { ELEMENTOS_MONSTRUOSO, NOME_PODER_POR_PATAMAR, COR_ELEMENTO, DRENAGEM_ATRIBUTO } from '../../data/monstruoso.js';
+import { ELEMENTOS_MONSTRUOSO, NOME_PODER_POR_PATAMAR, COR_ELEMENTO, DRENAGEM_ATRIBUTO, SERVIR_SANGUE } from '../../data/monstruoso.js';
 import CabecalhoSeta from './CabecalhoSeta.jsx';
 
 const NOME_ATRIBUTO = { for: 'Força', agi: 'Agilidade', int: 'Intelecto', pre: 'Presença', vig: 'Vigor' };
@@ -518,6 +520,23 @@ export function MonstruosoPainel({ personagem, setPersonagem, onRolar }) {
     setPersonagem((p) => ({ ...p, peAtual: Math.min(max.pe, Number(p.peAtual ?? max.pe) + r.total) }));
   }
 
+  // Ocultista-Sangue 65% (Ser Rasgado): servir sangue a um aliado adjacente.
+  // Só fica clicável depois de conjurar um ritual de Sangue — é esse o
+  // gatilho do livro ("Quando conjura um ritual de Sangue..."). Custa
+  // 2d8+2 PV, sem limite de usos por cena.
+  function confirmarServirSangue() {
+    const max = calcMaximos(personagem);
+    const r = servirSangue(personagem, nex, { onRolar, pvMax: max.pv });
+    if (r.erro || !r.patch) return;
+    setPersonagem((p) => ({ ...p, ...r.patch }));
+  }
+
+  // Ocultista 40% (Ser Perfurado): a reação 1x/cena da Tatuagem Ritualística.
+  // Destranca-se com as condições próprias do elemento estarem LIGADAS na
+  // ficha (Painel de Condições) — nada a ver com o +5 de concentração, que
+  // vale sempre. Repõe-se à mão: não há fronteira automática de cena.
+  const reacao = estadoReacaoTatuagem(personagem, nex);
+
   const cartaoAberto = aberto('cartao', true);
 
   return (
@@ -607,6 +626,56 @@ export function MonstruosoPainel({ personagem, setPersonagem, onRolar }) {
                     Extrair de {fonte.nome} ({fonte.dados} PE)
                   </button>
                 ))}
+              </div>
+            )}
+            {aberto && reacao && b.patamar === 40 && (
+              <div style={{ marginTop: 8, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  className="btn ghost sm"
+                  disabled={!reacao.disponivel}
+                  title={reacao.usada
+                    ? 'Já usaste a reação desta cena — repõe-na quando a cena mudar'
+                    : reacao.condicao
+                      ? `Destrancada por: ${reacao.condicao}. Gasta a reação da cena para conjurar um ritual marcado na pele.`
+                      : `Só ${reacao.gatilho} — liga a condição no Painel de Condições`}
+                  onClick={() => setPersonagem((p) => ({ ...p, ...usarReacaoTatuagem().patch }))}
+                >
+                  Conjurar ritual marcado como reação
+                </button>
+                {reacao.usada ? (
+                  <>
+                    <span style={{ fontSize: 12.5, color: 'var(--txt-fraco)' }}>reação desta cena já usada</span>
+                    <button
+                      className="btn ghost sm"
+                      style={{ padding: '1px 8px', fontSize: 11 }}
+                      title="Cena nova — devolve a reação"
+                      onClick={() => setPersonagem((p) => ({ ...p, ...reporReacaoTatuagem().patch }))}
+                    >
+                      repor (cena nova)
+                    </button>
+                  </>
+                ) : reacao.condicao ? (
+                  <span style={{ fontSize: 12.5, color: cor }}>disponível — {reacao.condicao}</span>
+                ) : (
+                  <span style={{ fontSize: 12.5, color: 'var(--txt-fraco)' }}>trancada — só {reacao.gatilho}</span>
+                )}
+              </div>
+            )}
+            {aberto && podeServirSangue(personagem, nex) && b.patamar === 65 && (
+              <div style={{ marginTop: 8, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  className="btn ghost sm"
+                  disabled={!servirSangueArmado(personagem, nex)}
+                  title={servirSangueArmado(personagem, nex)
+                    ? `Ação de movimento — gasta ${SERVIR_SANGUE.custoPv} PV. O aliado adjacente que aceitar e ingerir como reação recebe ${SERVIR_SANGUE.bonus} em ${SERVIR_SANGUE.bonusEm}.`
+                    : 'Só depois de conjurar um ritual de Sangue — é preciso haver "esse sangue" para servir.'}
+                  onClick={confirmarServirSangue}
+                >
+                  Servir sangue a um aliado ({SERVIR_SANGUE.custoPv} PV)
+                </button>
+                {!servirSangueArmado(personagem, nex) && (
+                  <span style={{ fontSize: 12.5, color: 'var(--txt-fraco)' }}>conjura um ritual de Sangue para destrancar</span>
+                )}
               </div>
             )}
             {aberto && classe === 'combatente' && elemento === 'Conhecimento' && b.patamar === 65 && (

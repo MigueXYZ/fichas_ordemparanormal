@@ -1,8 +1,9 @@
 import {
-  tatuagemAlargadaSangue, reducaoTatuagemRitualistica, bonusConcentracaoTatuagem, podeReagirTatuagemSangue,
+  tatuagemAlargada, reducaoTatuagemRitualistica, bonusConcentracaoTatuagem, podeReagirTatuagem,
 } from './src/engine/monstruoso.js';
 
 const base = {
+  classeId: 'ocultista',
   trilhaId: 'monstruoso-ocultista',
   monstruosoElemento: 'Sangue',
   monstruosoAtivoHoje: true,
@@ -10,11 +11,11 @@ const base = {
   condicoes: [],
 };
 
-console.log('--- tatuagemAlargadaSangue ---');
-console.log('40% ativo (esperado true):', tatuagemAlargadaSangue(base, 40));
-console.log('10% (esperado false):', tatuagemAlargadaSangue(base, 10));
-console.log('nao ativo hoje (esperado false):', tatuagemAlargadaSangue({ ...base, monstruosoAtivoHoje: false }, 40));
-console.log('elemento Morte (esperado false):', tatuagemAlargadaSangue({ ...base, monstruosoElemento: 'Morte' }, 40));
+console.log('--- tatuagemAlargada ---');
+console.log('40% ativo (esperado true):', tatuagemAlargada(base, 40));
+console.log('10% (esperado false):', tatuagemAlargada(base, 10));
+console.log('nao ativo hoje (esperado false):', tatuagemAlargada({ ...base, monstruosoAtivoHoje: false }, 40));
+console.log('elemento Morte (esperado false):', tatuagemAlargada({ ...base, monstruosoElemento: 'Morte' }, 40));
 
 const ritualPessoalVoce = { elemento: 'sangue', alcance: 'Pessoal', alvo: 'você' };
 const ritualSangueOutro = { elemento: 'sangue', alcance: '9m', alvo: '1 pessoa' };
@@ -32,10 +33,10 @@ console.log('Sangue marcado, 40% (esperado 5):', bonusConcentracaoTatuagem(base,
 console.log('Morte marcado, 40% (esperado 0):', bonusConcentracaoTatuagem(base, 40, ritualMorteOutro, true));
 console.log('Sangue marcado, 10% (esperado 0):', bonusConcentracaoTatuagem(base, 10, ritualSangueOutro, true));
 
-console.log('--- podeReagirTatuagemSangue (40%) ---');
-console.log('machucado, marcado (esperado true):', podeReagirTatuagemSangue({ ...base, condicoes: ['machucado'] }, 40, ritualSangueOutro, true));
-console.log('fadigado (fraco), marcado (esperado true):', podeReagirTatuagemSangue({ ...base, condicoes: ['fraco'] }, 40, ritualSangueOutro, true));
-console.log('sem condicao (esperado false):', podeReagirTatuagemSangue(base, 40, ritualSangueOutro, true));
-console.log('machucado mas ja usado (esperado false):', podeReagirTatuagemSangue({ ...base, condicoes: ['machucado'], monstruosoReacaoTatuagemUsada: true }, 40, ritualSangueOutro, true));
-console.log('machucado, elemento Morte (esperado false):', podeReagirTatuagemSangue({ ...base, condicoes: ['machucado'] }, 40, ritualMorteOutro, true));
-console.log('machucado, nao marcado (esperado false):', podeReagirTatuagemSangue({ ...base, condicoes: ['machucado'] }, 40, ritualSangueOutro, false));
+console.log('--- podeReagirTatuagem (40%) ---');
+console.log('machucado, marcado (esperado true):', podeReagirTatuagem({ ...base, condicoes: ['machucado'] }, 40, ritualSangueOutro, true));
+console.log('fadigado (fraco), marcado (esperado true):', podeReagirTatuagem({ ...base, condicoes: ['fraco'] }, 40, ritualSangueOutro, true));
+console.log('sem condicao (esperado false):', podeReagirTatuagem(base, 40, ritualSangueOutro, true));
+console.log('machucado mas ja usado (esperado false):', podeReagirTatuagem({ ...base, condicoes: ['machucado'], monstruosoReacaoTatuagemUsada: true }, 40, ritualSangueOutro, true));
+console.log('machucado, elemento Morte (esperado false):', podeReagirTatuagem({ ...base, condicoes: ['machucado'] }, 40, ritualMorteOutro, true));
+console.log('machucado, nao marcado (esperado false):', podeReagirTatuagem({ ...base, condicoes: ['machucado'] }, 40, ritualSangueOutro, false));
