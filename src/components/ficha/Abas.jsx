@@ -5,7 +5,7 @@ import { ITENS, TIPOS_ITEM } from '../../data/itens.js';
 import { PODERES } from '../../data/poderes.js';
 import { CLASSES_POR_ID, TRILHAS_POR_ID } from '../../data/classes.js';
 import { ORIGENS_POR_ID } from '../../data/origens.js';
-import { calcCarga, calcItensPorCategoria, nexEfetivo, calcMaximos } from '../../engine/calc.js';
+import { calcCarga, calcItensPorCategoria, nexEfetivo, calcMaximos, calcDtRitual, detalheDtRitual } from '../../engine/calc.js';
 import { PATENTES, PATENTES_POR_ID, CATEGORIAS, categoriaRomana } from '../../data/patentes.js';
 import { novoAtaque, novoItem, novaHabilidade, novoRitual } from '../../engine/character.js';
 import { rolarAtaqueCompleto, rolarDano, rolarTeste } from '../../engine/dados.js';
@@ -326,7 +326,7 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
   const max = calcMaximos(personagem);
   const usaPd = max.semSanidade;
   const atual = usaPd ? (personagem.pdAtual ?? max.pd) : (personagem.peAtual ?? max.pe);
-  const dt = Number(personagem.dtRitual) || null;
+  const dt = calcDtRitual(personagem);
 
   // "Componentes ritualísticos são necessários para a conjuração de rituais
   // do elemento em questão" (Livro Base) — precisa dos componentes DESSE
@@ -641,6 +641,8 @@ export function AbaRituais({ personagem, setPersonagem }) {
   const lista = [...listaPropria, ...concedidos];
   const [aEscolher, setAEscolher] = useState(false);
   const circuloMax = circuloMaximoPorNex(nexEfetivo(personagem));
+  const dtDetalhe = detalheDtRitual(personagem);
+  const dt = dtDetalhe.total;
   // Um ritual trazido do catálogo já vem com tudo certo (é conteúdo oficial)
   // — por isso aparece normal, só de consulta, com um botão "Editar" ao
   // lado para quem quiser mesmo assim ajustar algo. Um ritual em branco
@@ -695,8 +697,16 @@ export function AbaRituais({ personagem, setPersonagem }) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
         <div className="campo" style={{ maxWidth: 140, marginBottom: 0 }}>
-          <label>DT de ritual</label>
-          <input type="number" value={personagem.dtRitual ?? ''} onChange={(e) => setPersonagem({ ...personagem, dtRitual: e.target.value })} />
+          <label>
+            DT de ritual{' '}
+            <span
+              className="info-icone"
+              title={`10 + ${dtDetalhe.bonusNex} (bónus de NEX ${dtDetalhe.nex}%) + ${dtDetalhe.presenca} (Presença) = ${dtDetalhe.total}`}
+            >
+              i
+            </span>
+          </label>
+          <input type="text" readOnly value={dt} />
         </div>
         <span className="pill">Círculo máximo em NEX {nexEfetivo(personagem)}%: {circuloMax}º</span>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -1164,6 +1174,33 @@ export function AbaInventario({ personagem, setPersonagem }) {
       )}
 
       {aviso && <div className="aviso"><strong>Arma:</strong> {aviso}</div>}
+
+      {armas.lista.length > 0 && (
+        <div className="armas-carregadas">
+          <div className="rotulo-lista">Armas ({carga.dasArmas} espaços)</div>
+          <ul>
+            {armas.lista.map((a, i) => {
+              const equipado = a.equipado !== false;
+              return (
+                <li key={i}>
+                  <button
+                    type="button"
+                    className={'ponto botao' + (equipado ? ' equipado' : '')}
+                    title={equipado ? 'Equipada — carrega para guardar' : 'Guardada — carrega para equipar'}
+                    onClick={() => armas.editar(i, { equipado: !equipado })}
+                  />
+                  <span className="nome" style={{ fontSize: '18px', fontWeight: 'bold' }}>{a.nome || 'Sem nome'}</span>
+                  <span className="estado">{equipado ? 'equipada' : 'guardada'}</span>
+                  <span className="esp">{Number(a.espacos) || 0} esp.</span>
+                  <button className="btn ghost sm" onClick={() => setAEditarArma({ indice: i, arma: a })}>Editar</button>
+                  <button className="btn danger sm" onClick={() => armas.remover(i)}>Remover</button>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="dica">Usam-se no separador Combate. Uma arma pesa na carga esteja equipada ou guardada.</div>
+        </div>
+      )}
 
       {lista.length === 0 ? (
         <div className="painel-vazio">Inventário vazio</div>

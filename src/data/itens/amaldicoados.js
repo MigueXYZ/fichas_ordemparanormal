@@ -5,6 +5,7 @@
 //   - Sobrevivendo ao Horror ("Novos Itens Amaldiçoados", p. 57-61)
 //   - Arquivos Secretos 1 ("Itens Paranormais" / "Itens Amaldiçoados", p. 54-55)
 //   - Arquivos Secretos 3 ("Itens Paranormais" / "Itens Amaldiçoados", p. 113-115)
+//   - Arquivos Secretos 4 ("Itens", p. 70)
 //
 // Schema de cada entrada:
 // {
@@ -1218,6 +1219,22 @@ export const ITENS_AMALDICOADOS = [
     descricao:
       'As armaduras dos Couraças, chamadas de Armaduras de Guevara, contam como proteções pesadas amaldiçoadas de Sangue com aparências diversas e as seguintes características específicas: Defesa: +10, além de +1 para cada semana usando a armadura até o limite de +20. Categoria: III. Espaços: a armadura se movimenta com vontade própria, não pesando sobre o usuário e ocupando 0 espaços. Proficiência: a armadura se adapta ao alvo, dispensando a necessidade de ser proficiente em proteções pesadas. Resistências: usuário recebe RD balístico, impacto, perfuração 5, Sangue 10. Vulnerabilidade: usuário fica vulnerável a Morte. Especial: uma pessoa que toque uma dessas armaduras precisa fazer um teste de Vontade (role 6d6 para determinar a DT). Se falhar, um desejo incontrolável força a pessoa a equipá-la. Se passar, pode escolher equipá-la ou não. Uma pessoa equipada com a armadura precisa fazer um teste de Fortitude (DT 6d6). Se falhar, o Sangue poderá, inesperadamente, controlar a pessoa como e quando achar melhor. Se passar, fica imune ao controle do Sangue. Tentar tirar a armadura equipada é quase impossível. Um dos métodos envolve o usuário sofrer dano de Morte até ficar com 0 PV e ser removido de dentro da proteção maldita. Independente de sucessos ou falhas, todos os testes envolvendo a armadura devem ser repetidos após uma semana ou no início de uma nova missão (o que acontecer primeiro).',
     livro: 'Arquivos Secretos 3',
+  },
+
+  // ————————————————————————————————————————————————————————————
+  // ARQUIVOS SECRETOS 4 — ITEM AMALDIÇOADO
+  // ————————————————————————————————————————————————————————————
+  {
+    id: 'granada-ctrl-c-ctrl-v',
+    nome: 'Granada Ctrl+C Ctrl+V',
+    elemento: 'energia',
+    categoria: 2,
+    tipo: 'Item Amaldiçoado',
+    maldicao: false,
+    espacos: 1,
+    descricao:
+      'Uma granada de fragmentação transparente envolta por fios de cobre que parece tremeluzir e ameaçar uma explosão a cada segundo. Este item é uma granada. Para usá-lo, você precisa empunhá-lo e então gastar uma ação padrão para arremessá-lo em um ponto à sua escolha em alcance médio. Ele afeta um raio de 6m a partir do ponto de impacto, espalhando fragmentos de Energia. Seres na área sofrem 8d6 pontos de dano de Energia (Reflexos DT Agi reduz à metade). Quando esta granada explodir, role 1d4. Se o resultado for par, a explosão gera uma segunda granada idêntica que explode em outro espaço à sua escolha dentro da área de efeito da granada original. O processo se repete até a quarta explosão ou até que o d4 dê ímpar (o que acontecer primeiro).',
+    livro: 'Arquivos Secretos 4',
   },
 ];
 

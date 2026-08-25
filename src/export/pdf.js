@@ -2,7 +2,7 @@ import { PDFDocument, PDFName, PDFBool } from 'pdf-lib';
 import { PERICIAS } from '../data/pericias.js';
 import { ORIGENS } from '../data/origens.js';
 import { TRILHAS_POR_ID } from '../data/classes.js';
-import { calcMaximos, calcDefesas, calcPericias, calcPePorRodada, calcCargaMaxima } from '../engine/calc.js';
+import { calcMaximos, calcDefesas, calcPericias, calcPePorRodada, calcCargaMaxima, calcDtRitual } from '../engine/calc.js';
 import { codigoOrigem, codigoTrilha, CLASSES_PDF } from '../data/pdfCodigos.js';
 import { PROTECOES } from '../data/itens.js';
 import { TIPOS_DANO_POR_ID } from '../engine/danoRecetor.js';
@@ -84,7 +84,7 @@ export function mapearCampos(personagem) {
   textos['proficiencias'] = (personagem.proficiencias || []).join(', ');
 
   textos['esquiva'] = defs.esquiva.disponivel ? defs.esquiva.valor : 0;
-  textos['dt_ritual'] = personagem.dtRitual ?? '';
+  textos['dt_ritual'] = calcDtRitual(personagem);
 
   for (const p of pericias) {
     escolhas['t_' + p.pdf] = String(p.treino);

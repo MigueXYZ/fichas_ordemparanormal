@@ -152,6 +152,33 @@ export const MODIFICACOES_ACESSORIO = [
   },
 ];
 
+// Modificações para granadas (Arquivos Secretos 4, p. 71).
+// "Cada modificação a seguir aumenta a categoria da granada em I e fornece
+// certos benefícios. Modificações iguais não acumulam."
+export const MODIFICACOES_GRANADA = [
+  {
+    id: 'adesiva',
+    nome: 'Adesiva',
+    descricao:
+      'A granada gruda no alvo. Se o alvo for um ser, você precisa fazer um teste de ataque à distância contra a Defesa dele. Se errar, a granada gruda no espaço onde ela está. Se acertar, ela gruda no ser (ele falha automaticamente em qualquer teste de resistência contra a granada). Caso seu efeito não seja instantâneo, a granada se move junto com o alvo até que ele gaste uma ação padrão para removê-la do seu corpo.',
+    livro: 'Arquivos Secretos 4',
+  },
+  {
+    id: 'dupla',
+    nome: 'Dupla',
+    descricao:
+      'A granada tem um efeito adicional. Ao aplicar essa modificação, você escolhe um efeito de outra granada (exceto itens amaldiçoados) que se ativará junto com o efeito principal. O efeito adicional deve ser diferente do efeito principal.',
+    livro: 'Arquivos Secretos 4',
+  },
+  {
+    id: 'programada',
+    nome: 'Programada',
+    descricao:
+      'A granada tem um temporizador programado. Após arremessá-la, ou posicioná-la onde desejar e definir em quantos turnos ela explodirá.',
+    livro: 'Arquivos Secretos 4',
+  },
+];
+
 // ---------------------------------------------------------------------------
 // ITENS GERAIS
 // ---------------------------------------------------------------------------
@@ -247,6 +274,30 @@ export const ITENS_GERAIS = [
     descricao:
       'Esta mina é ativada por controle remoto. Se você estiver a até alcance longo dela, pode gastar uma ação padrão para detoná-la. Ao explodir, a mina dispara centenas de bolas de aço em um cone de 6m, causando 12d6 pontos de dano de perfuração em todos os seres na área (Reflexos DT Int reduz à metade). Você define a direção do cone quando posiciona a mina no chão. Instalar a mina exige uma ação completa e um teste de Tática contra DT 15. Caso falhe, você gasta a mina, mas ela não funciona. Encontrar uma mina instalada exige um teste de Percepção (DT igual ao resultado do seu teste para instalá-la).',
     livro: 'Livro Base',
+  },
+
+  // ---- Arquivos Secretos 4 — Explosivos ----
+  {
+    id: 'granada-de-gas-lacrimogeneo',
+    nome: 'Granada de Gás Lacrimogêneo',
+    grupo: 'Explosivos',
+    subgrupo: null,
+    categoria: 1,
+    espacos: 1,
+    descricao:
+      'Uma granada que libera uma nuvem química que provoca ardência, irritação e sufocamento. Seres em um raio de 6m a partir do ponto de impacto sofrem 4d6 pontos de dano químico, ficam enjoados e têm dificuldade de respirar (OPRPG, p. 293). Após deixarem a área de efeito, continuam com dificuldade de respirar por 1d4 rodadas e ainda ficam enjoados até o fim da cena (Fortitude DT Agi reduz o dano à metade e evita a condição enjoado).',
+    livro: 'Arquivos Secretos 4',
+  },
+  {
+    id: 'granada-de-tinta',
+    nome: 'Granada de Tinta',
+    grupo: 'Explosivos',
+    subgrupo: null,
+    categoria: 0,
+    espacos: 1,
+    descricao:
+      'Uma granada caseira que espalha tintas coloridas e fosforescentes pelo ambiente, marcando os alvos e os tornando mais visíveis. Seres em um raio de 6m a partir do ponto de impacto ficam vulneráveis e sofrem –2d20 em Furtividade até o fim da cena (Reflexos DT Agi evita condição).',
+    livro: 'Arquivos Secretos 4',
   },
 
   // ---- Livro Base — Itens Operacionais ----
@@ -1145,4 +1196,7 @@ export const MODIFICACOES_PROTECAO_POR_ID = Object.fromEntries(
 );
 export const MODIFICACOES_ACESSORIO_POR_ID = Object.fromEntries(
   MODIFICACOES_ACESSORIO.map((m) => [m.id, m]),
+);
+export const MODIFICACOES_GRANADA_POR_ID = Object.fromEntries(
+  MODIFICACOES_GRANADA.map((m) => [m.id, m]),
 );

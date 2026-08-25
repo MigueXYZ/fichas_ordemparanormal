@@ -205,6 +205,26 @@ export function calcDefesa(personagem) {
   );
 }
 
+/**
+ * DT para resistir a um ritual — "calculada como a DT de qualquer
+ * habilidade... usando como atributo Presença" (Livro Base, pág. 78):
+ * 10 + bónus de NEX (posição no NEX_TRACK, 1 no 1º degrau 5% até 20 no
+ * último 99%) + Presença. Ex.: Presença 3, NEX 5% -> 14 (10+1+3);
+ * Presença 5, NEX 99% -> 35 (10+20+5).
+ */
+export function calcDtRitual(personagem) {
+  return detalheDtRitual(personagem).total;
+}
+
+/** Mesmo cálculo de `calcDtRitual`, mas devolve as parcelas para mostrar a conta (tooltip). */
+export function detalheDtRitual(personagem) {
+  const nex = nexEfetivo(personagem);
+  const a = atributosEfetivosMonstruoso(personagem, nex);
+  const bonusNex = nexIndex(nex) + 1;
+  const presenca = Number(a.pre || 0);
+  return { nex, bonusNex, presenca, total: 10 + bonusNex + presenca };
+}
+
 export function calcDefesas(personagem) {
   const pericias = calcPericias(personagem);
   const bonusDe = (id) => pericias.find((p) => p.id === id) || { treino: 0, bonus: 0 };
@@ -384,6 +404,10 @@ export function calcItensPorCategoria(personagem) {
   for (const item of personagem.inventario || []) {
     const cat = categoriaRomana(item.categoria);
     if (cat) usados[cat] = (usados[cat] || 0) + (Number(item.quantidade) || 1);
+  }
+  for (const arma of personagem.ataques || []) {
+    const cat = categoriaRomana(arma.categoria);
+    if (cat) usados[cat] = (usados[cat] || 0) + 1;
   }
   const linhas = CATEGORIAS.map((cat) => ({
     categoria: cat, limite: cat === '0' ? Infinity : patente.itens[cat] ?? 0, usados: usados[cat] || 0,

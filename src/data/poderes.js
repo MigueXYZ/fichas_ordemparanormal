@@ -6,6 +6,8 @@
 //   Arquivos Secretos 1 — Poderes de Ocultista, Poderes Gerais, Poderes Paranormais de Sangue (pp. 44-47)
 //   Arquivos Secretos 6 — Poderes de Combatente/Especialista/Ocultista, Poderes Gerais,
 //                          Poderes Paranormais (pp. 67-71)
+//   Arquivos Secretos 4 — Poderes de Combatente/Especialista/Ocultista, Poderes Gerais,
+//                          Poderes Paranormais de Energia (pp. 65-67)
 //
 // Os poderes de classe do Livro Base e de Sobrevivendo ao Horror estão em src/data/classes/*.js.
 // Aqui só entram os poderes de classe que aparecem nos Arquivos Secretos.
@@ -1180,7 +1182,211 @@ Afinidade: o dano muda para 6d6 e a condição muda para enredado.`,
 Afinidade: a duração do símbolo muda para 1 ano ou até ser consumido, o que acontecer primeiro.`,
     livro: 'Arquivos Secretos 6',
   },
+
+  // ---------------------------------------------------------------------------
+  // ARQUIVOS SECRETOS 4 — PODERES DE COMBATENTE
+  // ---------------------------------------------------------------------------
+  {
+    id: 'chuva-de-balas',
+    nome: 'Chuva de Balas',
+    tipo: 'classe',
+    classe: 'combatente',
+    elemento: null,
+    prerequisito: '',
+    nexMinimo: null,
+    descricao: `Você sabe muito bem como administrar e economizar sua munição durante os combates, assim como sabe sentar o dedo no momento certo. Todos os pacotes de munição que estiverem em seu inventário têm sua duração dobrada por cena. Além disso, ao fazer um ataque com uma arma de fogo, antes de rolar dano, pode sacrificar um ou mais pacotes de munições para causar +2 dados do mesmo tipo de dano no ataque por pacote sacrificado. Se estiver usando a regra opcional de contagem de munição, a quantidade de balas em cada pacote aumenta em +10.`,
+    livro: 'Arquivos Secretos 4',
+  },
+  {
+    id: 'combatente-esforcado',
+    nome: 'Combatente Esforçado',
+    tipo: 'classe',
+    classe: 'combatente',
+    elemento: null,
+    prerequisito: 'For 3 ou Vig 3',
+    nexMinimo: null,
+    descricao: `Seu treinamento intenso e físico de dar orgulho teve bons rendimentos. Você recebe +1 PE para cada NEX. Pré-requisitos: For 3 ou Vig 3.`,
+    livro: 'Arquivos Secretos 4',
+  },
+  {
+    id: 'treinamento-militarizado',
+    nome: 'Treinamento Militarizado',
+    tipo: 'classe',
+    classe: 'combatente',
+    elemento: null,
+    prerequisito: '',
+    nexMinimo: null,
+    descricao: `O bônus recebido por exercitar-se em uma cena de interlúdio muda para +1d8 e também pode ser gasto em rolagens de dano, mas só pode usar um bônus em cada rolagem.`,
+    livro: 'Arquivos Secretos 4',
+  },
+
+  // ---------------------------------------------------------------------------
+  // ARQUIVOS SECRETOS 4 — PODERES DE ESPECIALISTA
+  // ---------------------------------------------------------------------------
+  {
+    id: 'analise-conturbada',
+    nome: 'Análise Conturbada',
+    tipo: 'classe',
+    classe: 'especialista',
+    elemento: null,
+    prerequisito: '',
+    nexMinimo: null,
+    descricao: `Sua eloquência mórbida e palavras angustiantes, por mais que macabras, trazem uma certa reflexão valiosa. Durante uma cena de investigação, você pode gastar uma ação padrão para trazer suas teorias e análises obscuras em voz alta, implantando paranoia em quem puder ouvir. Agentes voluntários que estiverem presentes no ambiente, incluindo você, podem escolher dar ouvidos às suas falas. Caso aceitem, rolam 1d6 e recebem o resultado em bônus para testes baseados em Intelecto e Presença até o fim da cena, mas também perdem o valor da rolagem em pontos de sanidade.`,
+    livro: 'Arquivos Secretos 4',
+  },
+  {
+    id: 'profissao-perigo',
+    nome: 'Profissão Perigo',
+    tipo: 'classe',
+    classe: 'especialista',
+    elemento: null,
+    prerequisito: '',
+    nexMinimo: null,
+    descricao: `Em situações difíceis, você sabe dar valor à qualquer coisa, podendo transformar a tralha mais insignificante em algo útil. Você pode gastar uma ação completa e 4 PE para desmontar seus equipamentos e construir algo novo utilizando os seus materiais. Ao fazer isso, você se desfaz de um item qualquer em seu inventário e recebe um novo item operacional à sua escolha no lugar dele. O item escolhido não deve ultrapassar a categoria e os espaços do item sacrificado. Você só pode fazer isso uma vez por missão.`,
+    livro: 'Arquivos Secretos 4',
+  },
+  {
+    id: 'quase-novo',
+    nome: 'Quase Novo',
+    tipo: 'classe',
+    classe: 'especialista',
+    elemento: null,
+    prerequisito: '',
+    nexMinimo: null,
+    descricao: `Ao fazer uma ação de manutenção (veja Fabricação em Campo, SaH, p. 94) durante uma cena de interlúdio, o item reparado recebe +10 PV adicionais. Além disso, você pode usar a mesma ação para adicionar ao equipamento uma nova modificação temporária de uma categoria que possa acessar. A modificação dura até o início da próxima cena de interlúdio.`,
+    livro: 'Arquivos Secretos 4',
+  },
+
+  // ---------------------------------------------------------------------------
+  // ARQUIVOS SECRETOS 4 — PODERES DE OCULTISTA
+  // ---------------------------------------------------------------------------
+  {
+    id: 'explorador-da-nevoa',
+    nome: 'Explorador da Névoa',
+    tipo: 'classe',
+    classe: 'ocultista',
+    elemento: null,
+    prerequisito: '',
+    nexMinimo: null,
+    descricao: `Você já criou costume por estar em lugares onde ninguém gostaria de pisar. Uma vez por cena, você pode gastar 2 PE para distinguir o estado da Membrana de um ambiente (estável, danificada, arruinada etc.). Se fizer isso e a Membrana estiver danificada ou pior, você perde 1 SAN, mas reduz o custo de conjuração de todos os seus rituais em 1 PE.`,
+    livro: 'Arquivos Secretos 4',
+  },
+  {
+    id: 'sinestesia-paranormal',
+    nome: 'Sinestesia Paranormal',
+    tipo: 'classe',
+    classe: 'ocultista',
+    elemento: null,
+    prerequisito: '',
+    nexMinimo: null,
+    descricao: `O Outro Lado afeta sua percepção sensorial à níveis extremos. Quando entra em uma cena em que a Membrana está danificada ou pior, você passa a conseguir ouvir o gosto do caos, sentir o som da imprevisibilidade, saborear o cheiro do intangivel, percebendo influências do Outro Lado de maneiras diferentes. Você pode resistir a sinestesia (nada acontece e seus sentidos voltam ao normal) ou aceitá-la. Caso aceite, você perde 1d6 SAN e pode escolher dois pares de perícias para trocar os atributos usados entre elas. Por exemplo, você pode trocar Atletismo (passa a usar Presença, em vez de Força) e Percepção (passa a usar Força, em vez de Presença), ou trocar Investigação (passa a usar Agilidade, em vez de Intelecto) e Reflexos (passa a usar Intelecto, em vez de Agilidade). Você não pode usar esse poder em perícias que exijam treinamento e você não tenha. A sinestesia é interrompida quando você sai da área afetada pela Membrana e só pode ser aceita novamente no dia seguinte.`,
+    livro: 'Arquivos Secretos 4',
+  },
+  {
+    id: 'terrores-noturnos',
+    nome: 'Terrores Noturnos',
+    tipo: 'classe',
+    classe: 'ocultista',
+    elemento: null,
+    prerequisito: '',
+    nexMinimo: null,
+    descricao: `Os sussurros da escuridão não cessam e parecem se fortalecer conforme seus olhos se fecham. Quando dormir em uma cena de interlúdio, role 1d100. Se o resultado for 51 ou mais, nada acontece e você tem bons sonhos. Se o resultado for 50 ou menos, você é tomado por pesadelos paranormais. Sua condição de descanso muda para precária e você perde 1d4 SAN. Entretanto, escolha 1 poder paranormal ou ritual que você atenda os pré-requisitos para usá-lo. Até o início da próxima cena de interlúdio, você pode usar o poder ou conjurar o ritual uma única vez, seguindo as regras dele normalmente.`,
+    livro: 'Arquivos Secretos 4',
+  },
+
+  // ---------------------------------------------------------------------------
+  // ARQUIVOS SECRETOS 4 — PODERES GERAIS
+  // ---------------------------------------------------------------------------
+  {
+    id: 'gororoba',
+    nome: 'Gororoba',
+    tipo: 'geral',
+    classe: null,
+    elemento: null,
+    prerequisito: '',
+    nexMinimo: null,
+    descricao: `Sopa de cereal com bebida energética? Seu paladar é um tanto quanto peculiar. Em uma cena de interlúdio, você pode alimentar-se uma vez sem gastar uma ação e sem precisar de fato ter acesso à refeição (você improvisa com os restos que encontra).`,
+    livro: 'Arquivos Secretos 4',
+  },
+  {
+    id: 'ruido-branco',
+    nome: 'Ruído Branco',
+    tipo: 'geral',
+    classe: null,
+    elemento: null,
+    prerequisito: '',
+    nexMinimo: null,
+    descricao: `O barulho de um ambiente caótico se torna ruído para sua concentração. Enquanto estiver em um ambiente movimentado ou um local com muitas conversas paralelas, você recebe +1d6 em testes de Investigação e Percepção. Além disso, à critério do mestre, pode gastar 1 PE, uma vez por cena, para ouvir entre as vozes uma conversa que forneça uma informação útil para a missão.`,
+    livro: 'Arquivos Secretos 4',
+  },
+  {
+    id: 'uma-ultima-olhada',
+    nome: 'Uma Última Olhada',
+    tipo: 'geral',
+    classe: null,
+    elemento: null,
+    prerequisito: '',
+    nexMinimo: null,
+    descricao: `É melhor prevenir do que remediar. Na última rodada de uma cena de investigação, você pode gastar 2 PE, uma vez por cena, para se esforçar mais, aproveitando o pouco tempo que tem para analisar tudo rapidamente com seu grupo. Em termos de regras, o número de rodadas disponíveis aumenta em +1.`,
+    livro: 'Arquivos Secretos 4',
+  },
+
+  // ---------------------------------------------------------------------------
+  // ARQUIVOS SECRETOS 4 — PODERES PARANORMAIS DE ENERGIA
+  // ---------------------------------------------------------------------------
+  {
+    id: 'sobrepor-imprevisivel',
+    nome: 'Sobrepor Imprevisível',
+    tipo: 'paranormal',
+    classe: null,
+    elemento: 'energia',
+    prerequisito: '',
+    nexMinimo: null,
+    descricao: `Seus movimentos são caóticos e imprevisíveis. Se você não sabe o que está fazendo, muito menos o inimigo. Uma vez por rodada, e apenas no início dela, você pode gastar 2 PE para rolar 1d20. Se o resultado for par, some ele ao seu valor de iniciativa. Se for ímpar, subtraia. Sua posição na ordem de iniciativa é mudada de acordo com o novo resultado.
+
+Afinidade: você pode rolar 2d20 e escolher o resultado que preferir em um dos dados.`,
+    livro: 'Arquivos Secretos 4',
+  },
+  {
+    id: 'foco-gravitacional',
+    nome: 'Foco Gravitacional',
+    tipo: 'paranormal',
+    classe: null,
+    elemento: 'energia',
+    prerequisito: '',
+    nexMinimo: null,
+    descricao: `Equipamentos de grande importância para você parecem sofrer de uma anomalia gravitacional. Escolha um equipamento. Ele passa a ocupar 0 espaços enquanto estiver guardado com você, porém, toda vez que for empunhado, tem 25% de chance (1 a 25 em 1d100) de sair voando descontroladamente e parar em um espaço em alcance curto à escolha do mestre. Se o equipamento for destruído ou consumido, escolha outro equipamento disponível.
+
+Afinidade: aumenta a quantidade de equipamentos para três.`,
+    livro: 'Arquivos Secretos 4',
+  },
+  {
+    id: 'traco-de-inconsistencia',
+    nome: 'Traço de Inconsistência',
+    tipo: 'paranormal',
+    classe: null,
+    elemento: 'energia',
+    prerequisito: '',
+    nexMinimo: null,
+    descricao: `Sua presença causa perturbações em aparelhos eletrônicos que possam capturá-la. Você pode gastar 2 PE, como reação, para esconder sua identidade em imagens digitais capturadas por câmeras de segurança ou fotográficas, no momento em que é fotografado/filmado.
+
+Afinidade: sua presença se torna incapaz de ser capturada por imagens digitais permanentemente. Além disso, sua voz também se torna distorcida em gravações.`,
+    livro: 'Arquivos Secretos 4',
+  },
 ];
+
+/**
+ * Atualização de regra (Arquivos Secretos 4, "Regras Caóticas", p. 64): novo uso
+ * para a perícia Tecnologia. Guardado aqui como texto de referência — ainda não
+ * há, na app, um ecrã de "regras/atualizações" que o mostre.
+ */
+export const ATUALIZACAO_TECNOLOGIA_AS4 = {
+  titulo: 'Novo uso para a Perícia Tecnologia',
+  nome: 'Obter Informações',
+  dt: 5,
+  descricao: `Você pode gastar uma ação completa para fazer uma rápida pesquisa na internet sobre um local ou pessoa. Faça um teste de Tecnologia (DT 5). Se passar, você adquire 1 informação +1 para cada 5 pontos acima da DT.`,
+  livro: 'Arquivos Secretos 4',
+};
 
 export const TIPOS_PODER = [
   { id: 'classe', nome: 'Poder de Classe' },

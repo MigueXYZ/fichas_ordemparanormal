@@ -43,16 +43,6 @@ const ORIGENS_BASE = [
     livro: 'Livro Base',
   },
   {
-    id: 'antepassado-jurassico',
-    nome: 'Antepassado Jurássico',
-    descricao: 'Você era uma boa pessoa, até que sua curiosidade sobre o oculto despertou instintos de 65 milhões de anos. A Ordo Realitas te recrutou após você interromper uma palestra para rosnar para um estagiário e tentar caçar um drone, provando que seu DNA jurássico é poderoso.',
-    pericias: ['luta', 'percepcao'],
-    periciasLivres: 0,
-    periciasNota: '',
-    poder: { nome: 'Mandíbula Poderosa', descricao: 'Você possui um ataque desarmado de bicada/mordida (dano 1d6, crítico x2, perfuração). Uma vez por rodada, quando usa a ação agredir para atacar com outra arma, pode gastar 1 PE para fazer um ataque corpo a corpo extra com a mordida.' },
-    livro: 'Arquivos Secretos 4',
-  },
-  {
     id: 'artista',
     nome: 'Artista',
     descricao: 'Você era um ator, músico, escritor, dançarino, influenciador… Seu trabalho pode ter sido inspirado por uma experiência paranormal do passado e o que o público acha que é pura criatividade, a Ordem sabe que tem um lado mais sombrio.',
@@ -131,16 +121,6 @@ const ORIGENS_BASE = [
     periciasNota: '',
     poder: { nome: 'Poder da Amizade', descricao: 'Escolha um personagem para ser seu melhor amigo. Se estiver em alcance médio dele e vocês puderem, pelo menos, trocar olhares, você recebe +2 em todos os testes de perícia. Entretanto, se ele morrer, seu total de PE é reduzido em –1 para cada 5% de NEX até o fim da missão. Se perder seu melhor amigo, você pode escolher outro entre os demais personagens no início da próxima missão.' },
     livro: 'Sobrevivendo ao Horror',
-  },
-  {
-    id: 'conhecimento-galinaceo',
-    nome: 'Conhecimento Galináceo',
-    descricao: 'Você era um gênio brilhante, até que seus estudos sobre o "Cacarejo Primordial" revelaram verdades ancestrais. A Ordo Realitas interveio quando você começou a prever o futuro através de grãos de milho e a encarar o paranormal com a intensidade perturbadora de uma galinha que viu o Outro Lado.',
-    pericias: ['ciencias', 'ocultismo'],
-    periciasLivres: 0,
-    periciasNota: '',
-    poder: { nome: 'Premeditação Galinácea', descricao: 'Uma vez por dia, você pode gastar 2 PE para rolar 2O e anotar os dois resultados. Até o fim do dia, você pode, como reação, trocar O usado em um teste de um aliado ou inimigo por um dos resultados que você anotou.' },
-    livro: 'Arquivos Secretos 4',
   },
   {
     id: 'cosplayer',

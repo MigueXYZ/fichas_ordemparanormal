@@ -15,6 +15,7 @@ import { PROTECOES, PROFICIENCIAS_OP } from '../../data/itens.js';
 import { TIPOS_DANO } from '../../engine/danoRecetor.js';
 import RegrasOpcionais from './RegrasOpcionais.jsx';
 import Alteracoes from './Alteracoes.jsx';
+import GuiaCombate from './GuiaCombate.jsx';
 import { ajustarRecursos } from '../../engine/character.js';
 import { lerImagem } from '../../engine/armazenamento.js';
 import { rolarTeste } from '../../engine/dados.js';
@@ -115,6 +116,7 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
   const [erroFoto, setErroFoto] = useState(null);
   const [verRegras, setVerRegras] = useState(false);
   const [verAlteracoes, setVerAlteracoes] = useState(false);
+  const [verGuiaCombate, setVerGuiaCombate] = useState(false);
   const [contasDefesaAberta, setContasDefesaAberta] = useState(false);
   const [contasBloqueioAberta, setContasBloqueioAberta] = useState(false);
   const [contasEsquivaAberta, setContasEsquivaAberta] = useState(false);
@@ -281,6 +283,9 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
               </button>
               <button type="button" className="btn ghost sm" onClick={() => setVerAlteracoes(true)}>
                 Alterações
+              </button>
+              <button type="button" className="btn ghost sm" onClick={() => setVerGuiaCombate(true)} title="Guia rápido de ações de combate">
+                Guia de Combate
               </button>
             </div>
           </div>
@@ -858,6 +863,10 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
 
       {verAlteracoes && (
         <Alteracoes nex={personagem.nex} aoFechar={() => setVerAlteracoes(false)} />
+      )}
+
+      {verGuiaCombate && (
+        <GuiaCombate aoFechar={() => setVerGuiaCombate(false)} />
       )}
 
       {/* Grelha Modular por Widgets da Ficha */}

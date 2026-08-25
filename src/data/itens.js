@@ -1,9 +1,9 @@
 // ITENS — agregador de armas, proteções, equipamento geral e itens amaldiçoados.
 import { ARMAS } from './itens/armas.js';
-import { ITENS_GERAIS, PROTECOES, GRUPOS_ITENS_GERAIS, MODIFICACOES_PROTECAO, MODIFICACOES_ACESSORIO } from './itens/geral.js';
+import { ITENS_GERAIS, PROTECOES, GRUPOS_ITENS_GERAIS, MODIFICACOES_PROTECAO, MODIFICACOES_ACESSORIO, MODIFICACOES_GRANADA } from './itens/geral.js';
 import { ITENS_AMALDICOADOS } from './itens/amaldicoados.js';
 
-export { ARMAS, ITENS_GERAIS, PROTECOES, ITENS_AMALDICOADOS, GRUPOS_ITENS_GERAIS, MODIFICACOES_PROTECAO, MODIFICACOES_ACESSORIO };
+export { ARMAS, ITENS_GERAIS, PROTECOES, ITENS_AMALDICOADOS, GRUPOS_ITENS_GERAIS, MODIFICACOES_PROTECAO, MODIFICACOES_ACESSORIO, MODIFICACOES_GRANADA };
 
 // atenção: alguns itens já trazem um campo `tipo` do livro (ex.: proteção "Leve",
 // item amaldiçoado "Arma"). Guardamos esse valor em `subtipo` para não o perder.

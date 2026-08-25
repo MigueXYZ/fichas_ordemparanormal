@@ -901,7 +901,30 @@ textarea { resize: vertical; min-height: 92px; }
 }
 
 /* alterações por exposição */
-.alteracoes-imagem { display: block; width: 100%; max-width: 100%; border-radius: var(--raio); border: 1px solid var(--linha); }
+.alteracoes-imagem-moldura { display: flex; justify-content: center; }
+.alteracoes-imagem {
+  display: block; width: 100%; max-width: 560px; border-radius: var(--raio); border: 1px solid var(--linha);
+}
+.alteracoes-h4-elemento { display: flex; align-items: center; gap: 10px; }
+.alteracoes-sigilo {
+  width: 30px; height: 30px; border-radius: 50%; border: 1px solid; padding: 3px;
+  background: rgba(0,0,0,.25); object-fit: contain; flex-shrink: 0;
+}
+.linha-nex { position: relative; height: 34px; margin: 4px 0 20px; }
+.linha-nex-trilho {
+  position: absolute; top: 5px; left: 0; right: 16px; height: 2px; background: var(--linha-forte);
+}
+.linha-nex-marco { position: absolute; top: 0; transform: translateX(-50%); text-align: center; }
+.linha-nex-ponto {
+  display: block; width: 10px; height: 10px; border-radius: 50%; margin: 0 auto;
+  background: var(--bg); border: 2px solid var(--txt-fraco);
+}
+.linha-nex-marco.atingida .linha-nex-ponto { background: var(--ok); border-color: var(--ok); box-shadow: 0 0 6px rgba(74,222,128,.6); }
+.linha-nex-rotulo {
+  display: block; margin-top: 5px; font-size: 10.5px; color: var(--txt-fraco);
+  font-family: var(--numeros); white-space: nowrap;
+}
+.linha-nex-marco.atingida .linha-nex-rotulo { color: var(--ok); }
 .alteracoes { margin-top: 20px; border-top: 1px solid var(--linha); padding-top: 14px; }
 .alteracoes h4 { margin: 0 0 10px; font-size: 17px; }
 .alteracoes h4 .pagina { font-size: 10.5px; color: var(--txt-fraco); margin-left: 8px; letter-spacing: .1em; }
@@ -927,6 +950,30 @@ textarea { resize: vertical; min-height: 92px; }
 }
 .alteracao.elemento li.atingida .marca { color: var(--ok); }
 .alteracao .nota { font-size: 11.5px; color: var(--txt-fraco); font-style: italic; }
+
+/* guia rápido de ações de combate (cheat sheet) */
+.guia-combate-turno {
+  border: 1px solid var(--linha-forte); border-radius: var(--raio);
+  padding: 10px 14px; margin-bottom: 18px; background: var(--sangue-veu);
+}
+.guia-combate-turno ul { margin: 6px 0 4px; padding-left: 18px; }
+.guia-combate-turno li { font-size: 13px; color: var(--txt-dim); line-height: 1.5; }
+.guia-combate-seccao { margin-bottom: 20px; }
+.guia-combate-seccao h4 { margin: 0 0 10px; font-size: 16px; }
+.guia-combate-grelha { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px 14px; }
+.guia-combate-cartao {
+  border-left: 2px solid var(--sangue-escuro); padding: 3px 0 3px 10px;
+}
+.guia-combate-cartao b { font-family: var(--display); font-size: 14.5px; }
+.guia-combate-cartao p { font-size: 12px; color: var(--txt-fraco); line-height: 1.5; margin: 3px 0 0; }
+.guia-combate-tabelas { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+.tabela-guia-combate { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.tabela-guia-combate th {
+  text-align: left; color: var(--txt-fraco); font-weight: 400; letter-spacing: .06em;
+  text-transform: uppercase; font-size: 10.5px; padding: 4px 6px; border-bottom: 1px solid var(--linha-forte);
+}
+.tabela-guia-combate td { padding: 5px 6px; border-bottom: 1px solid var(--linha); color: var(--txt-dim); }
+.tabela-guia-combate td:first-child { color: var(--txt); white-space: nowrap; }
 
 /* barras — preto sujo, veias por baixo, nada de plástico moderno */
 .barra-recurso { margin-bottom: 14px; }
@@ -1172,6 +1219,16 @@ body.bate-forte .barra-recurso .preenchido::before {
   border: 1px solid var(--linha-forte); color: var(--txt-dim); letter-spacing: .08em;
   text-transform: uppercase; font-family: var(--corpo); white-space: nowrap;
 }
+
+/* pequeno "i" de informação — ao lado de um rótulo, mostra a conta no title (hover) */
+.info-icone {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 1px solid var(--txt-dim); color: var(--txt-dim);
+  font-size: 10px; font-style: italic; font-family: var(--corpo); text-transform: none;
+  letter-spacing: 0; cursor: help; vertical-align: middle;
+}
+.info-icone:hover { border-color: var(--sangue-claro); color: var(--sangue-claro); }
 
 /* ---------------------------------------------------------- filtros / seletor */
 .filtros { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 18px 0 6px; }
