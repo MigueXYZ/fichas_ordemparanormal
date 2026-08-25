@@ -118,9 +118,10 @@ export function IconeD8({ titulo = 'Rolar d8', ...props }) {
 }
 
 /**
- * d10 em "gema facetada": bipirâmide vista em ligeiro ângulo, com TODAS as
- * arestas desenhadas (mesmo as de trás) — é esse traçado em raio-x, com as
- * linhas a cruzarem-se no meio, que dá o ar de cristal facetado.
+ * d10: estrela de 10 pontas (5 compridas + 5 curtas, alternadas a cada 36°) —
+ * as 10 pontas à vista, sem ambiguidade nenhuma com o d8 ou o d12. Faceta
+ * central destacada + 5 raios até às pontas compridas, no mesmo estilo de
+ * "silhueta + face + arestas" dos outros ícones desta família.
  * Fica dentro de um `span` próprio (não um `<svg>` solto) para poder ter a
  * sua própria animação 3D (ver .icone-d10 / @keyframes dado-d10-gira).
  */
@@ -128,22 +129,25 @@ export function IconeD10({ titulo = 'Rolar d10', className, style, ...props }) {
   return (
     <span className={'icone-d10' + (className ? ' ' + className : '')} style={style} role="img" aria-label={titulo} {...props}>
       <svg viewBox="0 0 64 64" className="d10-svg">
-        {/* silhueta exterior */}
+        {/* silhueta exterior: 10 pontas, 5 compridas + 5 curtas alternadas */}
         <polygon
-          points="32,4 56,35 32,60 8,29"
-          fill="currentColor" fillOpacity="0.08"
-          stroke="currentColor" strokeWidth="2.8" strokeLinejoin="round"
+          points="32,5 43.2,16.6 57.7,23.7 50.1,37.9 47.9,53.8 32,51 16.1,53.8 13.9,37.9 6.3,23.7 20.8,16.6"
+          fill="currentColor" fillOpacity="0.10"
+          stroke="currentColor" strokeWidth="2.6" strokeLinejoin="round"
         />
-        {/* arestas de dentro, "transparentes" — o efeito de gema vem daqui */}
-        <g stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" fill="none" opacity="0.85">
-          <path d="M32,4 23,42" />
-          <path d="M32,4 41,23" />
-          <path d="M32,60 23,42" />
-          <path d="M32,60 41,23" />
-          <path d="M56,35 23,42" />
-          <path d="M23,42 8,29" />
-          <path d="M8,29 41,23" />
-          <path d="M41,23 56,35" />
+        {/* faceta central, a apanhar a luz */}
+        <polygon
+          points="32,20 40,26.5 37,36 27,36 24,26.5"
+          fill="currentColor" fillOpacity="0.24"
+          stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round"
+        />
+        {/* raios da faceta central até às 5 pontas compridas */}
+        <g stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" fill="none" opacity="0.8">
+          <path d="M32,20 32,5" />
+          <path d="M40,26.5 57.7,23.7" />
+          <path d="M37,36 47.9,53.8" />
+          <path d="M27,36 16.1,53.8" />
+          <path d="M24,26.5 6.3,23.7" />
         </g>
       </svg>
     </span>
