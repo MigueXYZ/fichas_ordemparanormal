@@ -12,7 +12,7 @@
 import React, { useState } from 'react';
 import { PERICIAS } from '../../data/pericias.js';
 import { RITUAIS } from '../../data/rituais.js';
-import { nexEfetivo, calcMaximos } from '../../engine/calc.js';
+import { nexEfetivo, calcMaximos, calcDtRitual } from '../../engine/calc.js';
 import { ajustarRecursos } from '../../engine/character.js';
 import { rolarExpressao } from '../../engine/dados.js';
 import {
@@ -21,9 +21,16 @@ import {
   escolhasNecessarias, escolherRitual, escolherPericiasConhecimento, rituaisAtivos, resumoPorPatamar,
   atributosEfetivos, escolherPericiaParaDestreinar, gastarDadoBanco,
   podeServirSangue, servirSangueArmado, servirSangue,
+  podeRevelacaoConhecimento, revelacaoConhecimentoArmada, obterRevelacaoConhecimento,
+  podeDefesaEnergia, defesaEnergiaArmada, peGastoRitualEnergia, ativarDefesaEnergia, removerDefesaEnergia,
+  podeSerMarcadoNaPele,
   estadoReacaoTatuagem, usarReacaoTatuagem, reporReacaoTatuagem,
 } from '../../engine/monstruoso.js';
-import { ELEMENTOS_MONSTRUOSO, NOME_PODER_POR_PATAMAR, COR_ELEMENTO, DRENAGEM_ATRIBUTO, SERVIR_SANGUE } from '../../data/monstruoso.js';
+import {
+  ELEMENTOS_MONSTRUOSO, NOME_PODER_POR_PATAMAR, COR_ELEMENTO, DRENAGEM_ATRIBUTO,
+  SERVIR_SANGUE, REVELACAO_CONHECIMENTO, DEFESA_ENERGIA,
+} from '../../data/monstruoso.js';
+import { marcadoDoRitual, patchEstadoRitual, conjurarRitual, custoEfetivoRitual } from '../../engine/rituais.js';
 import CabecalhoSeta from './CabecalhoSeta.jsx';
 
 const NOME_ATRIBUTO = { for: 'Força', agi: 'Agilidade', int: 'Intelecto', pre: 'Presença', vig: 'Vigor' };
@@ -371,6 +378,9 @@ export function MonstruosoPainel({ personagem, setPersonagem, onRolar }) {
   const [peRascunho, setPeRascunho] = useState(1);
   const [periciaBancoEscolha, setPericiaBancoEscolha] = useState('');
   const [erroBanco, setErroBanco] = useState('');
+  const [modalReacaoAberto, setModalReacaoAberto] = useState(false);
+  const [ritualReacaoEscolhidoId, setRitualReacaoEscolhidoId] = useState('');
+  const [erroReacao, setErroReacao] = useState('');
 
   const classe = classeMonstruosa(personagem);
   if (!classe) return null;
@@ -531,11 +541,72 @@ export function MonstruosoPainel({ personagem, setPersonagem, onRolar }) {
     setPersonagem((p) => ({ ...p, ...r.patch }));
   }
 
+  // Ocultista-Conhecimento 65% (Ser Rasgado): revelações sobre o alvo / visão do oculto.
+  // Destranca-se após conjurar um ritual de Conhecimento. Custa 2 PE (sem rolagem).
+  function confirmarRevelacaoConhecimento() {
+    const max = calcMaximos(personagem);
+    const r = obterRevelacaoConhecimento(personagem, nex, { peMax: max.pe });
+    if (r.erro || !r.patch) return;
+    setPersonagem((p) => ({ ...p, ...r.patch }));
+  }
+
+  // Ocultista-Energia 65% (Ser Rasgado): teletransportar 3m e ganhar Defesa igual aos PE gastos.
+  // Destranca-se após conjurar um ritual de Energia. Custa 3 PE (sem rolagem).
+  function confirmarDefesaEnergia() {
+    const max = calcMaximos(personagem);
+    const r = ativarDefesaEnergia(personagem, nex, { peMax: max.pe });
+    if (r.erro || !r.patch) return;
+    setPersonagem((p) => ({ ...p, ...r.patch }));
+  }
+
   // Ocultista 40% (Ser Perfurado): a reação 1x/cena da Tatuagem Ritualística.
   // Destranca-se com as condições próprias do elemento estarem LIGADAS na
   // ficha (Painel de Condições) — nada a ver com o +5 de concentração, que
   // vale sempre. Repõe-se à mão: não há fronteira automática de cena.
   const reacao = estadoReacaoTatuagem(personagem, nex);
+
+  function abrirModalReacao() {
+    setErroReacao('');
+    const todos = [...(personagem.rituais || []), ...rituaisConcedidos];
+    const marcados = todos.filter((r) => marcadoDoRitual(personagem, r));
+    if (marcados.length > 0) {
+      const primeiro = marcados[0];
+      setRitualReacaoEscolhidoId(primeiro._monstruosoId || primeiro.id || primeiro.nome);
+    } else if (todos.length > 0) {
+      const primeiro = todos[0];
+      setRitualReacaoEscolhidoId(primeiro._monstruosoId || primeiro.id || primeiro.nome);
+    } else {
+      setRitualReacaoEscolhidoId('');
+    }
+    setModalReacaoAberto(true);
+  }
+
+  function confirmarConjurarReacao() {
+    setErroReacao('');
+    const todos = [...(personagem.rituais || []), ...rituaisConcedidos];
+    const r = todos.find((x) => (x._monstruosoId && x._monstruosoId === ritualReacaoEscolhidoId) || (x.id && x.id === ritualReacaoEscolhidoId) || (x.nome && x.nome === ritualReacaoEscolhidoId)) || todos.find((x) => marcadoDoRitual(personagem, x)) || todos[0];
+    if (!r) {
+      setErroReacao('Escolhe um ritual para conjurar como reação.');
+      return;
+    }
+    const idxProprio = (personagem.rituais || []).findIndex((x) => x === r || (x.id && x.id === r.id && x.nome === r.nome));
+    
+    // Se o ritual ainda não estava marcado na pele, marca-o agora
+    let patchExtra = {};
+    if (!marcadoDoRitual(personagem, r)) {
+      patchExtra = patchEstadoRitual(personagem, r, idxProprio >= 0 ? idxProprio : null, 'marcado', true);
+    }
+    const personagemComRitualMarcado = { ...personagem, ...patchExtra };
+    const res = conjurarRitual(personagemComRitualMarcado, r, { onRolar, index: idxProprio >= 0 ? idxProprio : null, ehReacao: true });
+    if (res.erro) {
+      setErroReacao(res.erro);
+      return;
+    }
+    if (res.patch) {
+      setPersonagem((prev) => ({ ...prev, ...patchExtra, ...res.patch }));
+    }
+    setModalReacaoAberto(false);
+  }
 
   const cartaoAberto = aberto('cartao', true);
 
@@ -638,7 +709,7 @@ export function MonstruosoPainel({ personagem, setPersonagem, onRolar }) {
                     : reacao.condicao
                       ? `Destrancada por: ${reacao.condicao}. Gasta a reação da cena para conjurar um ritual marcado na pele.`
                       : `Só ${reacao.gatilho} — liga a condição no Painel de Condições`}
-                  onClick={() => setPersonagem((p) => ({ ...p, ...usarReacaoTatuagem().patch }))}
+                  onClick={abrirModalReacao}
                 >
                   Conjurar ritual marcado como reação
                 </button>
@@ -676,6 +747,54 @@ export function MonstruosoPainel({ personagem, setPersonagem, onRolar }) {
                 {!servirSangueArmado(personagem, nex) && (
                   <span style={{ fontSize: 12.5, color: 'var(--txt-fraco)' }}>conjura um ritual de Sangue para destrancar</span>
                 )}
+              </div>
+            )}
+            {aberto && podeRevelacaoConhecimento(personagem, nex) && b.patamar === 65 && (
+              <div style={{ marginTop: 8, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  className="btn ghost sm"
+                  disabled={!revelacaoConhecimentoArmada(personagem, nex)}
+                  title={revelacaoConhecimentoArmada(personagem, nex)
+                    ? `Ação de movimento — gasta ${REVELACAO_CONHECIMENTO.custoPe} PE. Obtém revelações sobre o alvo (5 perguntas sim/não ao mestre) ou visão do oculto/invisível se o alvo fores tu.`
+                    : 'Só depois de conjurar um ritual de Conhecimento — conjura um ritual de Conhecimento para destrancar.'}
+                  onClick={confirmarRevelacaoConhecimento}
+                >
+                  Obter revelações do Conhecimento ({REVELACAO_CONHECIMENTO.custoPe} PE)
+                </button>
+                {!revelacaoConhecimentoArmada(personagem, nex) && (
+                  <span style={{ fontSize: 12.5, color: 'var(--txt-fraco)' }}>conjura um ritual de Conhecimento para destrancar</span>
+                )}
+              </div>
+            )}
+            {aberto && podeDefesaEnergia(personagem, nex) && b.patamar === 65 && (
+              <div style={{ marginTop: 8, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  className="btn ghost sm"
+                  disabled={!defesaEnergiaArmada(personagem, nex)}
+                  title={defesaEnergiaArmada(personagem, nex)
+                    ? `Ação de movimento — gasta ${DEFESA_ENERGIA.custoPe} PE. Teletransporta-te 3m e recebes +${peGastoRitualEnergia(personagem)} na Defesa até ao fim da rodada (igual aos PE gastos no ritual de Energia).`
+                    : 'Só depois de conjurar um ritual de Energia — conjura um ritual de Energia para destrancar.'}
+                  onClick={confirmarDefesaEnergia}
+                >
+                  Teletransportar 3m e ganhar +{peGastoRitualEnergia(personagem)} Defesa ({DEFESA_ENERGIA.custoPe} PE)
+                </button>
+                {Number(personagem.monstruosoDefesaEnergiaBonus || 0) > 0 ? (
+                  <>
+                    <span style={{ fontSize: 12.5, color: cor }}>
+                      +{personagem.monstruosoDefesaEnergiaBonus} Defesa ativa (1 rodada)
+                    </span>
+                    <button
+                      className="btn ghost sm"
+                      style={{ padding: '1px 8px', fontSize: 11 }}
+                      title="Fim da rodada — remove o bónus de Defesa"
+                      onClick={() => setPersonagem((p) => ({ ...p, ...removerDefesaEnergia().patch }))}
+                    >
+                      terminar rodada
+                    </button>
+                  </>
+                ) : !defesaEnergiaArmada(personagem, nex) ? (
+                  <span style={{ fontSize: 12.5, color: 'var(--txt-fraco)' }}>conjura um ritual de Energia para destrancar</span>
+                ) : null}
               </div>
             )}
             {aberto && classe === 'combatente' && elemento === 'Conhecimento' && b.patamar === 65 && (
@@ -807,6 +926,128 @@ export function MonstruosoPainel({ personagem, setPersonagem, onRolar }) {
               <div style={{ display: 'flex', gap: 14, justifyContent: 'center' }}>
                 <button className="btn ghost" onClick={() => setPeModalAberto(false)}>Cancelar</button>
                 <button className="btn" style={{ borderColor: cor, background: cor }} onClick={confirmarGastarPe}>Confirmar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalReacaoAberto && (
+        <div className="modal-fundo" style={{ zIndex: 100 }} onClick={(e) => e.target === e.currentTarget && setModalReacaoAberto(false)}>
+          <div className="modal" style={{ maxWidth: 480, textAlign: 'left' }}>
+            <div className="modal-topo">
+              <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>Conjurar Ritual Marcado como Reação</h3>
+              <button className="fechar" onClick={() => setModalReacaoAberto(false)}>×</button>
+            </div>
+            <div className="modal-corpo">
+              <p style={{ color: 'var(--txt-dim)', fontSize: 13.5, marginBottom: 14 }}>
+                Como reação (1x por cena), podes conjurar um ritual marcado na pele em vez da ação normal que ele exige.
+                {reacao?.condicao && <span style={{ display: 'block', marginTop: 4, color: cor }}>Destrancada por: <strong>{reacao.condicao}</strong></span>}
+              </p>
+
+              {(() => {
+                const todosRituais = [...(personagem.rituais || []), ...rituaisConcedidos];
+                if (todosRituais.length === 0) {
+                  return (
+                    <div style={{ padding: 14, background: 'rgba(0,0,0,0.3)', borderRadius: 4, border: '1px solid var(--linha)', marginBottom: 16 }}>
+                      <p style={{ margin: 0, fontSize: 13.5, color: 'var(--txt-fraco)' }}>
+                        Ainda não tens nenhum ritual aprendido na ficha.
+                      </p>
+                      <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--txt-dim)' }}>
+                        Adiciona rituais na aba <strong>Rituais</strong> para poderes marcá-los e conjurá-los como reação.
+                      </p>
+                    </div>
+                  );
+                }
+
+                const ritualSel = todosRituais.find((x) => (x._monstruosoId && x._monstruosoId === ritualReacaoEscolhidoId) || (x.id && x.id === ritualReacaoEscolhidoId) || (x.nome && x.nome === ritualReacaoEscolhidoId)) || todosRituais.find((x) => marcadoDoRitual(personagem, x)) || todosRituais[0];
+                const chaveSel = ritualSel?._monstruosoId || ritualSel?.id || ritualSel?.nome;
+
+                return (
+                  <>
+                    <div style={{ fontSize: 13, fontWeight: 'bold', marginBottom: 8 }}>Escolhe o ritual a conjurar como reação:</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 280, overflowY: 'auto', marginBottom: 16, paddingRight: 4 }}>
+                      {todosRituais.map((r, idx) => {
+                        const chave = r._monstruosoId || r.id || r.nome || idx;
+                        const selecionado = chave === chaveSel;
+                        const marcado = marcadoDoRitual(personagem, r);
+                        const elegivel = podeSerMarcadoNaPele(personagem, nex, r);
+                        const custo = custoEfetivoRitual(personagem, nex, r);
+                        const dt = calcDtRitual(personagem, r, true);
+                        const idxProprio = (personagem.rituais || []).findIndex((x) => x === r || (x.id && x.id === r.id && x.nome === r.nome));
+                        return (
+                          <div
+                            key={chave}
+                            onClick={() => setRitualReacaoEscolhidoId(chave)}
+                            style={{
+                              padding: '10px 12px',
+                              borderRadius: 4,
+                              border: `1px solid ${selecionado ? cor : 'var(--linha)'}`,
+                              background: selecionado ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.2)',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 6,
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <strong style={{ fontSize: 14.5, color: selecionado ? cor : 'var(--txt)' }}>
+                                  {r.nome || 'Ritual'}
+                                </strong>
+                                {marcado ? (
+                                  <span className="pill" style={{ borderColor: cor, color: cor, fontSize: 10 }}>✦ NA PELE</span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="btn ghost sm"
+                                    style={{ padding: '0 6px', fontSize: 10 }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setPersonagem((p) => ({ ...p, ...patchEstadoRitual(p, r, idxProprio, 'marcado', true) }));
+                                    }}
+                                  >
+                                    + marcar na pele
+                                  </button>
+                                )}
+                              </div>
+                              <span style={{ fontSize: 12.5, fontWeight: 'bold', color: 'var(--txt)' }}>
+                                {custo} {personagem?.regras?.semSanidade ? 'PD' : 'PE'}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: 12, color: 'var(--txt-dim)', display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                              <span>{r.circulo || 1}º círculo</span>
+                              <span>{r.elemento}</span>
+                              {r.alcance && <span>Alcance: {r.alcance}</span>}
+                              {r.duracao && <span>Duração: {r.duracao}</span>}
+                              {dt ? <span style={{ color: 'var(--txt)', fontWeight: 'bold' }}>DT {dt}</span> : null}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
+
+              {erroReacao && <p style={{ color: 'var(--sangue-claro)', fontSize: 13, margin: '0 0 14px' }}>{erroReacao}</p>}
+
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 10 }}>
+                <button type="button" className="btn ghost" onClick={() => setModalReacaoAberto(false)}>Cancelar</button>
+                {(() => {
+                  const todosRituais = [...(personagem.rituais || []), ...rituaisConcedidos];
+                  if (todosRituais.length === 0) return null;
+                  return (
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{ borderColor: cor, background: cor }}
+                      onClick={confirmarConjurarReacao}
+                    >
+                      Conjurar como Reação
+                    </button>
+                  );
+                })()}
               </div>
             </div>
           </div>

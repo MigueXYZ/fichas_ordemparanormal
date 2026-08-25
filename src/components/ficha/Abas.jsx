@@ -10,8 +10,8 @@ import { PATENTES, PATENTES_POR_ID, CATEGORIAS, categoriaRomana } from '../../da
 import { novoAtaque, novoItem, novaHabilidade, novoRitual } from '../../engine/character.js';
 import { rolarAtaqueCompleto, rolarDano, rolarTeste, quantidadeDados } from '../../engine/dados.js';
 import { estatisticasArma, interpretarCritico, armaDoItem, ehArma, formulaTeste } from '../../engine/armas.js';
-import { precoDoRitual, podeFicarAtivo, CONDICOES_CONCENTRACAO, dtConcentracao } from '../../engine/rituais.js';
-import { ataquesNaturaisAtivos, rituaisAtivos, temComponentesDoElemento, classeMonstruosa, elementoAtual, patamarAtual, efetivamenteAtivo, atributosEfetivos, reducaoTatuagemRitualistica, bonusConcentracaoTatuagem, poderesAtivos, temTatuagemRitualistica, podeSerMarcadoNaPele, armarServirSangue } from '../../engine/monstruoso.js';
+import { precoDoRitual, podeFicarAtivo, CONDICOES_CONCENTRACAO, dtConcentracao, marcadoDoRitual, ativoDoRitual, patchEstadoRitual, conjurarRitual, custoBaseDeRitual, custoEfetivoRitual } from '../../engine/rituais.js';
+import { ataquesNaturaisAtivos, rituaisAtivos, temComponentesDoElemento, classeMonstruosa, elementoAtual, patamarAtual, efetivamenteAtivo, atributosEfetivos, reducaoTatuagemRitualistica, bonusConcentracaoTatuagem, poderesAtivos, temTatuagemRitualistica, podeSerMarcadoNaPele, armarServirSangue, armarRevelacaoConhecimento } from '../../engine/monstruoso.js';
 import { ELEMENTOS_MONSTRUOSO, COR_ELEMENTO } from '../../data/monstruoso.js';
 import EditorArma from './EditorArma.jsx';
 import { calcPericias } from '../../engine/calc.js';
@@ -362,48 +362,10 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
   );
 }
 
-/**
- * ESTADO POR RITUAL — "marcado na pele" (Tatuagem Ritualística) e "ativo"
- * (ritual de duração não instantânea a decorrer).
- *
- * Um ritual próprio da personagem guarda os dois no próprio objeto
- * (`personagem.rituais[i].marcado` / `.ativo`). Um ritual CONCEDIDO pela
- * Trilha do Monstruoso é derivado a cada render (não existe em
- * `personagem.rituais`, não há onde escrever) — por isso esses guardam-se em
- * duas listas de ids à parte, na personagem.
- */
-function marcadoDoRitual(personagem, r) {
-  if (r._monstruosoId) return (personagem.monstruosoRituaisMarcados || []).includes(r._monstruosoId);
-  return Boolean(r.marcado);
-}
-
-function ativoDoRitual(personagem, r) {
-  if (r._monstruosoId) return (personagem.monstruosoRituaisAtivos || []).includes(r._monstruosoId);
-  return Boolean(r.ativo);
-}
-
-/** Liga/desliga um id numa das listas de ids acima. */
+/** Liga/desliga um id numa das listas de ids de rituais concedidos da Trilha do Monstruoso. */
 function alternarNaLista(personagem, campo, id) {
   const atual = personagem[campo] || [];
   return { [campo]: atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id] };
-}
-
-/**
- * Patch que põe `campo` (ativo/marcado) a `valor` num ritual, seja ele
- * próprio (índice `i` em `personagem.rituais`) ou concedido pela trilha.
- */
-function patchEstadoRitual(personagem, r, i, campo, valor) {
-  if (r._monstruosoId) {
-    const lista = campo === 'ativo' ? 'monstruosoRituaisAtivos' : 'monstruosoRituaisMarcados';
-    const atuais = personagem[lista] || [];
-    const tem = atuais.includes(r._monstruosoId);
-    if (valor === tem) return {};
-    return { [lista]: tem ? atuais.filter((x) => x !== r._monstruosoId) : [...atuais, r._monstruosoId] };
-  }
-  const proprios = [...(personagem.rituais || [])];
-  if (!proprios[i]) return {};
-  proprios[i] = { ...proprios[i], [campo]: valor };
-  return { rituais: proprios };
 }
 
 function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
@@ -430,25 +392,16 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
   const atual = usaPd ? (personagem.pdAtual ?? max.pd) : (personagem.peAtual ?? max.pe);
   const dt = calcDtRitual(personagem);
 
-  // Tatuagem Ritualística: −1 PE nos rituais marcados na pele a que o poder
-  // se aplica (ver `reducaoTatuagemRitualistica` em engine/monstruoso.js).
-  // O custo mostrado, o que é descontado e o que entra na DT do teste de
-  // concentração são todos o custo JÁ reduzido.
   function custoBaseDe(r) {
-    return Number(String(r.custo).replace(/\D/g, '')) || 0;
+    return custoBaseDeRitual(r);
   }
   function reducaoDe(r) {
     return reducaoTatuagemRitualistica(personagem, nex, r, marcadoDoRitual(personagem, r));
   }
   function custoDe(r) {
-    return Math.max(0, custoBaseDe(r) - reducaoDe(r));
+    return custoEfetivoRitual(personagem, nex, r);
   }
 
-  // "Componentes ritualísticos são necessários para a conjuração de rituais
-  // do elemento em questão" (Livro Base) — precisa dos componentes DESSE
-  // elemento, os de outro elemento não servem. Medo não tem componentes
-  // (não existem, por regra) e "variável (à escolha)" não tem um elemento
-  // fixo para verificar — nenhum dos dois entra nesta exigência.
   function precisaComponente(r) {
     return Boolean(r.elemento) && r.elemento !== 'medo' && r.elemento !== 'variavel';
   }
@@ -457,82 +410,9 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
   }
 
   function conjurar(r, i) {
-    const custo = custoDe(r);
-    // "Enquanto estiver transformado... não pode... conjurar rituais"
-    // (Forma Monstruosa) — bloqueia qualquer conjuração, incluindo repetir
-    // este ritual, enquanto a transformação estiver ativa.
-    if (custo > atual || !temComponente(r) || personagem.formaMonstruosaAtiva) return;
-
-    // Poder de toque da Trilha do Monstruoso (Especialista-Conhecimento
-    // 65%+: Detecção de Ameaças/Mergulho Mental) — só desconta o PE fixo,
-    // sem teste de Ocultismo nem custo de Sanidade por círculo (não é uma
-    // conjuração normal, ver `_semTeste` em engine/monstruoso.js).
-    if (r._semTeste) {
-      setPersonagem({ ...personagem, [usaPd ? 'pdAtual' : 'peAtual']: atual - custo });
-      onRolar({
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        tipo: 'ritual', semTeste: true, nome: r.nome || 'Ritual', detalhe: 'poder de toque — sem teste',
-        notas: [`${custo} ${usaPd ? 'PD' : 'PE'} gastos`, 'Poder de toque da Trilha do Monstruoso — sem teste de Ocultismo'],
-        total: 'concedido', critico: false, falhaCritica: false,
-      });
-      return;
-    }
-
-    const circulo = Number(r.circulo) || 1;
-    const oc = calcPericias(personagem).find((x) => x.id === 'ocultismo') || { dados: 0, bonus: 0 };
-    const teste = rolarTeste({ nome: `${r.nome || 'Ritual'} — Ocultismo`, dados: oc.dados, bonus: oc.bonus });
-
-    const { perdeSan, perdePermanente, limiteSan, limitePermanente } = precoDoRitual(teste.total, circulo);
-
-    const campoAtual = usaPd ? 'pdAtual' : 'sanAtual';
-    const maximoMental = usaPd ? max.pd : max.san;
-    const mentalAtual = personagem[campoAtual] ?? maximoMental;
-
-    const patch = { [usaPd ? 'pdAtual' : 'peAtual']: atual - custo };
-    if (usaPd) {
-      let pd = atual - custo;
-      if (perdeSan) pd = Math.max(0, pd - 1);
-      patch.pdAtual = pd;
-      if (perdePermanente) patch.pdExtra = (Number(personagem.pdExtra) || 0) - 1;
-    } else {
-      if (perdeSan) patch.sanAtual = Math.max(0, mentalAtual - 1);
-      if (perdePermanente) {
-        patch.sanExtra = (Number(personagem.sanExtra) || 0) - 1;
-        patch.sanAtual = Math.max(0, Math.min(patch.sanAtual ?? mentalAtual, maximoMental - 1));
-      }
-    }
-    // Ocultista-Sangue 65%+: conjurar um ritual de Sangue arma o botão
-    // "Servir sangue" no cartão da trilha (ver engine/monstruoso.js).
-    Object.assign(patch, armarServirSangue(personagem, nex, r));
-
-    // Rituais de duração não instantânea ficam ATIVOS ao serem conjurados e
-    // só saem daí quando o jogador desligar o interruptor (ou falhar um
-    // teste de concentração) — a app não tem fronteira automática de cena
-    // nem relógio de rodadas.
-    if (podeFicarAtivo(r)) Object.assign(patch, patchEstadoRitual(personagem, r, i, 'ativo', true));
-
-    // Forma Monstruosa garante mesmo os efeitos do livro ao ser conjurada:
-    // 30 PV temporários e a transformação fica ativa (liga o +5 em ataque/
-    // dano corpo a corpo em armas.js e bloqueia conjurar outros rituais,
-    // até terminares a transformação à mão).
-    if (r.nome === 'Forma Monstruosa') {
-      patch.pvTemp = Number(personagem.pvTemp || 0) + 30;
-      patch.formaMonstruosaAtiva = true;
-    }
-    setPersonagem({ ...personagem, ...patch });
-
-    const nomeMental = usaPd ? 'Determinação' : 'Sanidade';
-    const notas = [
-      `${custo} ${usaPd ? 'PD' : 'PE'} gastos`,
-      dt ? `DT ${dt} para resistir` : null,
-      perdePermanente
-        ? `falhou por muito (< ${limitePermanente}): −1 de ${nomeMental} e −1 permanente`
-        : perdeSan
-          ? `abaixo de ${limiteSan}: −1 de ${nomeMental}`
-          : `${limiteSan} ou mais: a mente aguentou`,
-    ].filter(Boolean);
-
-    onRolar({ ...teste, tipo: 'ritual', nome: r.nome || 'Ritual', detalhe: `${circulo}º círculo`, notas, sofreu: perdeSan });
+    const res = conjurarRitual(personagem, r, { onRolar, index: i });
+    if (res.erro) return;
+    if (res.patch) setPersonagem({ ...personagem, ...res.patch });
   }
 
   // Combatente Sangue 99% ("Ser Aterrorizante"): sempre que sofre dano, teste
@@ -607,25 +487,32 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
     setPersonagem((p) => ({ ...p, formaMonstruosaAtiva: false }));
   }
 
+  const podeMarcarNaPele = nex >= 40 && personagem.trilhaId === 'monstruoso';
+  const todos = [...(personagem.rituais || []), ...rituaisAtivos(personagem, nex)];
+  function temRecurso(custo) { return custo <= atual; }
+
   return (
     <div className="rituais-combate">
       <div className="rotulo-lista">Rituais · {usaPd ? `${atual} PD` : `${atual} PE`} disponíveis{dt ? ` · DT ${dt}` : ''}</div>
       <div className="lista-blocos">
-        {rituais.map((r, i) => {
-          const custo = custoDe(r);
-          const reducao = reducaoDe(r);
+        {todos.map((r, i) => {
           const circulo = Number(r.circulo) || 1;
-          const podeGastar = custo <= atual;
+          const custo = custoDe(r);
+          const podeGastar = temRecurso(custo);
           const componenteOk = temComponente(r);
+          const reducao = reducaoDe(r);
           const transformado = Boolean(personagem.formaMonstruosaAtiva);
           const podeConjurar = podeGastar && componenteOk && !transformado;
           const nomeElemento = ELEMENTOS.find((e) => e.id === r.elemento)?.nome || r.elemento;
           const marcado = marcadoDoRitual(personagem, r);
           const ritualAtivo = ativoDoRitual(personagem, r);
+          const dtInfo = detalheDtRitual(personagem, r, marcado);
+          const dtRitual = dtInfo.total;
           // Só rituais de duração não instantânea podem ficar ativos (ver
           // `podeFicarAtivo` em engine/rituais.js). Poderes de toque da
           // trilha (`_semTeste`) não são conjurações — ficam de fora.
           const podeAtivar = !r._semTeste && podeFicarAtivo(r);
+          const podeMarcar = podeMarcarNaPele && (podeSerMarcadoNaPele(personagem, nex, r) || marcado);
           return (
             <div className={'bloco ritual el-' + (r.elemento || 'variavel')} key={r._monstruosoId || i}>
               <div className="topo">
@@ -640,8 +527,16 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
                     <span title={reducao > 0 ? `${custoBaseDe(r)} − ${reducao} da Tatuagem Ritualística (marcado na pele)` : undefined}>
                       {custo} {usaPd ? 'PD' : 'PE'}{reducao > 0 ? ` (−${reducao})` : ''}
                     </span>
-                    {marcado && <span title="Marcado na pele — liga-se/desliga-se na aba Rituais" style={{ color: 'var(--txt-fraco)' }}>marcado na pele</span>}
+                    {marcado && <span title="Marcado na pele" style={{ color: 'var(--txt-fraco)' }}>marcado na pele</span>}
                     {r.duracao && <span>{r.duracao}</span>}
+                    {!r._semTeste && (
+                      <span
+                        title={dtInfo.bonusTrilha > 0 ? `DT ${dtRitual} (${dtInfo.total - dtInfo.bonusTrilha} base + 2 da Trilha do Monstruoso por estar marcado na pele)` : `DT ${dtRitual} para resistir`}
+                        style={dtInfo.bonusTrilha > 0 ? { color: 'var(--txt)', fontWeight: 'bold' } : undefined}
+                      >
+                        DT {dtRitual}{dtInfo.bonusTrilha > 0 ? ' (+2 pele)' : ''}
+                      </span>
+                    )}
                     {!r._semTeste && (
                       <span title="Abaixo disto perdes 1 de Sanidade; abaixo de 10 + círculo, perdes 1 permanente">
                         Ocultismo {20 + circulo} / {10 + circulo}
@@ -659,6 +554,9 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  {podeMarcar && (
+                    <BotaoMarcarNaPele personagem={personagem} setPersonagem={setPersonagem} ritual={r} indice={i} elegivel={podeSerMarcadoNaPele(personagem, nex, r)} />
+                  )}
                   {podeAtivar && (
                     <button
                       className={'btn sm' + (ritualAtivo ? '' : ' ghost')}
@@ -993,7 +891,7 @@ export function AbaRituais({ personagem, setPersonagem }) {
             DT de ritual{' '}
             <span
               className="info-icone"
-              title={`10 + ${dtDetalhe.bonusNex} (bónus de NEX ${dtDetalhe.nex}%) + ${dtDetalhe.presenca} (${dtDetalhe.atributoDt ? NOME_ATRIBUTO[dtDetalhe.atributoDt] || dtDetalhe.atributoDt : 'Presença'}${dtDetalhe.atributoDt ? ' — Trilha do Monstruoso' : ''}) = ${dtDetalhe.total}`}
+              title={`10 + ${dtDetalhe.bonusNex} (bónus de NEX ${dtDetalhe.nex}%) + ${dtDetalhe.presenca} (${dtDetalhe.atributoDt ? NOME_ATRIBUTO[dtDetalhe.atributoDt] || dtDetalhe.atributoDt : 'Presença'}${dtDetalhe.atributoDt ? ' — Trilha do Monstruoso' : ''}) = ${dtDetalhe.total}${dtDetalhe.temBuff65 ? ` (Rituais de ${dtDetalhe.elementoTrilha} marcados na pele recebem +2 DT → DT ${dtDetalhe.total + 2})` : ''}`}
             >
               i
             </span>
@@ -1104,6 +1002,17 @@ export function AbaRituais({ personagem, setPersonagem }) {
                   <div className="arma-stats" style={{ fontSize: '14px' }}>
                     {r.circulo !== '' && <span>{r.circulo}º círculo</span>}
                     {r.elemento && <span>{r.elemento}</span>}
+                    {(() => {
+                      const dtInfo = detalheDtRitual(personagem, r, marcadoDoRitual(personagem, r));
+                      return (
+                        <span
+                          title={dtInfo.bonusTrilha > 0 ? `DT ${dtInfo.total} (${dtInfo.total - dtInfo.bonusTrilha} base + 2 da Trilha do Monstruoso por estar marcado na pele)` : `DT ${dtInfo.total} para resistir`}
+                          style={dtInfo.bonusTrilha > 0 ? { color: 'var(--txt)', fontWeight: 'bold' } : undefined}
+                        >
+                          DT {dtInfo.total}{dtInfo.bonusTrilha > 0 ? ' (+2 pele)' : ''}
+                        </span>
+                      );
+                    })()}
                     {r.execucao && <span>{r.execucao}</span>}
                     {r.alcance && <span>{r.alcance}</span>}
                   </div>
@@ -1116,12 +1025,14 @@ export function AbaRituais({ personagem, setPersonagem }) {
             // (conteúdo oficial, mostra-se normal, com "Editar" ao lado) ou
             // é um ritual em branco/à mão, que começa logo no formulário.
             if (!emEdicao.has(i)) {
+              const marcado = marcadoDoRitual(personagem, r);
+              const dtInfo = detalheDtRitual(personagem, r, marcado);
               return (
                 <div className="bloco" key={i}>
                   <div className="topo">
                     <b style={{ fontSize: '18px' }}>{r.nome || 'Sem nome'}</b>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      {podeMarcarNaPele && (podeSerMarcadoNaPele(personagem, nex, r) || marcadoDoRitual(personagem, r)) && (
+                      {podeMarcarNaPele && (podeSerMarcadoNaPele(personagem, nex, r) || marcado) && (
                         <BotaoMarcarNaPele personagem={personagem} setPersonagem={setPersonagem} ritual={r} indice={i} elegivel={podeSerMarcadoNaPele(personagem, nex, r)} />
                       )}
                       <button className="btn ghost sm" onClick={() => alternarEdicao(i)}>Editar</button>
@@ -1145,6 +1056,12 @@ export function AbaRituais({ personagem, setPersonagem }) {
                         )}
                       </span>
                     )}
+                    <span
+                      title={dtInfo.bonusTrilha > 0 ? `DT ${dtInfo.total} (${dtInfo.total - dtInfo.bonusTrilha} base + 2 da Trilha do Monstruoso por estar marcado na pele)` : `DT ${dtInfo.total} para resistir`}
+                      style={dtInfo.bonusTrilha > 0 ? { color: 'var(--txt)', fontWeight: 'bold' } : undefined}
+                    >
+                      DT {dtInfo.total}{dtInfo.bonusTrilha > 0 ? ' (+2 pele)' : ''}
+                    </span>
                     {r.execucao && <span>{r.execucao}</span>}
                     {r.alcance && <span>{r.alcance}</span>}
                     {r.alvo && <span>{r.alvo}</span>}

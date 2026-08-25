@@ -196,11 +196,13 @@ export function calcDefesa(personagem) {
   const penalidadeCarga = carga.sobrecarregado ? -5 : 0;
   const nex = nexEfetivo(personagem);
   const a = atributosEfetivosMonstruoso(personagem, nex);
+  const bonusDefesaEnergia = Number(personagem?.monstruosoDefesaEnergiaBonus || 0);
   return (
     10 +
     Number(a.agi || 0) +
     defesaDasProtecoes(personagem) +
-    Number(personagem.defesaOutros || 0) +
+    Number(personagem?.defesaOutros || 0) +
+    bonusDefesaEnergia +
     conds.penalidadeDefesa +
     penalidadeCarga
   );
@@ -213,12 +215,12 @@ export function calcDefesa(personagem) {
  * último 99%) + Presença. Ex.: Presença 3, NEX 5% -> 14 (10+1+3);
  * Presença 5, NEX 99% -> 35 (10+20+5).
  */
-export function calcDtRitual(personagem) {
-  return detalheDtRitual(personagem).total;
+export function calcDtRitual(personagem, ritual = null, marcado = false) {
+  return detalheDtRitual(personagem, ritual, marcado).total;
 }
 
 /** Mesmo cálculo de `calcDtRitual`, mas devolve as parcelas para mostrar a conta (tooltip). */
-export function detalheDtRitual(personagem) {
+export function detalheDtRitual(personagem, ritual = null, marcado = false) {
   const nex = nexEfetivo(personagem);
   const a = atributosEfetivosMonstruoso(personagem, nex);
   const bonusNex = nexIndex(nex) + 1;
@@ -229,7 +231,30 @@ export function detalheDtRitual(personagem) {
   // patamar, mesmo atributo, é a mesma regra a aplicar-se a duas contas).
   const atributoDt = efeitosDiariosMonstruoso(personagem, nex).peAtributo;
   const presenca = Number((atributoDt ? a[atributoDt] : a.pre) || 0);
-  return { nex, bonusNex, presenca, atributoDt, total: 10 + bonusNex + presenca };
+
+  let bonusTrilha = 0;
+  const el = elementoAtualMonstruoso(personagem);
+  const ehOcultista65 = classeMonstruosa(personagem) === 'ocultista'
+    && patamarAtualMonstruoso(nex) >= 65
+    && efetivamenteAtivoMonstruoso(personagem, nex);
+
+  // Ocultista 65%+ (Ser Rasgado): a DT dos seus rituais do elemento marcados na pele aumenta em +2
+  if (ehOcultista65 && marcado && ritual?.elemento) {
+    if (el && String(ritual.elemento).trim().toLowerCase() === el.trim().toLowerCase()) {
+      bonusTrilha = 2;
+    }
+  }
+
+  return {
+    nex,
+    bonusNex,
+    presenca,
+    atributoDt,
+    bonusTrilha,
+    elementoTrilha: el,
+    temBuff65: ehOcultista65,
+    total: 10 + bonusNex + presenca + bonusTrilha,
+  };
 }
 
 export function calcDefesas(personagem) {

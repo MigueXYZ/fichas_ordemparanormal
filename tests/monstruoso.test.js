@@ -12,13 +12,15 @@ import {
   tatuagemAlargada, temTatuagemRitualistica, reducaoTatuagemRitualistica,
   bonusConcentracaoTatuagem, podeReagirTatuagem, poderesAtivos,
   podeSerMarcadoNaPele, podeServirSangue, servirSangueArmado, servirSangue, armarServirSangue,
+  podeRevelacaoConhecimento, revelacaoConhecimentoArmada, armarRevelacaoConhecimento, obterRevelacaoConhecimento,
+  podeDefesaEnergia, defesaEnergiaArmada, peGastoRitualEnergia, armarDefesaEnergia, ativarDefesaEnergia, removerDefesaEnergia,
   estadoReacaoTatuagem, condicaoReacaoTatuagem,
 } from '../src/engine/monstruoso.js';
-import { detalheDtRitual } from '../src/engine/calc.js';
-import { podeFicarAtivo, dtConcentracao } from '../src/engine/rituais.js';
+import { detalheDtRitual, calcDtRitual } from '../src/engine/calc.js';
+import { podeFicarAtivo, dtConcentracao, marcadoDoRitual, conjurarRitual, custoEfetivoRitual } from '../src/engine/rituais.js';
 import {
   pvTempImediatoMorteAtual, deslocamentoEnergiaExtraAtual,
-  quantidadePericiasLivresConhecimento, TEXTOS_POR_PATAMAR,
+  quantidadePericiasLivresConhecimento, TEXTOS_POR_PATAMAR, DEFESA_ENERGIA,
 } from '../src/data/monstruoso.js';
 
 let passou = 0;
@@ -306,7 +308,7 @@ teste('estatisticasArma marca o dano extra da trilha como "elemental" (para a in
   const e = estatisticasArma(p, arma);
   assert.equal(e.extras.length, 2);
   assert.deepEqual(e.extras[0], '1d4'); // dano próprio da arma, string simples, não elemental
-  assert.deepEqual(e.extras[1], { expr: '1d6', elemental: true }); // dano da drenagem (base, 0 pontos)
+  assert.deepEqual(e.extras[1], { expr: '1d6', elemental: true, tipoDano: 'Sangue' }); // dano da drenagem (base, 0 pontos)
 });
 
 teste('rolarDano soma o extra elemental ao total normalmente, mas devolve `elemental: true` nessa entrada para colorir na interface', () => {
@@ -818,7 +820,7 @@ teste('Especialista Conhecimento: sem a etapa ativa (ou sem drenagem), nenhuma p
   assert.deepEqual(linhas.find((l) => l.id === 'medicina').dadosExtra, []);
 });
 
-teste('Especialista Morte: o PV máximo (fórmula soma Vigor) sobe quando o Vigor efetivo sobe aos 65%/99% — desde que o máximo não esteja travado à mão', () => {
+teste('Especialista Morte: o PV máximo (fórmula soma Vigor) sobe quando o Vigor efetivo sobe aos 65%/99%', () => {
   const semTrilha = especialistaMonstruoso(65, 'Morte');
   const pvSemTrilha = calcMaximos(semTrilha).pv; // etapa nunca ativada -> sem bónus de Vigor
 
@@ -827,11 +829,9 @@ teste('Especialista Morte: o PV máximo (fórmula soma Vigor) sobe quando o Vigo
   const pvComTrilha = calcMaximos(comTrilha).pv;
   assert.ok(pvComTrilha > pvSemTrilha, `esperava o PV máximo subir com o Vigor da trilha: ${pvSemTrilha} -> ${pvComTrilha}`);
 
-  // Um "pvMaxManual" travado (o cadeado da barra de vida) IGNORA o automático
-  // de propósito — é o comportamento já testado para bloqueio/esquiva. Isto
-  // confirma que, se o máximo parecer "preso", a causa é esse travamento.
-  comTrilha.pvMaxManual = 50;
-  assert.equal(calcMaximos(comTrilha).pv, 50);
+  // pvExtra soma por cima do cálculo automático
+  comTrilha.pvExtra = 10;
+  assert.equal(calcMaximos(comTrilha).pv, pvComTrilha + 10);
 });
 
 teste('Especialista Conhecimento 65%+: Detecção de Ameaças/Mergulho Mental aparecem como rituais da trilha, marcados "_semTeste" (poder de toque — só custa PE, sem teste de Ocultismo nem círculo)', () => {
@@ -1118,6 +1118,127 @@ teste('Ser Perfurado (40%): a reação não existe sem a escarificação do dia 
   ativar(comb);
   comb.condicoes = ['cego'];
   assert.equal(estadoReacaoTatuagem(comb, 40), null);
+});
+
+teste('Ser Perfurado (40%): conjurarRitual como reação gasta a reação da cena e aplica custos de PE e efeitos', () => {
+  const p = ocultistaMonstruoso(40, 'Conhecimento');
+  ativar(p);
+  p.peAtual = 10;
+  p.condicoes = ['abalado']; // condição de medo destranca a reação
+  p.inventario = [{ id: 'comp_conhecimento', nome: 'Componentes Ritualísticos de Conhecimento', categoria: 0, espaco: 1 }];
+
+  const ritualMarcado = { id: 'comp_paranormal', nome: 'Compreensão Paranormal', elemento: 'conhecimento', circulo: 1, custo: '1', marcado: true };
+  p.rituais = [ritualMarcado];
+
+  // Custo base 1, com redução de Tatuagem Ritualística (-1) fica 0 PE
+  assert.equal(custoEfetivoRitual(p, 40, ritualMarcado), 0);
+  assert.equal(p.monstruosoReacaoTatuagemUsada, undefined);
+
+  let rolagemFeita = null;
+  const res = conjurarRitual(p, ritualMarcado, { onRolar: (r) => { rolagemFeita = r; }, ehReacao: true });
+  assert.ok(!res.erro);
+  assert.equal(res.patch.monstruosoReacaoTatuagemUsada, true);
+  assert.ok(rolagemFeita);
+  assert.ok(rolagemFeita.notas.some((n) => n.includes('Reação (1x por cena)')));
+});
+
+teste('Ser Rasgado (65%, Conhecimento): obterRevelacaoConhecimento custa 2 PE e só destranca depois de conjurar ritual de Conhecimento', () => {
+  const p = ocultistaMonstruoso(65, 'Conhecimento');
+  ativar(p);
+  p.peAtual = 20;
+
+  assert.equal(podeRevelacaoConhecimento(p, 65), true);
+  assert.equal(revelacaoConhecimentoArmada(p, 65), false, 'ainda não conjurou nenhum ritual');
+  assert.ok(obterRevelacaoConhecimento(p, 65, { peMax: 20 }).erro);
+
+  // Conjurar ritual de Sangue NÃO arma Conhecimento
+  assert.deepEqual(armarRevelacaoConhecimento(p, 65, { elemento: 'sangue' }), {});
+  // Conjurar ritual de Conhecimento arma
+  Object.assign(p, armarRevelacaoConhecimento(p, 65, { elemento: 'conhecimento' }));
+  assert.equal(revelacaoConhecimentoArmada(p, 65), true);
+
+  let rolagemFeita = null;
+  const r = obterRevelacaoConhecimento(p, 65, { onRolar: (rol) => { rolagemFeita = rol; }, peMax: 20 });
+  assert.ok(!r.erro);
+  assert.equal(r.patch.peAtual, 18, 'desconta 2 PE');
+  assert.equal(r.patch.monstruosoRitualConhecimentoConjurado, false, 'desarma após usar');
+  assert.ok(rolagemFeita);
+  assert.ok(rolagemFeita.notas.some((n) => n.includes('5 perguntas')));
+  assert.ok(rolagemFeita.notas.some((n) => n.includes('incorpóreas')));
+});
+
+teste('Ser Rasgado (65%+): DT dos rituais do elemento marcados na pele recebe bónus de +2', () => {
+  const p = ocultistaMonstruoso(65, 'Conhecimento');
+  ativar(p);
+
+  const ritualConhecimento = { elemento: 'conhecimento', circulo: 1 };
+  const ritualMorte = { elemento: 'morte', circulo: 1 };
+
+  const dtBase = calcDtRitual(p, ritualConhecimento, false);
+  const dtMarcadoConhecimento = calcDtRitual(p, ritualConhecimento, true);
+  const dtMarcadoMorte = calcDtRitual(p, ritualMorte, true);
+
+  assert.equal(dtMarcadoConhecimento, dtBase + 2, 'ritual do elemento marcado na pele ganha +2 DT');
+  assert.equal(dtMarcadoMorte, dtBase, 'ritual de outro elemento marcado não ganha +2 DT');
+});
+
+teste('Ser Perfurado (40%, Energia): reação 1x/cena destrancada por condição de sentidos (ofuscado, cego) ou paralisia', () => {
+  const p = ocultistaMonstruoso(40, 'Energia');
+  ativar(p);
+  assert.equal(estadoReacaoTatuagem(p, 40).disponivel, false, 'sem condição não pode');
+
+  p.condicoes = ['ofuscado']; // condição de sentidos
+  assert.equal(estadoReacaoTatuagem(p, 40).disponivel, true, 'ofuscado destranca');
+
+  p.condicoes = ['paralisado']; // condição de paralisia
+  assert.equal(estadoReacaoTatuagem(p, 40).disponivel, true, 'paralisado destranca');
+});
+
+teste('Ser Rasgado (65%, Energia): teletransporte e bónus de Defesa gasta 3 PE e soma PE do ritual à Defesa', () => {
+  const p = ocultistaMonstruoso(65, 'Energia');
+  ativar(p);
+  p.peAtual = 20;
+
+  assert.equal(podeDefesaEnergia(p, 65), true);
+  assert.equal(defesaEnergiaArmada(p, 65), false, 'ainda não conjurou ritual de Energia');
+  assert.ok(ativarDefesaEnergia(p, 65, { peMax: 20 }).erro);
+
+  const defBase = calcDefesa(p);
+
+  // Conjura um ritual de Energia que gasta 4 PE
+  const ritualEnergia = { elemento: 'energia', circulo: 2 };
+  Object.assign(p, armarDefesaEnergia(p, 65, ritualEnergia, 4));
+  assert.equal(defesaEnergiaArmada(p, 65), true);
+  assert.equal(peGastoRitualEnergia(p), 4);
+
+  const resAtivar = ativarDefesaEnergia(p, 65, { peMax: 20 });
+  assert.ok(!resAtivar.erro);
+  assert.equal(resAtivar.patch.peAtual, 17, 'gasta 3 PE');
+  assert.equal(resAtivar.patch.monstruosoRitualEnergiaConjurado, false, 'desarma o gatilho');
+  assert.equal(resAtivar.patch.monstruosoDefesaEnergiaBonus, 4, 'ganha +4 Defesa');
+
+  // Aplica o patch na ficha e verifica o cálculo da Defesa
+  Object.assign(p, resAtivar.patch);
+  assert.equal(calcDefesa(p), defBase + 4, 'soma 4 de Defesa');
+
+  // Terminar rodada remove o bónus
+  Object.assign(p, removerDefesaEnergia().patch);
+  assert.equal(calcDefesa(p), defBase, 'defesa volta ao normal');
+});
+
+teste('Ser Rasgado (65%, Energia): DT dos rituais de Energia marcados na pele ganha +2 DT', () => {
+  const p = ocultistaMonstruoso(65, 'Energia');
+  ativar(p);
+
+  const ritualEnergia = { elemento: 'energia', circulo: 1 };
+  const ritualMorte = { elemento: 'morte', circulo: 1 };
+
+  const dtBase = calcDtRitual(p, ritualEnergia, false);
+  const dtMarcadoEnergia = calcDtRitual(p, ritualEnergia, true);
+  const dtMarcadoMorte = calcDtRitual(p, ritualMorte, true);
+
+  assert.equal(dtMarcadoEnergia, dtBase + 2, 'ritual de Energia marcado ganha +2 DT');
+  assert.equal(dtMarcadoMorte, dtBase, 'ritual de outro elemento marcado não ganha +2 DT');
 });
 
 console.log(`\n${passou} testes ok`);

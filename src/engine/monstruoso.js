@@ -32,7 +32,7 @@ import {
   DRENAGEM_ATRIBUTO, COR_ELEMENTO, TAMANHO_ESPECIALISTA_SANGUE,
   patamaresPresencaPermanente, TUDO_PERMANENTE_DESDE,
   TATUAGEM_DESDE, PODER_TATUAGEM, BONUS_CONCENTRACAO_TATUAGEM, REACAO_TATUAGEM,
-  SERVIR_SANGUE,
+  SERVIR_SANGUE, REVELACAO_CONHECIMENTO, DEFESA_ENERGIA,
 } from '../data/monstruoso.js';
 import { PERICIAS } from '../data/pericias.js';
 import { RITUAIS, RITUAIS_POR_ID } from '../data/rituais.js';
@@ -415,6 +415,133 @@ export function servirSangue(personagem, nex, { onRolar, pvMax = 0 } = {}) {
       monstruosoRitualSangueConjurado: false,
     },
   };
+}
+
+/**
+ * REVELAÇÕES DO CONHECIMENTO — Ocultista-Conhecimento 65%+ ("Ser Rasgado", AS7 p. 87).
+ *
+ * Gatilho: ter acabado de conjurar um ritual de Conhecimento.
+ * Gasta ação de movimento e 2 PE para obter revelações sobre o alvo (5 perguntas
+ * sim/não ao mestre) ou visão do oculto/invisível se o alvo for você mesmo.
+ */
+export function podeRevelacaoConhecimento(personagem, nex) {
+  return classeMonstruosa(personagem) === 'ocultista'
+    && elementoAtual(personagem) === 'Conhecimento'
+    && patamarAtual(nex) >= REVELACAO_CONHECIMENTO.desde
+    && efetivamenteAtivo(personagem, nex);
+}
+
+/** O gatilho está armado (conjuraste um ritual de Conhecimento e ainda não usaste a revelação)? */
+export function revelacaoConhecimentoArmada(personagem, nex) {
+  return podeRevelacaoConhecimento(personagem, nex) && Boolean(personagem.monstruosoRitualConhecimentoConjurado);
+}
+
+/** Arma o gatilho — chamado ao conjurar um ritual de Conhecimento. */
+export function armarRevelacaoConhecimento(personagem, nex, ritual) {
+  if (!podeRevelacaoConhecimento(personagem, nex)) return {};
+  if (normalizar(ritual?.elemento) !== 'conhecimento') return {};
+  return { monstruosoRitualConhecimentoConjurado: true };
+}
+
+/**
+ * Obtém revelações: gasta 2 PE (ou 2 PD se sem Sanidade), desarma o gatilho
+ * e emite o log detalhado no histórico de rolagens.
+ */
+export function obterRevelacaoConhecimento(personagem, nex, { onRolar, peMax = 0 } = {}) {
+  if (!revelacaoConhecimentoArmada(personagem, nex)) {
+    return { erro: 'Precisas de conjurar um ritual de Conhecimento primeiro.' };
+  }
+  const usaPd = Boolean(personagem?.regras?.semSanidade);
+  const peAtual = usaPd ? Number(personagem.pdAtual ?? peMax) : Number(personagem.peAtual ?? peMax);
+  if (peAtual < REVELACAO_CONHECIMENTO.custoPe) {
+    return { erro: `PE insuficiente (precisas de ${REVELACAO_CONHECIMENTO.custoPe} ${usaPd ? 'PD' : 'PE'}).` };
+  }
+  if (onRolar) {
+    onRolar({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      tipo: 'habilidade',
+      semTeste: true,
+      nome: 'Ser Rasgado — Revelações do Conhecimento',
+      detalhe: 'Ação de movimento · Trilha do Monstruoso (65%)',
+      notas: [
+        `${REVELACAO_CONHECIMENTO.custoPe} ${usaPd ? 'PD' : 'PE'} gastos`,
+        '• Alvo externo: o mestre deve responder a 5 perguntas sobre a ficha, história e/ou personalidade do alvo com "sim" ou "não".',
+        '• Próprio conjurador como alvo: tornas-te capaz de ver coisas incorpóreas, invisíveis ou ocultas de outra forma pelo paranormal até ao fim da cena.',
+      ],
+      total: 'revelado',
+      critico: false,
+      falhaCritica: false,
+    });
+  }
+  return {
+    patch: {
+      [usaPd ? 'pdAtual' : 'peAtual']: peAtual - REVELACAO_CONHECIMENTO.custoPe,
+      monstruosoRitualConhecimentoConjurado: false,
+    },
+  };
+}
+
+/**
+ * TELETRANSPORTE E DEFESA DA ENERGIA — Ocultista-Energia 65%+ ("Ser Rasgado", AS7 p. 87).
+ *
+ * Gatilho: ter acabado de conjurar um ritual de Energia.
+ * Gasta ação de movimento e 3 PE para se teletransportar 3m e ganhar Defesa
+ * igual aos PE gastos no ritual conjurado até ao fim da rodada.
+ */
+export function podeDefesaEnergia(personagem, nex) {
+  return classeMonstruosa(personagem) === 'ocultista'
+    && elementoAtual(personagem) === 'Energia'
+    && patamarAtual(nex) >= DEFESA_ENERGIA.desde
+    && efetivamenteAtivo(personagem, nex);
+}
+
+/** O gatilho está armado (conjuraste um ritual de Energia e ainda não ativaste o teletransporte/defesa)? */
+export function defesaEnergiaArmada(personagem, nex) {
+  return podeDefesaEnergia(personagem, nex) && Boolean(personagem?.monstruosoRitualEnergiaConjurado);
+}
+
+/** Quanto PE foi gasto no último ritual de Energia conjurado? */
+export function peGastoRitualEnergia(personagem) {
+  return Number(personagem?.monstruosoRitualEnergiaPeGasto || 0);
+}
+
+/** Arma o gatilho — chamado ao conjurar um ritual de Energia. */
+export function armarDefesaEnergia(personagem, nex, ritual, peGasto = 0) {
+  if (!podeDefesaEnergia(personagem, nex)) return {};
+  if (normalizar(ritual?.elemento) !== 'energia') return {};
+  return {
+    monstruosoRitualEnergiaConjurado: true,
+    monstruosoRitualEnergiaPeGasto: Math.max(0, Number(peGasto) || 0),
+  };
+}
+
+/**
+ * Ativa o teletransporte e o bónus de Defesa: gasta 3 PE (ou 3 PD), aplica o bónus
+ * de Defesa igual aos PE gastos no ritual, e desarma o gatilho.
+ */
+export function ativarDefesaEnergia(personagem, nex, { peMax = 0 } = {}) {
+  if (!defesaEnergiaArmada(personagem, nex)) {
+    return { erro: 'Precisas de conjurar um ritual de Energia primeiro.' };
+  }
+  const usaPd = Boolean(personagem?.regras?.semSanidade);
+  const peAtual = usaPd ? Number(personagem.pdAtual ?? peMax) : Number(personagem.peAtual ?? peMax);
+  if (peAtual < DEFESA_ENERGIA.custoPe) {
+    return { erro: `PE insuficiente (precisas de ${DEFESA_ENERGIA.custoPe} ${usaPd ? 'PD' : 'PE'}).` };
+  }
+  const bonus = peGastoRitualEnergia(personagem);
+  return {
+    patch: {
+      [usaPd ? 'pdAtual' : 'peAtual']: peAtual - DEFESA_ENERGIA.custoPe,
+      monstruosoRitualEnergiaConjurado: false,
+      monstruosoDefesaEnergiaBonus: bonus,
+    },
+    bonus,
+  };
+}
+
+/** Remove o bónus de Defesa (fim da rodada). */
+export function removerDefesaEnergia() {
+  return { patch: { monstruosoDefesaEnergiaBonus: 0 } };
 }
 
 /**
@@ -938,7 +1065,17 @@ export function ativarHoje(personagem, nex, { onRolar } = {}) {
  * normal) — não mexe na Presença perdida nem no elemento escolhido.
  */
 export function desativarHoje() {
-  return { patch: { monstruosoAtivoHoje: false, monstruosoDrenagem: 0 } };
+  return {
+    patch: {
+      monstruosoAtivoHoje: false,
+      monstruosoDrenagem: 0,
+      monstruosoRitualSangueConjurado: false,
+      monstruosoRitualConhecimentoConjurado: false,
+      monstruosoRitualEnergiaConjurado: false,
+      monstruosoRitualEnergiaPeGasto: 0,
+      monstruosoDefesaEnergiaBonus: 0,
+    },
+  };
 }
 
 /** Primeira escolha de elemento (10%, permanente). */

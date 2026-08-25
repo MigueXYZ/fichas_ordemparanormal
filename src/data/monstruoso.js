@@ -620,3 +620,35 @@ export const SERVIR_SANGUE = {
   bonus: '+1d20',
   bonusEm: 'testes baseados em Agilidade, Força e Vigor até o fim da cena',
 };
+
+/**
+ * REVELAÇÕES DO CONHECIMENTO — Ocultista-Conhecimento, "Ser Rasgado" (AS7, p. 87), 65%+.
+ *
+ * Verbatim: "Quando conjura um ritual de Conhecimento, você pode gastar uma ação de
+ * movimento e 2 PE para obter revelações sobre o alvo do ritual (o mestre deve
+ * responder a 5 perguntas sobre a ficha, história e/ou personalidade do alvo com
+ * 'sim' ou 'não'). Se você mesmo for o alvo, em vez disso, você se torna capaz de
+ * ver coisas incorpóreas, invisíveis ou ocultas de outra forma pelo paranormal,
+ * até o fim da cena."
+ */
+export const REVELACAO_CONHECIMENTO = {
+  desde: 65,
+  custoPe: 2,
+  descricao: 'Ação de movimento + 2 PE: 5 perguntas sim/não ao mestre sobre o alvo do ritual (ficha, história, personalidade); ou visão de coisas incorpóreas/invisíveis até ao fim da cena se o alvo fores tu.',
+};
+
+/**
+ * TELETRANSPORTE E DEFESA DA ENERGIA — Ocultista-Energia, "Ser Rasgado" (AS7, p. 87), 65%+.
+ *
+ * Verbatim: "Quando conjura um ritual de Energia, você pode gastar uma ação de
+ * movimento e 3 PE para se teletransportar 3m e ganhar Defesa igual ao PE gasto no
+ * ritual, por 1 rodada. Além disso, a DT dos seus rituais de Energia marcados na pele
+ * aumenta em +2."
+ */
+export const DEFESA_ENERGIA = {
+  desde: 65,
+  custoPe: 3,
+  distancia: '3m',
+  descricao: 'Ação de movimento + 3 PE: teletransporta-se 3m e recebe Defesa igual aos PE gastos no ritual conjurado até ao fim da rodada.',
+};
+
