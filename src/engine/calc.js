@@ -1,4 +1,5 @@
 import { calcBuffsPoderes } from './poderesBuffs.js';
+import { efeitosRituaisAtivos } from './rituaisEfeitos.js';
 import { PERICIAS, GRAUS_TREINO } from '../data/pericias.js';
 import { CLASSES_POR_ID } from '../data/classes.js';
 import { PATENTES_POR_ID, CATEGORIAS, categoriaRomana, patentePorPrestigio } from '../data/patentes.js';
@@ -288,6 +289,7 @@ export function calcDefesa(personagem) {
     Number(personagem?.defesaOutros || 0) +
     bonusDefesaEnergia +
     buffs.defesaExtra +
+    efeitosRituaisAtivos(personagem, nex).defesaExtra +
     conds.penalidadeDefesa +
     penalidadeCarga
   );
@@ -455,6 +457,8 @@ export function calcPericias(personagem) {
 
   const buffs = calcBuffsPoderes(personagem, nex);
   const bonusVest = calcBonusVestimentas(personagem);
+  // rituais ativos que dão bónus de perícia a quem os conjura
+  const efRituais = efeitosRituaisAtivos(personagem, nex);
   return PERICIAS.map((p) => {
     const estado = personagem.pericias?.[p.id] || { grau: 'destreinado', outros: 0 };
     const treinoConcedido = treinoMonstruoso.forcar.has(p.id) || Boolean(buffs.periciasTreino[p.id]);
@@ -465,7 +469,8 @@ export function calcPericias(personagem) {
     const expertForcado = Boolean(treinoMonstruoso.expertForcado?.has(p.id)) && ordemGrau(estado.grau) < ordemGrau('expert');
     const grauEfetivo = expertForcado ? 'expert' : (treinoForcado ? 'treinado' : estado.grau);
     const treino = bonusGrau(grauEfetivo);
-    const outros = Number(estado.outros || 0) + (buffs.periciasBonus[p.id] || 0) + (bonusVest[p.id] || 0);
+    const outros = Number(estado.outros || 0) + (buffs.periciasBonus[p.id] || 0) + (bonusVest[p.id] || 0)
+      + (efRituais.periciasBonus[p.id] || 0);
     const penalidade = p.carga ? penalidadeCarga : 0;
     // A trilha do Monstruoso pode trocar o atributo-chave de uma perícia
     // nomeada (ex.: Combatente Conhecimento 40%: Enganação passa a usar

@@ -1,10 +1,12 @@
 import { calcMaximos, nexEfetivo, calcPericias, calcDtRitual } from './calc.js';
-import { rolarTeste } from './dados.js';
+
 import {
   temComponentesDoElemento, reducaoTatuagemRitualistica,
   armarServirSangue, armarRevelacaoConhecimento, armarDefesaEnergia,
   classeMonstruosa, patamarAtual, elementoAtual,
 } from './monstruoso.js';
+import { rolarTeste, rolarDano } from './dados.js';
+import { efeitosDe } from '../data/rituaisEfeitos.js';
 
 /**
  * O preço de conjurar.
@@ -261,6 +263,15 @@ export function conjurarRitual(personagem, r, { onRolar, index = null, ehReacao 
         : `${limiteSan} ou mais: a mente aguentou`,
   ].filter(Boolean);
 
+  // Leitura mecânica do ritual (ver data/rituaisEfeitos.js). Só os rituais
+  // que lá estão têm efeito automático; os outros continuam a funcionar,
+  // apenas sem somar nada sozinhos.
+  const efeitos = efeitosDe(r);
+  if (efeitos?.nota) notas.push(efeitos.nota);
+  if (efeitos?.ativo && podeFicarAtivo(r)) {
+    notas.push('Efeito ligado na ficha enquanto o ritual estiver Ativo.');
+  }
+
   if (onRolar) {
     onRolar({
       ...teste,
@@ -270,6 +281,16 @@ export function conjurarRitual(personagem, r, { onRolar, index = null, ehReacao 
       notas,
       sofreu: perdeSan,
     });
+
+    // Dano: rola-se logo a seguir ao teste, como rolagem própria, para o
+    // total aparecer separado no histórico em vez de escondido numa nota.
+    if (efeitos?.dano) {
+      const roloDano = rolarDano({
+        nome: `${r.nome} — dano de ${efeitos.dano.tipo}`,
+        dano: efeitos.dano.formula,
+      });
+      if (roloDano) onRolar(roloDano);
+    }
   }
 
   return { patch, teste };

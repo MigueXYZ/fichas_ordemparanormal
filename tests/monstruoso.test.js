@@ -6,7 +6,7 @@ import { rolarDano } from '../src/engine/dados.js';
 import {
   classeMonstruosa, patamarAtual, efetivamenteAtivo, tudoPermanente, atributosEfetivos,
   efeitosDiarios, ativarHoje, desativarHoje, escolherElemento, limiteDrenagem,
-  ataquesNaturaisAtivos, rituaisAtivos, escolhasNecessarias,
+  ataquesNaturaisAtivos, rituaisAtivos, escolhasNecessarias, ganhosAtivos,
   escolherRitual, escolherPericiasConhecimento, resistenciaTextoAtual, consequenciasAtivas,
   resumoPorPatamar, temComponentesDoElemento, periciasTreinadasAtivas,
   tatuagemAlargada, temTatuagemRitualistica, reducaoTatuagemRitualistica,
@@ -82,27 +82,34 @@ teste('classeMonstruosa/patamarAtual continuam a funcionar como antes', () => {
   assert.equal(patamarAtual(99), 99);
 });
 
-teste('sem ativar a etapa, nada está em efeito (Combatente, abaixo de 99%)', () => {
+teste('sem ativar a etapa, só as penalidades permanentes estão em efeito (Combatente, abaixo de 99%)', () => {
   const p = combatenteMonstruoso(65, 'Sangue');
   assert.equal(efetivamenteAtivo(p, 65), false);
   const ef = efeitosDiarios(p, 65);
-  assert.deepEqual(ef.dadosPericia, {});
+  // A perda de humanidade (penalidade nas perícias) é PERMANENTE e sobe com o
+  // NEX mesmo sem a etapa do dia — confirmado pelo Rodrigo. Tudo o resto
+  // continua diário.
+  assert.deepEqual(ef.dadosPericia, { ciencias: -2, intuicao: -2 });
   assert.equal(ataquesNaturaisAtivos(p, 65).length, 0);
   const a = atributosEfetivos(p, 65);
   assert.equal(a.for, 1); // atributo base da personagemVazio()
 });
 
-teste('ao ativar, os efeitos aparecem; ao desativar, desaparecem', () => {
-  let p = combatenteMonstruoso(10, 'Sangue');
+teste('ao ativar, os efeitos diários aparecem; ao desativar, desaparecem — mas a penalidade fica', () => {
+  let p = combatenteMonstruoso(99, 'Morte'); // 99%: +1 Vigor, ritual Fim Inevitável
+  p.monstruosoAtivoHoje = false;
+  // O Combatente aos 99% tem "tudo permanente", por isso para testar o
+  // ligar/desligar usa-se um patamar abaixo disso.
+  p = combatenteMonstruoso(65, 'Sangue');
   ativar(p);
-  assert.equal(efetivamenteAtivo(p, 10), true);
-  let ef = efeitosDiarios(p, 10);
-  assert.deepEqual(ef.dadosPericia, { ciencias: -1, intuicao: -1 });
+  assert.equal(efetivamenteAtivo(p, 65), true);
+  assert.equal(ataquesNaturaisAtivos(p, 65).length, 1); // Mordida (65%)
 
   Object.assign(p, desativarHoje().patch);
-  assert.equal(efetivamenteAtivo(p, 10), false);
-  ef = efeitosDiarios(p, 10);
-  assert.deepEqual(ef.dadosPericia, {});
+  assert.equal(efetivamenteAtivo(p, 65), false);
+  assert.equal(ataquesNaturaisAtivos(p, 65).length, 0, 'a arma natural é diária');
+  // A penalidade nas perícias NÃO some ao desativar — é permanente.
+  assert.deepEqual(efeitosDiarios(p, 65).dadosPericia, { ciencias: -2, intuicao: -2 });
 });
 
 teste('Combatente Sangue: penalidade -1O aos 10%, -2O a partir dos 40% (não sobe mais)', () => {
@@ -245,7 +252,11 @@ teste('Especialista/Ocultista NÃO têm "tudo permanente" aos 99% — continua d
   assert.equal(tudoPermanente(ocultistaMonstruoso(99, 'Sangue'), 99), false);
   const p = especialistaMonstruoso(99, 'Sangue');
   assert.equal(efetivamenteAtivo(p, 99), false);
-  assert.deepEqual(efeitosDiarios(p, 99).dadosPericia, {});
+  // Sem a etapa: nenhum ganho diário...
+  assert.equal(ganhosAtivos(p, 99).length, 0);
+  assert.equal(atributosEfetivos(p, 99).for, 1);
+  // ...mas a penalidade permanente continua lá (-2O aos 99%).
+  assert.deepEqual(efeitosDiarios(p, 99).dadosPericia, { diplomacia: -2, enganacao: -2, intuicao: -2 });
 });
 
 // ------------------------------------------------------------------
@@ -462,16 +473,18 @@ teste('escolhas permanentes não desaparecem ao desativar (só o efeito é diár
 // Perícias treinadas pela trilha (Ocultismo, perícias livres).
 // ------------------------------------------------------------------
 
-teste('Ocultismo fica treinado (ou +2 se já treinada) só enquanto ativo', () => {
+teste('Ocultismo treinado pela trilha é PERMANENTE — não depende da etapa do dia', () => {
   let p = combatenteMonstruoso(10, 'Sangue');
+  // Confirmado pelo Rodrigo: o treino/bónus em Ocultismo é permanente e
+  // evolui com o NEX mesmo sem fazer a escarificação/experimento do dia.
   let per = calcPericias(p).find((x) => x.id === 'ocultismo');
-  assert.equal(per.treino, 0);
+  assert.equal(per.grau, 'treinado', 'já treinado sem nunca ter ativado');
   ativar(p);
   per = calcPericias(p).find((x) => x.id === 'ocultismo');
   assert.equal(per.grau, 'treinado');
   Object.assign(p, desativarHoje().patch);
   per = calcPericias(p).find((x) => x.id === 'ocultismo');
-  assert.equal(per.grau, 'destreinado');
+  assert.equal(per.grau, 'treinado', 'continua treinado depois de desativar');
 });
 
 teste('Ocultista: +2 fixo em Ocultismo mesmo já treinado (não troca de grau), sem duplicar o bónus', () => {
@@ -554,13 +567,22 @@ teste('Ocultista Sangue 10%: +1 Força e PE por Força, mas SEM somar Força em 
 // Especialista/Ocultista: penalidade sempre diária (nunca "sempre ligada").
 // ------------------------------------------------------------------
 
-teste('Especialista/Ocultista: penalidade em Diplomacia/Enganação/Intuição também é só diária', () => {
+teste('Especialista/Ocultista: a penalidade em Diplomacia/Enganação/Intuição é PERMANENTE e evolui com o NEX', () => {
   for (const fabrica of [especialistaMonstruoso, ocultistaMonstruoso]) {
+    // Aos 10% é -2, mesmo sem nunca ter feito o experimento/escarificação.
+    const p10 = fabrica(10, 'Sangue');
+    let ef = efeitosDiarios(p10, 10);
+    assert.equal(ef.flatPericia.diplomacia, -2);
+    assert.equal(ef.flatPericia.enganacao, -2);
+    assert.equal(ef.flatPericia.intuicao, -2);
+
+    // Aos 40% passa a -5, e continua a não depender da etapa do dia.
     const p = fabrica(40, 'Sangue');
-    assert.deepEqual(efeitosDiarios(p, 40).flatPericia, {});
-    ativar(p);
-    const ef = efeitosDiarios(p, 40);
+    ef = efeitosDiarios(p, 40);
     assert.equal(ef.flatPericia.diplomacia, -5);
+    ativar(p);
+    ef = efeitosDiarios(p, 40);
+    assert.equal(ef.flatPericia.diplomacia, -5, 'ativar não duplica a penalidade');
     assert.equal(ef.flatPericia.enganacao, -5);
     assert.equal(ef.flatPericia.intuicao, -5);
   }
