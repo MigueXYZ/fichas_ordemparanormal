@@ -72,7 +72,7 @@ export default function HistoricoRolagens({ historico = [], aoFechar, aoLimpar }
       <div className="modal">
         <div className="modal-topo">
           <h3>Histórico de rolagens</h3>
-          <button className="fechar" onClick={aoFechar} aria-label="Fechar">✕</button>
+          <button className="fechar" onClick={aoFechar} aria-label="Fechar"></button>
         </div>
 
         <div className="modal-corpo">

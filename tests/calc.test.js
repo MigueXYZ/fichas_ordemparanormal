@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { personagemVazio } from '../src/engine/character.js';
 import { gerarAmeaca, gerarFicha } from '../src/engine/geradores.js';
-import { calcMaximos, calcDefesa, calcDefesas, calcPericias, calcDeslocamento, pontosRestantes, calcPePorRodada, grauMaximoPorNex, degrauNex, nexEfetivo } from '../src/engine/calc.js';
+import { calcMaximos, calcDefesa, calcDefesas, calcPericias, calcDeslocamento, calcDeslocamentos, pontosRestantes, calcPePorRodada, grauMaximoPorNex, degrauNex, nexEfetivo } from '../src/engine/calc.js';
 
 let passou = 0;
 function teste(nome, fn) {
@@ -528,6 +528,25 @@ teste('deslocamento respeita condições Imóvel, Caído e Lento', () => {
   assert.equal(calcDeslocamento(p), 1.5);
   p.condicoes = ['imovel'];
   assert.equal(calcDeslocamento(p), 0);
+});
+
+teste('deslocamentoManual sobrepõe o cálculo e calcDeslocamentos informa o auto', () => {
+  const p = personagemVazio();
+  p.deslocamento = 9;
+  p.condicoes = ['lento']; // auto seria 4.5
+  p.deslocamentoManual = 12;
+  assert.equal(calcDeslocamento(p), 12);
+  const d = calcDeslocamentos(p);
+  assert.equal(d.valor, 12);
+  assert.equal(d.auto, 4.5);
+  assert.equal(d.manual, true);
+  assert.equal(d.quadrados, 8);
+
+  // ao limpar volta ao automático
+  p.deslocamentoManual = null;
+  const dAuto = calcDeslocamentos(p);
+  assert.equal(dAuto.valor, 4.5);
+  assert.equal(dAuto.manual, false);
 });
 
 teste('ataques sofrem penalidades de condições (Ofuscado)', () => {

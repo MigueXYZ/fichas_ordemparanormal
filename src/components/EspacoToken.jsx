@@ -35,7 +35,7 @@ export default function EspacoToken({ token, aoMudarToken }) {
                 <input type="file" accept="image/*,image/gif" onChange={escolher} />
               </label>
               <button type="button" className="acao-token" title="Tirar o token" onClick={() => aoMudarToken(null)}>
-                ✕
+                
               </button>
             </div>
           </>

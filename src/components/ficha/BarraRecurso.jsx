@@ -125,7 +125,7 @@ export default function BarraRecurso({ titulo, classe, atual, max, onChange, tem
                 color: destravado ? '#fff' : 'var(--txt-dim)',
               }}
             >
-              {destravado ? '✎' : '±'}
+              {destravado ? '' : '±'}
             </button>
           )}
         </div>

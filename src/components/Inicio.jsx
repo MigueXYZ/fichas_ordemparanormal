@@ -293,7 +293,7 @@ export default function Inicio({ aoCriar, aoAbrir, aoAbrirMestre }) {
                     alternarSelecao(a.id);
                   }}
                 >
-                  {estaSelecionado ? '✓' : ''}
+                  {estaSelecionado ? '' : ''}
                 </div>
               )}
               <div className="foto" style={a.imagem ? { backgroundImage: `url(${a.imagem})` } : undefined}>

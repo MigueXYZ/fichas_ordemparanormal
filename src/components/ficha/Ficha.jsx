@@ -10,7 +10,7 @@ import { MonstruosoBotao, MonstruosoPainel } from './Monstruoso.jsx';
 import { CLASSES, trilhasDaClasse } from '../../data/classes.js';
 import { ORIGENS } from '../../data/origens.js';
 import { REGRAS_ATRIBUTOS } from '../../data/atributos.js';
-import { calcMaximos, calcDefesas, defesaDasProtecoes, calcPePorRodada, calcDeslocamento, degrauNex, nexEfetivo, NEX_TRACK } from '../../engine/calc.js';
+import { calcMaximos, calcDefesas, defesaDasProtecoes, calcPePorRodada, calcDeslocamento, calcDeslocamentos, degrauNex, nexEfetivo, NEX_TRACK } from '../../engine/calc.js';
 import { PROTECOES, PROFICIENCIAS_OP } from '../../data/itens.js';
 import { TIPOS_DANO } from '../../engine/danoRecetor.js';
 import RegrasOpcionais from './RegrasOpcionais.jsx';
@@ -51,6 +51,7 @@ function InputNumeroScroll({ value, onChange, ...props }) {
     if (!el) return;
 
     const handleWheel = (e) => {
+      if (document.activeElement !== el) return;
       e.preventDefault();
       e.stopPropagation();
       const delta = e.deltaY < 0 ? 1 : -1;
@@ -75,7 +76,7 @@ function InputNumeroScroll({ value, onChange, ...props }) {
 
 const ABAS = [
   { id: 'combate', nome: 'Combate' },
-  { id: 'habilidades', nome: 'Habilidades' },
+  { id: 'habilidades', nome: 'Habilidades/Poderes' },
   { id: 'rituais', nome: 'Rituais' },
   { id: 'inventario', nome: 'Inventário' },
   { id: 'descricao', nome: 'Descrição' },
@@ -340,12 +341,57 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
                 <span>{max.semSanidade ? 'PD / turno' : 'PE / turno'}</span>
                 <div className="caixa">{calcPePorRodada(personagem)}</div>
               </div>
-              <div className="nex-bloco">
-                <span>Deslocamento</span>
-                <div className="caixa">
-                  {calcDeslocamento(personagem)} m / {Math.round(calcDeslocamento(personagem) / 1.5)} q
-                </div>
-              </div>
+              {(() => {
+                const desloc = calcDeslocamentos(personagem);
+                return (
+                  <div className="nex-bloco">
+                    <span>Deslocamento</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <div className="caixa" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                        <InputNumeroScroll
+                          className="campo-nu"
+                          style={{
+                            width: 36,
+                            textAlign: 'center',
+                            fontSize: 15,
+                            fontWeight: 'bold',
+                            color: desloc.manual ? 'var(--sangue-claro, #ff5555)' : undefined,
+                          }}
+                          value={desloc.manual ? personagem.deslocamentoManual : desloc.valor}
+                          placeholder={desloc.auto}
+                          step="1.5"
+                          title="Deslocamento em metros. Clica para escrever ou rolar; deixa vazio para voltar ao automático"
+                          onChange={(v) => set({ deslocamentoManual: v })}
+                        />
+                        <span style={{ fontSize: 12, color: 'var(--txt-dim)' }}>m ({desloc.quadrados}q)</span>
+                      </div>
+                      {desloc.manual && (
+                        <button
+                          type="button"
+                          className="btn ghost sm"
+                          style={{
+                            height: 32,
+                            padding: '0 6px',
+                            fontSize: 11,
+                            color: 'var(--sangue-claro, #ff5555)',
+                            borderColor: 'rgba(239, 68, 68, 0.4)',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            borderRadius: 'var(--raio-pequeno, 4px)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                          }}
+                          title={`Voltar ao automático (${desloc.auto}m)`}
+                          onClick={() => set({ deslocamentoManual: null })}
+                        >
+                          ↺ {desloc.auto}m
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             <div style={{ width: '100%' }}>
@@ -643,7 +689,7 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
 
         {id === 'combate_direto' && (
           <div className="seccao-bloco seccao-painel-direto" style={{ width: '100%' }}>
-            <div className="rotulo-seccao-direta">⚔️ Combate & Armas</div>
+            <div className="rotulo-seccao-direta">Combate & Armas</div>
             <MonstruosoPainel personagem={personagem} setPersonagem={setPersonagem} onRolar={onRolar} />
             <AbaCombate personagem={personagem} setPersonagem={setPersonagem} onRolar={onRolar} />
           </div>
@@ -651,28 +697,28 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
 
         {id === 'habilidades_direto' && (
           <div className="seccao-bloco seccao-painel-direto" style={{ width: '100%' }}>
-            <div className="rotulo-seccao-direta">⚡ Habilidades & Poderes</div>
+            <div className="rotulo-seccao-direta"> Habilidades & Poderes</div>
             <AbaHabilidades personagem={personagem} setPersonagem={setPersonagem} />
           </div>
         )}
 
         {id === 'rituais_direto' && (
           <div className="seccao-bloco seccao-painel-direto" style={{ width: '100%' }}>
-            <div className="rotulo-seccao-direta">🔮 Rituais & Ocultismo</div>
+            <div className="rotulo-seccao-direta">Rituais & Ocultismo</div>
             <AbaRituais personagem={personagem} setPersonagem={setPersonagem} />
           </div>
         )}
 
         {id === 'inventario_direto' && (
           <div className="seccao-bloco seccao-painel-direto" style={{ width: '100%' }}>
-            <div className="rotulo-seccao-direta">🎒 Inventário & Carga</div>
+            <div className="rotulo-seccao-direta">Inventário & Carga</div>
             <AbaInventario personagem={personagem} setPersonagem={setPersonagem} />
           </div>
         )}
 
         {id === 'descricao_direto' && (
           <div className="seccao-bloco seccao-painel-direto" style={{ width: '100%' }}>
-            <div className="rotulo-seccao-direta">📜 Descrição, Anotações & Tags</div>
+            <div className="rotulo-seccao-direta">Descrição, Anotações & Tags</div>
             <AbaDescricao personagem={personagem} setPersonagem={setPersonagem} />
           </div>
         )}
@@ -740,7 +786,7 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
                 defaultValue=""
               >
                 <option value="" disabled>
-                  {widgetsOcultos.length === 0 ? '✓ Todos os componentes na tela' : `+ Adicionar Oculto (${widgetsOcultos.length})...`}
+                  {widgetsOcultos.length === 0 ? 'Todos os componentes na tela' : `+ Adicionar Oculto (${widgetsOcultos.length})...`}
                 </option>
                 {widgetsOcultos.map((w) => (
                   <option key={w.id} value={w.id}>
@@ -777,7 +823,7 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
                 className="btn sm btn-concluir-layout"
                 onClick={() => setModoEdicaoLayout(false)}
               >
-                ✓ Concluir Edição
+                Concluir Edição
               </button>
             </div>
           </div>

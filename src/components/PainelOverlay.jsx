@@ -34,7 +34,7 @@ export default function PainelOverlay({ config, aoMudar, estadoEnvio, aoFechar, 
       <div className="modal modal-estreito">
         <div className="modal-topo">
           <h3>Transmissão em Tempo Real & Overlay</h3>
-          <button className="fechar" onClick={aoFechar} aria-label="Fechar">✕</button>
+          <button className="fechar" onClick={aoFechar} aria-label="Fechar"></button>
         </div>
 
         <div className="modal-corpo">
@@ -84,7 +84,7 @@ export default function PainelOverlay({ config, aoMudar, estadoEnvio, aoFechar, 
 
           {config.ligado && (
             <div className="aviso" style={{ background: 'rgba(34, 197, 94, 0.1)', borderColor: 'rgba(34, 197, 94, 0.3)', color: '#86efac' }}>
-              <strong>Status P2P:</strong> {espectadores > 0 ? `🟢 ${espectadores} ${espectadores === 1 ? 'espectador conectado' : 'espectadores conectados'}` : '🟡 Transmissão ligada (à espera de conexões no link)'}
+              <strong>Status P2P:</strong> {espectadores > 0 ? `Status: ${espectadores} ${espectadores === 1 ? 'espectador conectado' : 'espectadores conectados'}` : 'Status: Transmissão ligada (à espera de conexões no link)'}
             </div>
           )}
 
@@ -95,7 +95,7 @@ export default function PainelOverlay({ config, aoMudar, estadoEnvio, aoFechar, 
               style={{ width: '100%', borderColor: 'var(--sangue-claro)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}
               onClick={aoAbrirEditor}
             >
-              <span>🎨</span> <b>Editar Layout do Overlay (720p)</b>
+              <span></span> <b>Editar Layout do Overlay (720p)</b>
             </button>
           </div>
 

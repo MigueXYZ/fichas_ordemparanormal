@@ -266,14 +266,14 @@ export default function App() {
                 title={som ? 'Desligar som dos dados' : 'Ligar som dos dados'}
                 onClick={() => setSom(alternarSom())}
               >
-                {som ? '♪ dados' : '♪ mudo'}
+                {som ? 'Som ligado' : 'Som mudo'}
               </button>
               <button
                 className={'btn ghost sm' + (coracao ? ' a-bater' : '')}
                 title={coracao ? 'Desligar o batimento cardíaco' : 'Ligar o batimento cardíaco'}
                 onClick={() => setCoracao(alternarCoracao())}
               >
-                {coracao ? '♥' : '♡'}
+                {coracao ? '' : ''}
               </button>
             </>
           )}

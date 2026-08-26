@@ -66,7 +66,7 @@ export default function GuiaCombate({ aoFechar }) {
           ) : (
             <h3>Guia Rápido de Ações de Combate <span className="pagina">(p. 84–89)</span></h3>
           )}
-          <button className="fechar" onClick={aoFechar} aria-label="Fechar">✕</button>
+          <button className="fechar" onClick={aoFechar} aria-label="Fechar"></button>
         </div>
 
         <div className="modal-corpo guia-combate-corpo">

@@ -1,3 +1,4 @@
+import { calcBuffsPoderes } from './poderesBuffs.js';
 import { PERICIAS, GRAUS_TREINO } from '../data/pericias.js';
 import { CLASSES_POR_ID } from '../data/classes.js';
 import { PATENTES_POR_ID, CATEGORIAS, categoriaRomana, patentePorPrestigio } from '../data/patentes.js';
@@ -94,15 +95,16 @@ export function calcMaximos(personagem) {
   // vivo, nunca precisa de intervenção manual). Um ajuste fixo por talento,
   // item ou maldição soma-se por cima com pvExtra/sanExtra/peExtra — nunca
   // substitui o automático, para nunca "prender" o máximo desatualizado.
-  const pv = calcRecurso(classe.progressao.pv, a, nex) + Number(personagem.pvExtra || 0);
+  const buffs = calcBuffsPoderes(personagem, nex);
+  const pv = calcRecurso(classe.progressao.pv, a, nex) + Number(personagem.pvExtra || 0) + buffs.pvExtra;
 
   if (semSanidade) {
-    const pd = calcRecurso(PROGRESSAO_PD[classe.id], a, nex) + Number(personagem.pdExtra || 0) + bonusPeExposicao(personagem);
+    const pd = calcRecurso(PROGRESSAO_PD[classe.id], a, nex) + Number(personagem.pdExtra || 0) + bonusPeExposicao(personagem) + buffs.peExtra;
     return { pv, san: 0, pe: 0, pd, semSanidade: true };
   }
 
-  const san = calcRecurso(classe.progressao.san, a, nex) + Number(personagem.sanExtra || 0);
-  const pe = calcRecurso(classe.progressao.pe, a, nex) + Number(personagem.peExtra || 0) + bonusPeExposicao(personagem);
+  const san = calcRecurso(classe.progressao.san, a, nex) + Number(personagem.sanExtra || 0) + buffs.sanExtra;
+  const pe = calcRecurso(classe.progressao.pe, a, nex) + Number(personagem.peExtra || 0) + bonusPeExposicao(personagem) + buffs.peExtra;
 
   return { pv, san, pe, pd: 0, semSanidade: false };
 }
@@ -161,6 +163,10 @@ export function calcPenalidadesCondicoes(personagem) {
 }
 
 export function calcDeslocamento(personagem) {
+  const manual = (v) => (v === null || v === undefined || v === '' ? null : Number(v));
+  const deslocManual = manual(personagem?.deslocamentoManual);
+  if (deslocManual !== null) return deslocManual;
+
   const conds = calcPenalidadesCondicoes(personagem);
   const base = Number(personagem?.deslocamento) || 9;
   const carga = calcCarga(personagem);
@@ -171,8 +177,36 @@ export function calcDeslocamento(personagem) {
   else if (conds.deslocamentoEfeito === 1.5) finalDesloc = 1.5;
   else if (conds.deslocamentoEfeito === 'metade') finalDesloc = Math.max(0, Math.floor((aposCarga / 2) / 1.5) * 1.5);
 
-  finalDesloc += conds.monstruoso.deslocamentoExtra || 0;
+  const nex = nexEfetivo(personagem);
+  const buffs = calcBuffsPoderes(personagem, nex);
+  finalDesloc += (conds.monstruoso.deslocamentoExtra || 0) + buffs.deslocamentoExtra;
   return finalDesloc;
+}
+
+export function calcDeslocamentos(personagem) {
+  const manual = (v) => (v === null || v === undefined || v === '' ? null : Number(v));
+  const deslocManual = manual(personagem?.deslocamentoManual);
+  const conds = calcPenalidadesCondicoes(personagem);
+  const base = Number(personagem?.deslocamento) || 9;
+  const carga = calcCarga(personagem);
+  const aposCarga = Math.max(0, base - (carga.sobrecarregado ? 3 : 0));
+
+  let deslocAuto = aposCarga;
+  if (conds.deslocamentoEfeito === 'zero') deslocAuto = 0;
+  else if (conds.deslocamentoEfeito === 1.5) deslocAuto = 1.5;
+  else if (conds.deslocamentoEfeito === 'metade') deslocAuto = Math.max(0, Math.floor((aposCarga / 2) / 1.5) * 1.5);
+
+  const nex = nexEfetivo(personagem);
+  const buffs = calcBuffsPoderes(personagem, nex);
+  deslocAuto += (conds.monstruoso.deslocamentoExtra || 0) + buffs.deslocamentoExtra;
+  const valor = deslocManual !== null ? deslocManual : deslocAuto;
+
+  return {
+    valor,
+    auto: deslocAuto,
+    manual: deslocManual !== null,
+    quadrados: Math.round(valor / 1.5),
+  };
 }
 
 /**
@@ -183,10 +217,59 @@ export function calcDeslocamento(personagem) {
  * manual — ao contrário do Bloqueio/Esquiva, a Defesa não tem um valor à
  * mão que substitua o cálculo.
  */
+/**
+ * Calcula o bónus de perícias concedido por vestimentas e acessórios vestidos
+ * (Livro Base, p. 63: máximo de 2 vestimentas ativas ao mesmo tempo).
+ */
+export function calcBonusVestimentas(personagem) {
+  const inventario = Array.isArray(personagem?.inventario) ? personagem.inventario : [];
+  const vestimentas = inventario.filter(
+    (i) => i.vestido && (i.tipo === 'vestimenta' || /vestimenta|traje|acessório|acessorio/i.test(i.nome || '') || i.pericia)
+  );
+  const bonusPorPericia = {};
+
+  for (const v of vestimentas.slice(0, 2)) {
+    let periciaId = v.pericia;
+    let bonusValor = Number(v.bonus) || 2;
+
+    if (!periciaId) {
+      const txt = `${v.nome} ${v.descricao || ''}`.toLowerCase();
+      for (const p of PERICIAS) {
+        if (txt.includes(p.nome.toLowerCase()) || txt.includes(p.id)) {
+          periciaId = p.id;
+          break;
+        }
+      }
+      if (/aprimorada|\+5/i.test(txt)) bonusValor = 5;
+      else if (/\+2/i.test(txt)) bonusValor = 2;
+    }
+
+    if (periciaId) {
+      bonusPorPericia[periciaId] = (bonusPorPericia[periciaId] || 0) + bonusValor;
+    }
+  }
+  return bonusPorPericia;
+}
+
 export function defesaDasProtecoes(personagem) {
-  const marcadas = Array.isArray(personagem.protecao) ? personagem.protecao : [];
+  const marcadas = Array.isArray(personagem?.protecao) ? personagem.protecao : [];
+  const inventario = Array.isArray(personagem?.inventario) ? personagem.inventario : [];
+  const vestidasNoInventario = inventario
+    .filter((i) => i.vestido)
+    .map((i) => {
+      if (i.itemId) return i.itemId;
+      const n = String(i.nome || '').toLowerCase();
+      if (n.includes('proteção leve') || n.includes('protecao leve')) return 'protecao-leve';
+      if (n.includes('proteção pesada') || n.includes('protecao pesada')) return 'protecao-pesada';
+      if (n.includes('escudo')) return 'escudo';
+      return null;
+    })
+    .filter(Boolean);
+
+  const todosIds = [...new Set([...marcadas, ...vestidasNoInventario])];
+
   return PROTECOES
-    .filter((p) => marcadas.includes(p.id))
+    .filter((p) => todosIds.includes(p.id))
     .reduce((total, p) => total + (Number(p.defesa) || 0), 0);
 }
 
@@ -197,12 +280,14 @@ export function calcDefesa(personagem) {
   const nex = nexEfetivo(personagem);
   const a = atributosEfetivosMonstruoso(personagem, nex);
   const bonusDefesaEnergia = Number(personagem?.monstruosoDefesaEnergiaBonus || 0);
+  const buffs = calcBuffsPoderes(personagem, nex);
   return (
     10 +
     Number(a.agi || 0) +
     defesaDasProtecoes(personagem) +
     Number(personagem?.defesaOutros || 0) +
     bonusDefesaEnergia +
+    buffs.defesaExtra +
     conds.penalidadeDefesa +
     penalidadeCarga
   );
@@ -293,8 +378,9 @@ export function calcDefesas(personagem) {
     && efetivamenteAtivoMonstruoso(personagem, nex)
   ) ? Number(atributosEfetivosMonstruoso(personagem, nex).agi || 0) : 0;
 
-  const bloqueioAuto = fortitude.bonus + Number(personagem.bloqueioExtra || 0) + rdTrilhaGeral + agiBloqueioEnergia;
-  const esquivaAuto = defesa + reflexos.bonus + Number(personagem.esquivaExtra || 0);
+  const buffs = calcBuffsPoderes(personagem, nex);
+  const bloqueioAuto = fortitude.bonus + Number(personagem.bloqueioExtra || 0) + rdTrilhaGeral + agiBloqueioEnergia + buffs.bloqueioExtra;
+  const esquivaAuto = defesa + reflexos.bonus + Number(personagem.esquivaExtra || 0) + buffs.esquivaExtra;
 
   return {
     defesa,
@@ -367,16 +453,19 @@ export function calcPericias(personagem) {
     atingidas.includes('p35') ? exp.penalidade35 : null,
   ].filter(Boolean));
 
+  const buffs = calcBuffsPoderes(personagem, nex);
+  const bonusVest = calcBonusVestimentas(personagem);
   return PERICIAS.map((p) => {
     const estado = personagem.pericias?.[p.id] || { grau: 'destreinado', outros: 0 };
-    const treinoForcado = estado.grau === 'destreinado' && treinoMonstruoso.forcar.has(p.id);
+    const treinoConcedido = treinoMonstruoso.forcar.has(p.id) || Boolean(buffs.periciasTreino[p.id]);
+    const treinoForcado = estado.grau === 'destreinado' && treinoConcedido;
     // Aos 99%, as perícias livres do Especialista-Conhecimento sobem a
     // Expert (a trilha substitui o próprio grau que ela deu em Ser
     // Experimentado) — nunca desce um grau que a jogadora já tenha a sério.
     const expertForcado = Boolean(treinoMonstruoso.expertForcado?.has(p.id)) && ordemGrau(estado.grau) < ordemGrau('expert');
     const grauEfetivo = expertForcado ? 'expert' : (treinoForcado ? 'treinado' : estado.grau);
     const treino = bonusGrau(grauEfetivo);
-    const outros = Number(estado.outros || 0);
+    const outros = Number(estado.outros || 0) + (buffs.periciasBonus[p.id] || 0) + (bonusVest[p.id] || 0);
     const penalidade = p.carga ? penalidadeCarga : 0;
     // A trilha do Monstruoso pode trocar o atributo-chave de uma perícia
     // nomeada (ex.: Combatente Conhecimento 40%: Enganação passa a usar
@@ -430,7 +519,8 @@ export function calcCargaMaxima(personagem) {
   const nex = nexEfetivo(personagem);
   const forca = Number(atributosEfetivosMonstruoso(personagem, nex).for || 0);
   const base = forca <= 0 ? 2 : forca * 5;
-  return base + bonusDeCarga(personagem);
+  const buffs = calcBuffsPoderes(personagem, nex);
+  return base + bonusDeCarga(personagem) + buffs.cargaExtra;
 }
 
 export function espacosDasArmas(personagem) {

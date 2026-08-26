@@ -133,7 +133,14 @@ export function armaDoItem(item) {
 
 /** Uma arma é do catálogo de armas, ou um item amaldiçoado que é arma. */
 export function ehArma(item) {
-  return item?.tipo === 'arma' || (item?.tipo === 'amaldicoado' && /arma/i.test(item?.subtipo || ''));
+  return (
+    item?.tipo === 'arma' ||
+    item?.grupo === 'Explosivo' ||
+    item?.subgrupo === 'Explosivos' ||
+    item?.pericia === 'pontaria' ||
+    item?.pericia === 'luta' ||
+    (item?.tipo === 'amaldicoado' && /arma|explosivo|granada/i.test(item?.subtipo || item?.tipoDano || item?.nome || ''))
+  );
 }
 
 /** A tabela de armas marca as ágeis em `propriedades`; a descrição também o diz. */

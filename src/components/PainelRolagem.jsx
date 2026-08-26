@@ -124,7 +124,7 @@ function CartaoAtaque({ r, aoFechar }) {
           </div>
         </div>
       </div>
-      <button className="fechar" onClick={() => aoFechar(r.id)} aria-label="Fechar">✕</button>
+      <button className="fechar" onClick={() => aoFechar(r.id)} aria-label="Fechar"></button>
     </div>
   );
 }
@@ -166,7 +166,7 @@ export default function PainelRolagem({ rolagens, aoFechar, aoLimpar }) {
             <span className="total">
               {r.tipo === 'dano' || r.partes?.length > 0 ? <ExibirDanoSeparado dano={r} /> : r.total}
             </span>
-            <button className="fechar" onClick={() => aoFechar(r.id)} aria-label="Fechar">✕</button>
+            <button className="fechar" onClick={() => aoFechar(r.id)} aria-label="Fechar"></button>
           </div>
         )
       )}

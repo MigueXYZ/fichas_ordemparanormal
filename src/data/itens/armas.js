@@ -11,9 +11,10 @@ export const ARMAS = [
   // ==========================================================
   {
     id: 'coronhada',
+    tipo: 'arma',
     nome: 'Coronhada',
     grupo: 'Arma Simples Corpo a Corpo',
-    categoria: null,
+    categoria: 0,
     dano: '1d4/1d6',
     critico: 'x2',
     alcance: null,
@@ -28,6 +29,7 @@ export const ARMAS = [
   },
   {
     id: 'faca',
+    tipo: 'arma',
     nome: 'Faca',
     grupo: 'Arma Simples Corpo a Corpo',
     categoria: 0,
@@ -45,6 +47,7 @@ export const ARMAS = [
   },
   {
     id: 'martelo',
+    tipo: 'arma',
     nome: 'Martelo',
     grupo: 'Arma Simples Corpo a Corpo',
     categoria: 0,
@@ -62,6 +65,7 @@ export const ARMAS = [
   },
   {
     id: 'punhal',
+    tipo: 'arma',
     nome: 'Punhal',
     grupo: 'Arma Simples Corpo a Corpo',
     categoria: 0,
@@ -81,6 +85,7 @@ export const ARMAS = [
   // Armas Simples - Corpo a Corpo - Uma Mão
   {
     id: 'bastao',
+    tipo: 'arma',
     nome: 'Bastão',
     grupo: 'Arma Simples Corpo a Corpo',
     categoria: 0,
@@ -98,6 +103,7 @@ export const ARMAS = [
   },
   {
     id: 'machete',
+    tipo: 'arma',
     nome: 'Machete',
     grupo: 'Arma Simples Corpo a Corpo',
     categoria: 0,
@@ -115,6 +121,7 @@ export const ARMAS = [
   },
   {
     id: 'lanca',
+    tipo: 'arma',
     nome: 'Lança',
     grupo: 'Arma Simples Corpo a Corpo',
     categoria: 0,
@@ -134,6 +141,7 @@ export const ARMAS = [
   // Armas Simples - Corpo a Corpo - Duas Mãos
   {
     id: 'cajado',
+    tipo: 'arma',
     nome: 'Cajado',
     grupo: 'Arma Simples Corpo a Corpo',
     categoria: 0,
@@ -153,6 +161,7 @@ export const ARMAS = [
   // Armas Simples - Armas de Disparo - Duas Mãos
   {
     id: 'arco',
+    tipo: 'arma',
     nome: 'Arco',
     grupo: 'Arma Simples de Disparo',
     categoria: 0,
@@ -169,6 +178,7 @@ export const ARMAS = [
   },
   {
     id: 'besta',
+    tipo: 'arma',
     nome: 'Besta',
     grupo: 'Arma Simples de Disparo',
     categoria: 0,
@@ -188,6 +198,7 @@ export const ARMAS = [
   // Armas Simples - Armas de Fogo - Leves
   {
     id: 'pistola',
+    tipo: 'arma',
     nome: 'Pistola',
     grupo: 'Arma Simples de Fogo',
     categoria: 1,
@@ -205,6 +216,7 @@ export const ARMAS = [
   },
   {
     id: 'revolver',
+    tipo: 'arma',
     nome: 'Revólver',
     grupo: 'Arma Simples de Fogo',
     categoria: 1,
@@ -223,6 +235,7 @@ export const ARMAS = [
   // Armas Simples - Armas de Fogo - Duas Mãos
   {
     id: 'fuzil-de-caca',
+    tipo: 'arma',
     nome: 'Fuzil de caça',
     grupo: 'Arma Simples de Fogo',
     categoria: 1,
@@ -244,6 +257,7 @@ export const ARMAS = [
   // ==========================================================
   {
     id: 'machadinha',
+    tipo: 'arma',
     nome: 'Machadinha',
     grupo: 'Arma Tática Corpo a Corpo',
     categoria: 0,
@@ -261,6 +275,7 @@ export const ARMAS = [
   },
   {
     id: 'nunchaku',
+    tipo: 'arma',
     nome: 'Nunchaku',
     grupo: 'Arma Tática Corpo a Corpo',
     categoria: 0,
@@ -280,6 +295,7 @@ export const ARMAS = [
   // Armas Táticas - Corpo a Corpo - Uma Mão
   {
     id: 'corrente',
+    tipo: 'arma',
     nome: 'Corrente',
     grupo: 'Arma Tática Corpo a Corpo',
     categoria: 0,
@@ -297,6 +313,7 @@ export const ARMAS = [
   },
   {
     id: 'espada',
+    tipo: 'arma',
     nome: 'Espada',
     grupo: 'Arma Tática Corpo a Corpo',
     categoria: 1,
@@ -314,6 +331,7 @@ export const ARMAS = [
   },
   {
     id: 'florete',
+    tipo: 'arma',
     nome: 'Florete',
     grupo: 'Arma Tática Corpo a Corpo',
     categoria: 1,
@@ -331,6 +349,7 @@ export const ARMAS = [
   },
   {
     id: 'machado',
+    tipo: 'arma',
     nome: 'Machado',
     grupo: 'Arma Tática Corpo a Corpo',
     categoria: 1,
@@ -348,6 +367,7 @@ export const ARMAS = [
   },
   {
     id: 'maca',
+    tipo: 'arma',
     nome: 'Maça',
     grupo: 'Arma Tática Corpo a Corpo',
     categoria: 1,
@@ -366,6 +386,7 @@ export const ARMAS = [
   // Armas Táticas - Corpo a Corpo - Duas Mãos
   {
     id: 'acha',
+    tipo: 'arma',
     nome: 'Acha',
     grupo: 'Arma Tática Corpo a Corpo',
     categoria: 1,
@@ -382,6 +403,7 @@ export const ARMAS = [
   },
   {
     id: 'gadanho',
+    tipo: 'arma',
     nome: 'Gadanho',
     grupo: 'Arma Tática Corpo a Corpo',
     categoria: 1,
@@ -399,6 +421,7 @@ export const ARMAS = [
   },
   {
     id: 'katana',
+    tipo: 'arma',
     nome: 'Katana',
     grupo: 'Arma Tática Corpo a Corpo',
     categoria: 1,
@@ -416,6 +439,7 @@ export const ARMAS = [
   },
   {
     id: 'marreta',
+    tipo: 'arma',
     nome: 'Marreta',
     grupo: 'Arma Tática Corpo a Corpo',
     categoria: 1,
@@ -433,6 +457,7 @@ export const ARMAS = [
   },
   {
     id: 'montante',
+    tipo: 'arma',
     nome: 'Montante',
     grupo: 'Arma Tática Corpo a Corpo',
     categoria: 1,
@@ -450,6 +475,7 @@ export const ARMAS = [
   },
   {
     id: 'motoserra',
+    tipo: 'arma',
     nome: 'Motoserra',
     grupo: 'Arma Tática Corpo a Corpo',
     categoria: 1,
@@ -469,6 +495,7 @@ export const ARMAS = [
   // Armas Táticas - Armas de Disparo - Duas Mãos
   {
     id: 'arco-composto',
+    tipo: 'arma',
     nome: 'Arco composto',
     grupo: 'Arma Tática de Disparo',
     categoria: 1,
@@ -486,6 +513,7 @@ export const ARMAS = [
   },
   {
     id: 'balestra',
+    tipo: 'arma',
     nome: 'Balestra',
     grupo: 'Arma Tática de Disparo',
     categoria: 1,
@@ -505,6 +533,7 @@ export const ARMAS = [
   // Armas Táticas - Armas de Fogo - Uma Mão
   {
     id: 'submetralhadora',
+    tipo: 'arma',
     nome: 'Submetralhadora',
     grupo: 'Arma Tática de Fogo',
     categoria: 1,
@@ -524,6 +553,7 @@ export const ARMAS = [
   // Armas Táticas - Armas de Fogo - Duas Mãos
   {
     id: 'espingarda',
+    tipo: 'arma',
     nome: 'Espingarda',
     grupo: 'Arma Tática de Fogo',
     categoria: 1,
@@ -541,6 +571,7 @@ export const ARMAS = [
   },
   {
     id: 'fuzil-de-assalto',
+    tipo: 'arma',
     nome: 'Fuzil de assalto',
     grupo: 'Arma Tática de Fogo',
     categoria: 2,
@@ -558,6 +589,7 @@ export const ARMAS = [
   },
   {
     id: 'fuzil-de-precisao',
+    tipo: 'arma',
     nome: 'Fuzil de precisão',
     grupo: 'Arma Tática de Fogo',
     categoria: 3,
@@ -578,7 +610,44 @@ export const ARMAS = [
   // Armas Pesadas - À Distância - Duas Mãos
   // ==========================================================
   {
+    id: 'coquetel-molotov',
+    nome: 'Coquetel Molotov',
+    tipo: 'arma',
+    grupo: 'Armas Pesadas',
+    subgrupo: 'Explosivos',
+    empunhadura: 'Uma mão',
+    alcance: 'Curto',
+    pericia: 'pontaria',
+    dano: '4d6',
+    critico: '-',
+    tipoDano: 'Fogo',
+    espacos: 1,
+    categoria: 0,
+    descricao:
+      'Uma garrafa de vidro cheia de combustível com uma mecha de pano embebida. Para usá-lo, você precisa gastar uma ação padrão para acender o pano e arremessar o coquetel em um ponto à sua escolha em alcance curto. Ele explode no impacto, atingindo uma área de 3m de raio. Seres na área sofrem 4d6 pontos de dano de fogo e ficam em chamas (Reflexos DT Agi reduz à metade e evita a condição).',
+    livro: 'Livro Base',
+  },
+  {
+    id: 'galao-vermelho',
+    nome: 'Galão Vermelho',
+    tipo: 'arma',
+    grupo: 'Armas Pesadas',
+    subgrupo: 'Explosivos',
+    empunhadura: 'Uma mão',
+    alcance: 'Curto',
+    pericia: 'pontaria',
+    dano: '12d6',
+    critico: '-',
+    tipoDano: 'Fogo',
+    espacos: 1,
+    categoria: 0,
+    descricao:
+      'Galões vermelhos, ou marcados com um símbolo de chama, carregam substâncias inflamáveis. Ao sofrer dano de fogo ou balístico, um galão vermelho explode, atingindo uma esfera de 6m de raio. Seres na área sofrem 12d6 pontos de dano de fogo e ficam em chamas (Reflexos DT 25 reduz à metade e evita a condição). A área afetada fica em chamas (1d6 dano de fogo/rodada).',
+    livro: 'Sobrevivendo ao Horror',
+  },
+  {
     id: 'lancador-de-granadas',
+    tipo: 'arma',
     nome: 'Lançador de Granadas',
     grupo: 'Arma Pesada à Distância',
     categoria: 2,
@@ -596,6 +665,7 @@ export const ARMAS = [
   },
   {
     id: 'bazuca',
+    tipo: 'arma',
     nome: 'Bazuca',
     grupo: 'Arma Pesada à Distância',
     categoria: 3,
@@ -613,6 +683,7 @@ export const ARMAS = [
   },
   {
     id: 'lanca-chamas',
+    tipo: 'arma',
     nome: 'Lança-chamas',
     grupo: 'Arma Pesada à Distância',
     categoria: 3,
@@ -630,6 +701,7 @@ export const ARMAS = [
   },
   {
     id: 'metralhadora',
+    tipo: 'arma',
     nome: 'Metralhadora',
     grupo: 'Arma Pesada à Distância',
     categoria: 2,
@@ -651,9 +723,10 @@ export const ARMAS = [
   // ==========================================================
   {
     id: 'arma-improvisada',
+    tipo: 'arma',
     nome: 'Arma improvisada',
     grupo: 'Arma Improvisada',
-    categoria: null,
+    categoria: 0,
     dano: '1d6',
     critico: null,
     alcance: null,
@@ -668,9 +741,10 @@ export const ARMAS = [
   },
   {
     id: 'ataque-desarmado',
+    tipo: 'arma',
     nome: 'Ataque desarmado',
     grupo: 'Ataque Desarmado',
-    categoria: null,
+    categoria: 0,
     dano: '1d3',
     critico: null,
     alcance: null,
@@ -689,6 +763,7 @@ export const ARMAS = [
   // ==========================================================
   {
     id: 'balas-curtas',
+    tipo: 'arma',
     nome: 'Balas curtas',
     grupo: 'Munição',
     categoria: 0,
@@ -706,6 +781,7 @@ export const ARMAS = [
   },
   {
     id: 'balas-longas',
+    tipo: 'arma',
     nome: 'Balas longas',
     grupo: 'Munição',
     categoria: 1,
@@ -723,6 +799,7 @@ export const ARMAS = [
   },
   {
     id: 'cartuchos',
+    tipo: 'arma',
     nome: 'Cartuchos',
     grupo: 'Munição',
     categoria: 1,
@@ -740,6 +817,7 @@ export const ARMAS = [
   },
   {
     id: 'combustivel',
+    tipo: 'arma',
     nome: 'Combustível',
     grupo: 'Munição',
     categoria: 1,
@@ -756,6 +834,7 @@ export const ARMAS = [
   },
   {
     id: 'flechas',
+    tipo: 'arma',
     nome: 'Flechas',
     grupo: 'Munição',
     categoria: 0,
@@ -773,6 +852,7 @@ export const ARMAS = [
   },
   {
     id: 'foguete',
+    tipo: 'arma',
     nome: 'Foguete',
     grupo: 'Munição',
     categoria: 1,
@@ -790,92 +870,227 @@ export const ARMAS = [
   },
 
   // ==========================================================
-  // LIVRO BASE - TABELA 3.8 (secção Explosivos)
+  // ==========================================================
+  // EXPLOSIVOS E GRANADAS (Livro Base, SaH, AS04)
+  // Devem estar todos na seção de armas/ataques com teste de Pontaria
   // ==========================================================
   {
     id: 'granada-de-atordoamento',
-    nome: 'Granada de atordoamento',
+    tipo: 'arma',
+    nome: 'Granada de Atordoamento',
     grupo: 'Explosivo',
-    categoria: 0,
-    dano: null,
-    critico: null,
+    categoria: 1,
+    dano: '-',
+    critico: 'x2',
     alcance: 'Médio',
     tipoDano: null,
     espacos: 1,
-    empunhadura: 'Uma mão',
-    pericia: null,
-    propriedades: ['Área: raio de 6m'],
+    empunhadura: 'Leve',
+    pericia: 'pontaria',
+    propriedades: ['Arremessável', 'Área'],
     descricao:
-      'Para usar uma granada, você precisa empunhá-la e então gastar uma ação padrão para arremessá-la em um ponto à sua escolha em alcance médio. A granada afeta um raio de 6m a partir do ponto de impacto. O efeito que ela causa varia conforme o tipo de granada. Atordoamento. Também chamadas de flash-bang, por criarem um estouro barulhento e luminoso. Seres na área ficam atordoados por 1 rodada (Fortitude DT Agi reduz para ofuscado e surdo por uma rodada).',
+      'Para usar uma granada, você precisa empunhá-la e então gastar uma ação padrão para arremessá-la em um ponto à sua escolha em alcance médio (ou fazer um teste de Pontaria se mirando em um alvo específico). A granada afeta um raio de 6m a partir do ponto de impacto. Atordoamento (flash-bang): cria um estouro barulhento e luminoso. Seres na área ficam atordoados por 1 rodada (Fortitude DT Agi reduz para ofuscado e surdo por 1 rodada).',
     livro: 'Livro Base',
   },
   {
     id: 'granada-de-fragmentacao',
-    nome: 'Granada de fragmentação',
+    tipo: 'arma',
+    nome: 'Granada de Fragmentação',
     grupo: 'Explosivo',
     categoria: 1,
     dano: '8d6',
-    critico: null,
+    critico: 'x2',
     alcance: 'Médio',
     tipoDano: 'Perfuração',
     espacos: 1,
-    empunhadura: 'Uma mão',
-    pericia: null,
-    propriedades: ['Área: raio de 6m'],
+    empunhadura: 'Leve',
+    pericia: 'pontaria',
+    propriedades: ['Arremessável', 'Área'],
     descricao:
-      'Para usar uma granada, você precisa empunhá-la e então gastar uma ação padrão para arremessá-la em um ponto à sua escolha em alcance médio. A granada afeta um raio de 6m a partir do ponto de impacto. O efeito que ela causa varia conforme o tipo de granada. Fragmentação. Espalha fragmentos perfurantes. Seres na área sofrem 8d6 pontos de dano de perfuração (Reflexos DT Agi reduz à metade).',
+      'Para usar uma granada, você precisa empunhá-la e então gastar uma ação padrão para arremessá-la em um ponto à sua escolha em alcance médio (ou fazer um teste de Pontaria contra um alvo). A granada afeta um raio de 6m a partir do ponto de impacto. Fragmentação: espalha fragmentos perfurantes. Seres na área sofrem 8d6 pontos de dano de perfuração (Reflexos DT Agi reduz à metade).',
     livro: 'Livro Base',
   },
   {
     id: 'granada-de-fumaca',
-    nome: 'Granada de fumaça',
+    tipo: 'arma',
+    nome: 'Granada de Fumaça',
     grupo: 'Explosivo',
-    categoria: 0,
-    dano: null,
-    critico: null,
+    categoria: 1,
+    dano: '-',
+    critico: 'x2',
     alcance: 'Médio',
     tipoDano: null,
     espacos: 1,
-    empunhadura: 'Uma mão',
-    pericia: null,
-    propriedades: ['Área: raio de 6m'],
+    empunhadura: 'Leve',
+    pericia: 'pontaria',
+    propriedades: ['Arremessável', 'Área'],
     descricao:
-      'Para usar uma granada, você precisa empunhá-la e então gastar uma ação padrão para arremessá-la em um ponto à sua escolha em alcance médio. A granada afeta um raio de 6m a partir do ponto de impacto. O efeito que ela causa varia conforme o tipo de granada. Fumaça. Produz uma fumaça espessa e escura. Seres na área ficam cegos e sob camuflagem total. A fumaça dura 2 rodadas.',
+      'Para usar uma granada, você precisa empunhá-la e então gastar uma ação padrão para arremessá-la em um ponto à sua escolha em alcance médio. A granada afeta um raio de 6m a partir do ponto de impacto. Fumaça: produz uma fumaça espessa e escura. Seres na área ficam sob camuflagem total. A fumaça dura 2 rodadas.',
     livro: 'Livro Base',
   },
   {
     id: 'granada-incendiaria',
-    nome: 'Granada incendiária',
+    tipo: 'arma',
+    nome: 'Granada Incendiária',
     grupo: 'Explosivo',
     categoria: 1,
     dano: '6d6',
-    critico: null,
+    critico: 'x2',
     alcance: 'Médio',
     tipoDano: 'Fogo',
     espacos: 1,
-    empunhadura: 'Uma mão',
-    pericia: null,
-    propriedades: ['Área: raio de 6m'],
+    empunhadura: 'Leve',
+    pericia: 'pontaria',
+    propriedades: ['Arremessável', 'Área'],
     descricao:
-      'Para usar uma granada, você precisa empunhá-la e então gastar uma ação padrão para arremessá-la em um ponto à sua escolha em alcance médio. A granada afeta um raio de 6m a partir do ponto de impacto. O efeito que ela causa varia conforme o tipo de granada. Incendiária. Espalha labaredas incandescentes. Seres na área sofrem 6d6 pontos de dano de fogo e ficam em chamas (Reflexos DT Agi reduz o dano à metade e evita a condição em chamas).',
+      'Para usar uma granada, você precisa empunhá-la e então gastar uma ação padrão para arremessá-la em um ponto à sua escolha em alcance médio. A granada afeta um raio de 6m a partir do ponto de impacto. Incendiária: espalha labaredas incandescentes. Seres na área sofrem 6d6 pontos de dano de fogo e ficam em chamas (Reflexos DT Agi reduz o dano à metade e evita a condição em chamas).',
     livro: 'Livro Base',
   },
   {
     id: 'mina-antipessoal',
-    nome: 'Mina antipessoal',
+    tipo: 'arma',
+    nome: 'Mina Antipessoal',
     grupo: 'Explosivo',
-    categoria: 1,
+    categoria: 2,
     dano: '12d6',
-    critico: null,
-    alcance: 'Longo',
+    critico: 'x2',
+    alcance: 'Médio',
     tipoDano: 'Perfuração',
     espacos: 1,
-    empunhadura: null,
-    pericia: null,
-    propriedades: ['Área: cone de 6m'],
+    empunhadura: 'Leve',
+    pericia: 'pontaria',
+    propriedades: ['Área'],
     descricao:
       'Esta mina é ativada por controle remoto. Se você estiver a até alcance longo dela, pode gastar uma ação padrão para detoná-la. Ao explodir, a mina dispara centenas de bolas de aço em um cone de 6m, causando 12d6 pontos de dano de perfuração em todos os seres na área (Reflexos DT Int reduz à metade). Você define a direção do cone quando posiciona a mina no chão. Instalar a mina exige uma ação completa e um teste de Tática contra DT 15. Caso falhe, você gasta a mina, mas ela não funciona. Encontrar uma mina instalada exige um teste de Percepção (DT igual ao resultado do seu teste para instalá-la).',
     livro: 'Livro Base',
+  },
+  {
+    id: 'granada-de-gas-lacrimogeneo',
+    tipo: 'arma',
+    nome: 'Granada de Gás Lacrimogêneo',
+    grupo: 'Explosivo',
+    categoria: 1,
+    dano: '4d6',
+    critico: 'x2',
+    alcance: 'Médio',
+    tipoDano: 'Químico',
+    espacos: 1,
+    empunhadura: 'Leve',
+    pericia: 'pontaria',
+    propriedades: ['Arremessável', 'Área'],
+    descricao:
+      'Uma granada que libera uma nuvem química que provoca ardência, irritação e sufocamento. Seres em um raio de 6m a partir do ponto de impacto sofrem 4d6 pontos de dano químico, ficam enjoados e têm dificuldade de respirar (OPRPG, p. 293). Após deixarem a área de efeito, continuam com dificuldade de respirar por 1d4 rodadas e ainda ficam enjoados até o fim da cena (Fortitude DT Agi reduz o dano à metade e evita a condição enjoado).',
+    livro: 'Arquivos Secretos 4',
+  },
+  {
+    id: 'granada-de-tinta',
+    tipo: 'arma',
+    nome: 'Granada de Tinta',
+    grupo: 'Explosivo',
+    categoria: 0,
+    dano: '-',
+    critico: 'x2',
+    alcance: 'Médio',
+    tipoDano: null,
+    espacos: 1,
+    empunhadura: 'Leve',
+    pericia: 'pontaria',
+    propriedades: ['Arremessável', 'Área'],
+    descricao:
+      'Uma granada caseira que espalha tintas coloridas e fosforescentes pelo ambiente, marcando os alvos e os tornando mais visíveis. Seres em um raio de 6m a partir do ponto de impacto ficam vulneráveis e sofrem –2d20 em Furtividade até o fim da cena (Reflexos DT Agi evita condição).',
+    livro: 'Arquivos Secretos 4',
+  },
+  {
+    id: 'granada-de-gas-sonifero',
+    tipo: 'arma',
+    nome: 'Granada de Gás Sonífero',
+    grupo: 'Explosivo',
+    categoria: 1,
+    dano: '-',
+    critico: 'x2',
+    alcance: 'Médio',
+    tipoDano: null,
+    espacos: 1,
+    empunhadura: 'Leve',
+    pericia: 'pontaria',
+    propriedades: ['Arremessável', 'Área'],
+    descricao:
+      'Esta granada libera um gás sonífero que afeta um raio de 6m a partir do ponto de impacto. Seres na área ficam inconscientes por 1d4 rodadas (Fortitude DT Agi reduz para fatigado por 1 rodada).',
+    livro: 'Sobrevivendo ao Horror',
+  },
+  {
+    id: 'granada-de-pem',
+    tipo: 'arma',
+    nome: 'Granada de PEM',
+    grupo: 'Explosivo',
+    categoria: 1,
+    dano: '6d6',
+    critico: 'x2',
+    alcance: 'Médio',
+    tipoDano: 'Energia',
+    espacos: 1,
+    empunhadura: 'Leve',
+    pericia: 'pontaria',
+    propriedades: ['Arremessável', 'Área'],
+    descricao:
+      'Esta granada emite um poderoso pulso eletromagnético em um raio de 6m a partir do ponto de impacto. Dispositivos eletrônicos na área são temporariamente desativados por 1d4 rodadas. Além disso, a granada causa 6d6 pontos de dano de Energia em construtos ou em seres com aprimoramentos cibernéticos (Reflexos DT Agi reduz o dano à metade).',
+    livro: 'Sobrevivendo ao Horror',
+  },
+  {
+    id: 'granada-ctrl-c-ctrl-v',
+    tipo: 'arma',
+    nome: 'Granada Ctrl+C Ctrl+V',
+    grupo: 'Explosivo',
+    categoria: 2,
+    dano: '8d6',
+    critico: 'x2',
+    alcance: 'Médio',
+    tipoDano: 'Energia',
+    espacos: 1,
+    empunhadura: 'Leve',
+    pericia: 'pontaria',
+    propriedades: ['Arremessável', 'Área', 'Amaldiçoada'],
+    descricao:
+      'Uma granada de fragmentação transparente envolta por fios de cobre. Para usá-la, você gasta uma ação padrão para arremessá-la em alcance médio. Afeta um raio de 6m causando 8d6 de dano de Energia (Reflexos DT Agi reduz à metade). Quando explodir, role 1d4: se der par, a explosão gera uma segunda granada idêntica que explode em outro espaço na área, repetindo até 4 explosões ou até o d4 dar ímpar.',
+    livro: 'Arquivos Secretos 4',
+  },
+  {
+    id: 'dinamite',
+    tipo: 'arma',
+    nome: 'Dinamite',
+    grupo: 'Armas Pesadas',
+    subgrupo: 'Explosivos',
+    empunhadura: 'Uma mão',
+    alcance: 'Médio',
+    pericia: 'pontaria',
+    dano: '4d6+4d6',
+    critico: '-',
+    tipoDano: 'Impacto/Fogo',
+    espacos: 1,
+    categoria: 1,
+    propriedades: ['Área'],
+    descricao:
+      'Artefato explosivo à base de nitroglicerina. Afeta um raio de 6m a partir do ponto de impacto; seres e objetos soltos na área sofrem 4d6 de impacto e 4d6 de fogo e ficam em chamas (Reflexos DT Agi reduz à metade e evita a condição).',
+    livro: 'Sobrevivendo ao Horror',
+  },
+  {
+    id: 'explosivo-plastico',
+    tipo: 'arma',
+    nome: 'Explosivo Plástico',
+    grupo: 'Armas Pesadas',
+    subgrupo: 'Explosivos',
+    empunhadura: 'Duas mãos',
+    alcance: 'Curto',
+    pericia: 'pontaria',
+    dano: '16d6',
+    critico: '-',
+    tipoDano: 'Impacto',
+    espacos: 1,
+    categoria: 2,
+    propriedades: ['Área'],
+    descricao:
+      'Massa adesiva com pinos de ignição e detonador remoto. Quando detonado, causa 16d6 pontos de dano de impacto em todos os seres e objetos em um raio de 3m (Reflexos DT Int reduz à metade). Se usado por um especialista em explosivos (Crime ou Profissão), causa o dobro de dano em objetos/estruturas e ignora sua RD.',
+    livro: 'Sobrevivendo ao Horror',
   },
 
   // ==========================================================
@@ -883,6 +1098,7 @@ export const ARMAS = [
   // ==========================================================
   {
     id: 'pregador-pneumatico',
+    tipo: 'arma',
     nome: 'Pregador pneumático',
     grupo: 'Arma Simples de Disparo',
     categoria: 0,
@@ -900,6 +1116,7 @@ export const ARMAS = [
   },
   {
     id: 'estilingue',
+    tipo: 'arma',
     nome: 'Estilingue',
     grupo: 'Arma Simples de Disparo',
     categoria: 0,
@@ -917,6 +1134,7 @@ export const ARMAS = [
   },
   {
     id: 'revolver-compacto',
+    tipo: 'arma',
     nome: 'Revólver compacto',
     grupo: 'Arma Simples de Fogo',
     categoria: 1,
@@ -934,6 +1152,7 @@ export const ARMAS = [
   },
   {
     id: 'baioneta',
+    tipo: 'arma',
     nome: 'Baioneta',
     grupo: 'Arma Tática Corpo a Corpo',
     categoria: 0,
@@ -951,6 +1170,7 @@ export const ARMAS = [
   },
   {
     id: 'faca-tatica',
+    tipo: 'arma',
     nome: 'Faca tática',
     grupo: 'Arma Tática Corpo a Corpo',
     categoria: 1,
@@ -968,6 +1188,7 @@ export const ARMAS = [
   },
   {
     id: 'gancho-de-carne',
+    tipo: 'arma',
     nome: 'Gancho de carne',
     grupo: 'Arma Tática Corpo a Corpo',
     categoria: 0,
@@ -985,6 +1206,7 @@ export const ARMAS = [
   },
   {
     id: 'bastao-policial',
+    tipo: 'arma',
     nome: 'Bastão policial',
     grupo: 'Arma Tática Corpo a Corpo',
     categoria: 1,
@@ -1002,6 +1224,7 @@ export const ARMAS = [
   },
   {
     id: 'picareta',
+    tipo: 'arma',
     nome: 'Picareta',
     grupo: 'Arma Tática Corpo a Corpo',
     categoria: 0,
@@ -1019,6 +1242,7 @@ export const ARMAS = [
   },
   {
     id: 'shuriken',
+    tipo: 'arma',
     nome: 'Shuriken',
     grupo: 'Arma Tática de Arremesso',
     categoria: 1,
@@ -1036,6 +1260,7 @@ export const ARMAS = [
   },
   {
     id: 'pistola-pesada',
+    tipo: 'arma',
     nome: 'Pistola pesada',
     grupo: 'Arma Tática de Fogo',
     categoria: 1,
@@ -1053,6 +1278,7 @@ export const ARMAS = [
   },
   {
     id: 'espingarda-de-cano-duplo',
+    tipo: 'arma',
     nome: 'Espingarda de cano duplo',
     grupo: 'Arma Tática de Fogo',
     categoria: 2,
@@ -1074,6 +1300,7 @@ export const ARMAS = [
   // ==========================================================
   {
     id: 'garra-do-harpia',
+    tipo: 'arma',
     nome: 'Garra do Harpia',
     grupo: 'Arma Tática Corpo a Corpo',
     categoria: 1,

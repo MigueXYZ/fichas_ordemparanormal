@@ -1,11 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { PERICIAS } from '../../data/pericias.js';
 import { RITUAIS, ELEMENTOS, CIRCULOS, circuloMaximoPorNex } from '../../data/rituais.js';
 import { ITENS, TIPOS_ITEM } from '../../data/itens.js';
 import { PODERES } from '../../data/poderes.js';
-import { CLASSES_POR_ID, TRILHAS_POR_ID } from '../../data/classes.js';
-import { ORIGENS_POR_ID } from '../../data/origens.js';
-import { calcCarga, calcItensPorCategoria, nexEfetivo, calcMaximos, calcDtRitual, detalheDtRitual } from '../../engine/calc.js';
+import { CLASSES, TRILHAS, CLASSES_POR_ID, TRILHAS_POR_ID } from '../../data/classes.js';
+import { ORIGENS, ORIGENS_POR_ID } from '../../data/origens.js';
+import { calcCarga, calcItensPorCategoria, nexEfetivo, calcMaximos, calcDtRitual, detalheDtRitual, calcPericias } from '../../engine/calc.js';
 import { PATENTES, PATENTES_POR_ID, CATEGORIAS, categoriaRomana } from '../../data/patentes.js';
 import { novoAtaque, novoItem, novaHabilidade, novoRitual } from '../../engine/character.js';
 import { rolarAtaqueCompleto, rolarDano, rolarTeste, quantidadeDados } from '../../engine/dados.js';
@@ -14,13 +14,12 @@ import { precoDoRitual, podeFicarAtivo, CONDICOES_CONCENTRACAO, dtConcentracao, 
 import { ataquesNaturaisAtivos, rituaisAtivos, temComponentesDoElemento, classeMonstruosa, elementoAtual, patamarAtual, efetivamenteAtivo, atributosEfetivos, reducaoTatuagemRitualistica, bonusConcentracaoTatuagem, poderesAtivos, temTatuagemRitualistica, podeSerMarcadoNaPele, armarServirSangue, armarRevelacaoConhecimento } from '../../engine/monstruoso.js';
 import { ELEMENTOS_MONSTRUOSO, COR_ELEMENTO } from '../../data/monstruoso.js';
 import EditorArma from './EditorArma.jsx';
-import { calcPericias } from '../../engine/calc.js';
 import IconeD20 from '../IconeD20.jsx';
 import CabecalhoSeta from './CabecalhoSeta.jsx';
-
-const NOME_ATRIBUTO = { for: 'Força', agi: 'Agilidade', int: 'Intelecto', pre: 'Presença', vig: 'Vigor' };
 import Seletor from './Seletor.jsx';
 import EditorTags from '../EditorTags.jsx';
+
+const NOME_ATRIBUTO = { for: 'Força', agi: 'Agilidade', int: 'Intelecto', pre: 'Presença', vig: 'Vigor' };
 
 function Campo({ label, valor, onChange, tipo = 'text', opcoes, readOnly = false }) {
   return (
@@ -37,171 +36,154 @@ function Campo({ label, valor, onChange, tipo = 'text', opcoes, readOnly = false
   );
 }
 
-/**
- * Contador de quantidade (− / nº / +), com o número também ajustável a
- * rodar o scroll do rato por cima do campo — mesmo padrão usado noutras
- * partes da ficha (perícias, descanso) para campos numéricos.
- */
 function SeletorQuantidade({ valor, onChange, min = 1, max = 99 }) {
-  const ref = useRef(null);
+  const inputRef = useRef(null);
 
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return undefined;
-    const aoRodarScroll = (e) => {
+    const el = inputRef.current;
+    if (!el) return;
+    function handleWheel(e) {
+      if (document.activeElement !== el) return;
       e.preventDefault();
       e.stopPropagation();
       const delta = e.deltaY < 0 ? 1 : -1;
-      onChange(Math.max(min, Math.min(max, valor + delta)));
-    };
-    el.addEventListener('wheel', aoRodarScroll, { passive: false });
-    return () => el.removeEventListener('wheel', aoRodarScroll);
-  }, [onChange, valor, min, max]);
+      const novo = Math.max(min, Math.min(max, (Number(el.value) || min) + delta));
+      onChange(novo);
+    }
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [onChange, min, max]);
 
   return (
-    <div className="seletor-quantidade">
-      <button type="button" onClick={() => onChange(Math.max(min, valor - 1))} aria-label="Diminuir quantidade">−</button>
+    <div className="seletor-quantidade" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      <button
+        type="button"
+        className="btn ghost sm"
+        onClick={() => onChange(Math.max(min, (Number(valor) || min) - 1))}
+        style={{ minWidth: 28, padding: '2px 8px' }}
+      >
+        −
+      </button>
       <input
-        ref={ref}
+        ref={inputRef}
         type="number"
-        value={valor}
         min={min}
         max={max}
-        title="Altera digitando ou com o scroll do rato"
-        onChange={(e) => {
-          const n = Number(e.target.value);
-          onChange(Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : min);
-        }}
+        value={valor}
+        onChange={(e) => onChange(Math.max(min, Math.min(max, Number(e.target.value) || min)))}
+        style={{ width: 48, textAlign: 'center', fontWeight: 'bold' }}
       />
-      <button type="button" onClick={() => onChange(Math.min(max, valor + 1))} aria-label="Aumentar quantidade">+</button>
+      <button
+        type="button"
+        className="btn ghost sm"
+        onClick={() => onChange(Math.min(max, (Number(valor) || min) + 1))}
+        style={{ minWidth: 28, padding: '2px 8px' }}
+      >
+        +
+      </button>
     </div>
   );
 }
 
-/**
- * Descrição de habilidade/ritual — fica totalmente fechada por omissão
- * (só o nome e as infos necessárias ficam visíveis fora daqui), com uma
- * setinha para abrir e mostrar o texto todo. Nada de pré-visualização: ou
- * está fechada (sem texto nenhum) ou está aberta (texto completo).
- */
-function TextoExpandivel({ texto, cor = 'var(--txt-dim)' }) {
-  const [aberto, setAberto] = useState(false);
+function TextoExpandivel({ texto }) {
+  const [expandido, setExpandido] = useState(false);
   if (!texto) return null;
+  const longo = texto.length > 180;
   return (
-    <div style={{ marginTop: 8 }}>
-      <CabecalhoSeta estaAberto={aberto} onClick={() => setAberto((v) => !v)}>
-        {aberto ? 'Esconder descrição' : 'Mostrar descrição'}
-      </CabecalhoSeta>
-      {aberto && (
-        <div style={{ color: cor, fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap', marginTop: 6 }}>
-          {texto}
-        </div>
+    <div className="texto-expandivel">
+      <p style={{ margin: 0, whiteSpace: 'pre-line', fontSize: '13.5px', color: 'var(--txt-suave, #ccc)' }}>
+        {expandido || !longo ? texto : `${texto.slice(0, 180)}…`}
+      </p>
+      {longo && (
+        <button
+          type="button"
+          className="btn-link"
+          style={{ fontSize: 12, marginTop: 4, padding: 0, background: 'none', border: 'none', color: 'var(--sangue-claro)', cursor: 'pointer' }}
+          onClick={() => setExpandido((v) => !v)}
+        >
+          {expandido ? 'Ver menos' : 'Ver mais'}
+        </button>
       )}
     </div>
   );
 }
 
-function useLista(personagem, setPersonagem, chave) {
-  const lista = personagem[chave] || [];
-  const setLista = (nova) => setPersonagem({ ...personagem, [chave]: nova });
-  return {
-    lista,
-    adicionar: (item) => setLista([...lista, item]),
-    editar: (i, patch) => setLista(lista.map((x, j) => (j === i ? { ...x, ...patch } : x))),
-    remover: (i) => setLista(lista.filter((_, j) => j !== i)),
-  };
+function useLista(personagem, setPersonagem, campo) {
+  const lista = personagem[campo] || [];
+  function adicionar(item) { setPersonagem({ ...personagem, [campo]: [...lista, item] }); }
+  function editar(index, patch) {
+    const copia = [...lista];
+    copia[index] = { ...copia[index], ...patch };
+    setPersonagem({ ...personagem, [campo]: copia });
+  }
+  function remover(index) {
+    setPersonagem({ ...personagem, [campo]: lista.filter((_, i) => i !== index) });
+  }
+  return { lista, adicionar, editar, remover };
 }
 
-// ---------------------------------------------------------------- COMBATE
+// ------------------------------------------------------------- COMBATE
 
 export function AbaCombate({ personagem, setPersonagem, onRolar }) {
-  const { lista: listaPropria, editar } = useLista(personagem, setPersonagem, 'ataques');
-  // Armas naturais concedidas pela Trilha do Monstruoso (ex.: Mordida) só
-  // existem enquanto a etapa de hoje está ativa — aparecem/desaparecem
-  // sozinhas nesta lista, não são editáveis nem removíveis à mão.
+  const { lista: ataquesBase, editar } = useLista(personagem, setPersonagem, 'ataques');
+  const [aEditarArma, setAEditarArma] = useState(null);
+  const [acertos, setAcertos] = useState({});
+  const [peEnergia, setPeEnergia] = useState({});
+
   const nex = nexEfetivo(personagem);
   const naturais = ataquesNaturaisAtivos(personagem, nex);
-  const lista = [...listaPropria, ...naturais];
-  const [acertos, setAcertos] = useState({});
-  const [aEditarArma, setAEditarArma] = useState(null); // { indice, arma } ou null
-  const [peEnergia, setPeEnergia] = useState({}); // { [indice]: quantidade de PE a gastar no próximo dano }
+  const lista = [...naturais, ...ataquesBase];
 
-  // Combatente-Energia 40% (Ser Macabro): ao acertar um ataque corpo a
-  // corpo, pode gastar 1+ PE (limitado pela Agilidade) por +1d6 de dano de
-  // Energia por PE gasto — verbatim data/classes/combatente.js.
-  const podeGastarPeEnergia = classeMonstruosa(personagem) === 'combatente'
-    && elementoAtual(personagem) === 'Energia' && patamarAtual(nex) >= 40
-    && efetivamenteAtivo(personagem, nex);
+  const podeGastarPeEnergia =
+    classeMonstruosa(personagem) === 'combatente' &&
+    elementoAtual(personagem) === 'energia' &&
+    patamarAtual(nex) >= 40 &&
+    efetivamenteAtivo(personagem, nex);
 
   function limitePeEnergia() {
-    const max = calcMaximos(personagem);
-    const peAtualAgora = Number(personagem.peAtual ?? max.pe);
-    const agilidade = Number(atributosEfetivos(personagem, nex).agi || 0);
-    return Math.max(0, Math.min(peAtualAgora, agilidade));
-  }
-
-  // Combatente Sangue 99% ("Ser Aterrorizante"): sempre que causa dano com a
-  // mordida, recupera 5 PV (x2 em crítico) — automático, sem botão.
-  const recuperaComMordida = classeMonstruosa(personagem) === 'combatente'
-    && elementoAtual(personagem) === 'Sangue' && patamarAtual(nex) >= 99;
-
-  function recuperarPvMordida(critico) {
-    if (!recuperaComMordida) return;
-    const max = calcMaximos(personagem);
-    const cura = critico ? 10 : 5;
-    setPersonagem((p) => ({ ...p, pvAtual: Math.min(max.pv, Number(p.pvAtual ?? max.pv) + cura) }));
+    const ef = atributosEfetivos(personagem, nex);
+    return Math.max(1, Number(ef.agi || 1));
   }
 
   function atacar(a, i) {
     const e = estatisticasArma(personagem, a);
     const r = rolarAtaqueCompleto({
       nome: a.nome || 'Ataque',
-      dados: e.dados, bonusAtaque: e.bonusAtaque, margem: e.margem,
-      dano: e.dano, bonusDano: e.bonusDano, extras: e.extras, multiplicador: e.multiplicador,
+      dados: e.dados,
+      bonusAtaque: e.bonusAtaque,
       dadosExtraAtaque: e.dadosExtraAtaque,
+      dano: e.dano,
+      bonusDano: e.bonusDano,
+      extras: e.extras,
+      margem: e.margem,
+      multiplicador: e.multiplicador,
     });
-    setAcertos({ ...acertos, [i]: r });
+    setAcertos((prev) => ({ ...prev, [i]: r }));
     onRolar(r);
-    if (a.nome === 'Mordida (Monstruoso)' && r.dano) recuperarPvMordida(r.dano.critico);
-  }
-
-  // Combatente Sangue 65% ("Ser Assustador"): 1x/ronda, ao usar Agredir com
-  // outra arma, gasta 1 PE para um ataque corpo a corpo extra com a mordida
-  // (o "1x/ronda" não é imposto pela ficha — fica a cargo da mesa, como
-  // outros limites por cena/ronda que já não são impostos noutros pontos).
-  function atacarComPe(a, i) {
-    const max = calcMaximos(personagem);
-    const peAtual = Number(personagem.peAtual ?? max.pe);
-    if (peAtual < 1) return;
-    setPersonagem((p) => ({ ...p, peAtual: Number(p.peAtual ?? max.pe) - 1 }));
-    atacar(a, i);
   }
 
   function danificar(a, i) {
     const e = estatisticasArma(personagem, a);
     const critico = Boolean(acertos[i]?.critico);
     const corpoACorpo = a.pericia === 'luta';
-    const nEnergia = podeGastarPeEnergia && corpoACorpo
-      ? Math.max(0, Math.min(Number(peEnergia[i]) || 0, limitePeEnergia()))
-      : 0;
-    const extras = nEnergia > 0
-      ? [...e.extras, { expr: `${nEnergia}d6`, elemental: true, tipoDano: 'Energia' }]
-      : e.extras;
+    const nEnergia = podeGastarPeEnergia && corpoACorpo ? Math.max(0, Math.min(Number(peEnergia[i]) || 0, limitePeEnergia())) : 0;
+    const extras = nEnergia > 0 ? [...e.extras, { expr: `${nEnergia}d6`, elemental: true, tipoDano: 'Energia' }] : e.extras;
     const r = rolarDano({
       nome: `${a.nome || 'Ataque'} — dano`,
-      dano: e.dano, bonus: e.bonusDano, extras,
-      critico, multiplicador: e.multiplicador,
+      dano: e.dano,
+      bonus: e.bonusDano,
+      extras,
+      critico,
+      multiplicador: e.multiplicador,
     });
     if (r) {
       onRolar(r);
-      if (a.nome === 'Mordida (Monstruoso)') recuperarPvMordida(r.critico);
       if (nEnergia > 0) {
         const max = calcMaximos(personagem);
         setPersonagem((p) => ({ ...p, peAtual: Number(p.peAtual ?? max.pe) - nEnergia }));
         setPeEnergia((prev) => ({ ...prev, [i]: 0 }));
       }
     }
-    else onRolar({ id: String(Math.random()), tipo: 'dano', nome: 'Dano inválido', rolagens: [], bonus: 0, total: 0 });
   }
 
   return (
@@ -220,35 +202,22 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
                   <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                     {a.imagem && <div className="miniatura-arma" style={{ backgroundImage: `url(${a.imagem})` }} />}
                     <div>
-                    <b style={{ fontSize: '18px', letterSpacing: '0.5px' }}>
-                      {a.nome || 'Sem nome'}
-                      {a._monstruoso && <span className="pill" style={{ marginLeft: 8, fontSize: 10 }} title={a.notas}>MONSTRUOSO</span>}
-                    </b>
-                    <div className="arma-stats" style={{ fontSize: '14px' }}>
-                      <span title={`Teste de ${e.pericia.nome} com ${NOME_ATRIBUTO[e.atributoTeste] || ''}${e.dados > 0 ? '' : ` — dados reduzidos: rolas ${quantidadeDados(e.dados)}d20 e fica o pior`}`}>
-                        {e.pericia.nome}{' '}
-                        <span style={{ color: e.dados <= 0 ? '#ef4444' : '#22c55e' }}>
-                          {quantidadeDados(e.dados)}d20
+                      <b style={{ fontSize: '18px', letterSpacing: '0.5px' }}>
+                        {a.nome || 'Sem nome'}
+                        {a._monstruoso && <span className="pill" style={{ marginLeft: 8, fontSize: 10 }}>MONSTRUOSO</span>}
+                      </b>
+                      <div className="arma-stats" style={{ fontSize: '14px' }}>
+                        <span>
+                          {e.pericia.nome} <span style={{ color: e.dados <= 0 ? '#ef4444' : '#22c55e' }}>{quantidadeDados(e.dados)}d20</span>
+                          {e.bonusAtaque ? (e.bonusAtaque > 0 ? ` +${e.bonusAtaque}` : ` ${e.bonusAtaque}`) : ''}
                         </span>
-                        {e.bonusAtaque ? (e.bonusAtaque > 0 ? ` +${e.bonusAtaque}` : ` ${e.bonusAtaque}`) : ''}
-                        {e.dadosExtraAtaque.length > 0 && ` + ${e.dadosExtraAtaque.join(' + ')}`}
-                      </span>
-                      {e.agilAtiva && <span title="Arma ágil: usa Agilidade em vez de Força no ataque e no dano" style={{ opacity: 0.8 }}>ÁGIL</span>}
-                      <span title="Dano">{e.dano}{e.bonusDano ? (e.bonusDano > 0 ? ` + ${e.bonusDano}` : ` − ${Math.abs(e.bonusDano)}`) : ''}</span>
-                      <span>{e.margem === 20 ? '20' : `${e.margem}–20`} / ×{e.multiplicador}</span>
-                      {a.tipo && <span>{a.tipo}</span>}
-                      {e.alcance && <span>{e.alcance}</span>}
-                      <span title="Ocupa este espaço na carga, esteja na mão ou guardada">{Number(a.espacos) || 0} esp.</span>
-                      {e.extras.map((x, i) => {
-                        const expr = typeof x === 'string' ? x : x.expr;
-                        const elemental = typeof x === 'object' && x !== null && x.elemental;
-                        return (
-                          <span key={`${expr}-${i}`} style={elemental ? { color: 'var(--sangue-claro)' } : undefined} title={elemental ? 'Dano da Trilha do Monstruoso' : undefined}>
-                            +{expr}
-                          </span>
-                        );
-                      })}
-                    </div>
+                        {e.agilAtiva && <span className="pill">ÁGIL</span>}
+                        {e.dano && e.dano !== '-' && <span>Dano: {e.dano}{e.bonusDano ? (e.bonusDano > 0 ? ` + ${e.bonusDano}` : ` − ${Math.abs(e.bonusDano)}`) : ''}</span>}
+                        <span>{e.margem === 20 ? '20' : `${e.margem}–20`} / ×{e.multiplicador}</span>
+                        {a.tipo && <span>{a.tipo}</span>}
+                        {e.alcance && <span>{e.alcance}</span>}
+                        <span>{Number(a.espacos) || 0} esp.</span>
+                      </div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
@@ -256,42 +225,19 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
                       <button
                         type="button"
                         className={'toggle-equipar' + (equipado ? ' equipado' : '')}
-                        onClick={() => editar(i, { equipado: !equipado })}
-                        title={equipado ? 'Está na mão. Carrega para a guardar.' : 'Está guardada. Carrega para a equipar.'}
+                        onClick={() => editar(i - naturais.length, { equipado: !equipado })}
                       >
                         <span className="bolinha" />
                         {equipado ? 'Equipada' : 'Guardada'}
                       </button>
                     )}
-                    <button className="btn sm" disabled={!equipado} title={equipado ? '' : 'Equipa a arma primeiro'} onClick={() => atacar(a, i)}>Atacar</button>
+                    <button className="btn sm" disabled={!equipado} onClick={() => atacar(a, i)}>Atacar</button>
                     {!a._monstruoso && (
-                      <button className="btn ghost sm" onClick={() => setAEditarArma({ indice: i, arma: a })}>Editar</button>
-                    )}
-                    {a.nome === 'Mordida (Monstruoso)' && (
-                      <button
-                        className="btn sm ghost"
-                        disabled={!equipado || Number(personagem.peAtual ?? calcMaximos(personagem).pe) < 1}
-                        title="Ser Assustador (65%) — 1x/ronda, ao usar Agredir com outra arma: gasta 1 PE por um ataque corpo a corpo extra com a mordida"
-                        onClick={() => atacarComPe(a, i)}
-                      >
-                        Ataque extra (1 PE)
-                      </button>
-                    )}
-                    {podeGastarPeEnergia && a.pericia === 'luta' && (
-                      <span title="Ser Macabro (40%) — gasta 1+ PE (limitado pela Agilidade) por +1d6 de dano de Energia por PE gasto, no PRÓXIMO dano rolado" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5 }}>
-                        <span style={{ color: 'var(--txt-dim)' }}>PE p/ dano Energia:</span>
-                        <input
-                          type="number" min={0} max={limitePeEnergia()}
-                          value={peEnergia[i] || 0}
-                          onChange={(ev) => setPeEnergia((prev) => ({ ...prev, [i]: Math.max(0, Math.min(limitePeEnergia(), Number(ev.target.value) || 0)) }))}
-                          style={{ width: 44, fontSize: 12.5 }}
-                        />
-                      </span>
+                      <button className="btn ghost sm" onClick={() => setAEditarArma({ indice: i - naturais.length, arma: a })}>Editar</button>
                     )}
                     <button
                       className={'btn sm' + (acerto?.critico ? '' : ' ghost')}
                       disabled={!acerto || !equipado}
-                      title={acerto ? (acerto.critico ? `Crítico: dados ×${e.multiplicador}` : 'Rolar dano normal') : 'Faz primeiro o teste de ataque'}
                       onClick={() => danificar(a, i)}
                     >
                       {acerto?.critico ? `Dano ×${e.multiplicador}` : 'Só dano'}
@@ -303,41 +249,15 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
                   <div className={'resultado-ataque' + (acerto.critico ? ' critico' : '')}>
                     <span>
                       Acerto: <b>{acerto.total}</b> ({acerto.dados}d20 [{acerto.rolagens.join(', ')}] → maior {acerto.escolhido}
-                      {acerto.bonus ? ` ${acerto.bonus > 0 ? '+' : '−'} ${Math.abs(acerto.bonus)}` : ''}
-                      {(acerto.dadosExtra || []).map((d) => ` + ${d.expr} [${d.rolagens.join(', ')}]`).join('')})
+                      {acerto.bonus ? ` ${acerto.bonus > 0 ? '+' : '−'} ${Math.abs(acerto.bonus)}` : ''})
                       {acerto.critico ? ' · ACERTO CRÍTICO' : ''}
                     </span>
                     {acerto.dano && (
                       <span>
                         Dano: <b>{acerto.dano.total}</b> ({acerto.dano.expressao} [{acerto.dano.rolagens.join(', ')}]
-                        {(acerto.dano.extras || []).map((ex, i) => (
-                          <span key={i} style={ex.elemental ? { color: 'var(--sangue-claro)' } : undefined} title={ex.elemental ? 'Dano da Trilha do Monstruoso' : undefined}>
-                            {` + ${ex.expr} [${ex.rolagens.join(', ')}]`}
-                          </span>
-                        ))}
-                        {acerto.dano.bonus ? ` ${acerto.dano.bonus > 0 ? '+' : '−'} ${Math.abs(acerto.dano.bonus)}` : ''}
-                        {acerto.dano.critico ? ` · dados ×${acerto.dano.multiplicador}` : ''})
+                        {acerto.dano.bonus ? ` ${acerto.dano.bonus > 0 ? '+' : '−'} ${Math.abs(acerto.dano.bonus)}` : ''})
                       </span>
                     )}
-                  </div>
-                )}
-
-                {((a.modificacoes || []).length > 0 || (a.maldicoes || []).length > 0) && (
-                  <div className="resumo-mods">
-                    {(e.mods?.lista || []).map((m) => <span key={m.id} className="pill" title={m.texto}>{m.nome}</span>)}
-                    {(e.maldicoes?.lista || []).map((m) => (
-                      <span
-                        key={m.id}
-                        className="pill"
-                        title={m.texto}
-                        style={{
-                          borderColor: m.elemento === 'conhecimento' ? '#f5a636' : m.elemento === 'energia' ? '#9933ff' : m.elemento === 'morte' ? '#82738c' : '#f04653',
-                          color: m.elemento === 'conhecimento' ? '#f5a636' : m.elemento === 'energia' ? '#c084fc' : m.elemento === 'morte' ? '#d6d3d1' : '#f87171',
-                        }}
-                      >
-                        {m.nome}
-                      </span>
-                    ))}
                   </div>
                 )}
               </div>
@@ -362,347 +282,70 @@ export function AbaCombate({ personagem, setPersonagem, onRolar }) {
   );
 }
 
-/** Liga/desliga um id numa das listas de ids de rituais concedidos da Trilha do Monstruoso. */
-function alternarNaLista(personagem, campo, id) {
-  const atual = personagem[campo] || [];
-  return { [campo]: atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id] };
-}
-
 function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
-  // Regra dos Hooks: têm de vir antes de qualquer "return null" condicional
-  // — senão, no momento em que a personagem ganha o primeiro ritual (ex.:
-  // ao chegar a Combatente-Sangue 99%, "Forma Monstruosa"), este componente
-  // passa a chamar mais hooks do que na renderização anterior (0 → 2) e o
-  // React crasha ("Rendered more hooks than during the previous render").
-  const [modalVontade, setModalVontade] = useState(null); // { r, i } ou null
-  const [danoRascunho, setDanoRascunho] = useState(0);
-  // Teste de concentração (Livro Base, p. 120) — { r, i } do ritual ativo.
   const [modalConc, setModalConc] = useState(null);
   const [condConc, setCondConc] = useState('ruim');
   const [danoConc, setDanoConc] = useState(0);
 
   const nex = nexEfetivo(personagem);
-  // Rituais concedidos pela Trilha do Monstruoso só existem enquanto a
-  // etapa de hoje está ativa — somam-se aos rituais próprios da personagem.
   const rituais = [...(personagem.rituais || []), ...rituaisAtivos(personagem, nex)];
   if (!rituais.length) return null;
 
   const max = calcMaximos(personagem);
   const usaPd = max.semSanidade;
-  const atual = usaPd ? (personagem.pdAtual ?? max.pd) : (personagem.peAtual ?? max.pe);
-  const dt = calcDtRitual(personagem);
 
-  function custoBaseDe(r) {
-    return custoBaseDeRitual(r);
-  }
-  function reducaoDe(r) {
-    return reducaoTatuagemRitualistica(personagem, nex, r, marcadoDoRitual(personagem, r));
-  }
-  function custoDe(r) {
-    return custoEfetivoRitual(personagem, nex, r);
-  }
-
-  function precisaComponente(r) {
-    return Boolean(r.elemento) && r.elemento !== 'medo' && r.elemento !== 'variavel';
-  }
-  function temComponente(r) {
-    return !precisaComponente(r) || temComponentesDoElemento(personagem.inventario, r.elemento);
-  }
+  function custoDe(r) { return custoEfetivoRitual(personagem, nex, r); }
+  function precisaComponente(r) { return Boolean(r.elemento) && r.elemento !== 'medo' && r.elemento !== 'variavel'; }
+  function temComponente(r) { return !precisaComponente(r) || temComponentesDoElemento(personagem.inventario, r.elemento); }
 
   function conjurar(r, i) {
     const res = conjurarRitual(personagem, r, { onRolar, index: i });
-    if (res.erro) return;
     if (res.patch) setPersonagem({ ...personagem, ...res.patch });
   }
 
-  // Combatente Sangue 99% ("Ser Aterrorizante"): sempre que sofre dano, teste
-  // de Vontade DT 10+dano — falhar obriga a próxima ação padrão a ser
-  // conjurar Forma Monstruosa, por isso ao falhar aqui já se conjura sozinho.
-  // (modalVontade/danoRascunho estão declarados no topo da função — Regra dos Hooks.)
-  function abrirModalVontade(r, i) {
-    setDanoRascunho(0);
-    setModalVontade({ r, i });
-  }
-
-  function confirmarTesteVontade() {
-    const { r, i } = modalVontade || {};
-    setModalVontade(null);
-    if (!r) return;
-    const dano = Math.max(0, Math.trunc(Number(danoRascunho) || 0));
-    const dt = 10 + dano;
-    const von = calcPericias(personagem).find((x) => x.id === 'vontade') || { dados: 0, bonus: 0 };
-    const teste = rolarTeste({ nome: 'Vontade — resistir à Forma Monstruosa', dados: von.dados, bonus: von.bonus });
-    const passou = teste.total >= dt;
-    onRolar({
-      ...teste, tipo: 'teste',
-      notas: [`DT ${dt} (10 + ${dano} de dano)`, passou ? 'Resistiu — continua em si' : 'Falhou — a próxima ação padrão tem de ser conjurar Forma Monstruosa'],
-      sofreu: !passou,
-    });
-    if (!passou) conjurar(r, i);
-  }
-
-  // ------------------------------------------------------- concentração
-  // "Conjurar um ritual exige concentração. Se você estiver em uma situação
-  // difícil ou sofrer dano durante a execução, precisa passar em um teste de
-  // Vontade. Se falhar, o ritual não funciona e os PE são perdidos."
-  // (Livro Base, p. 120 — DTs em CONDICOES_CONCENTRACAO, engine/rituais.js.)
-  function abrirModalConcentracao(r, i) {
-    setCondConc('ruim');
-    setDanoConc(0);
-    setModalConc({ r, i });
-  }
-
-  function confirmarConcentracao() {
-    const { r, i } = modalConc || {};
-    setModalConc(null);
-    if (!r) return;
-    const marcado = marcadoDoRitual(personagem, r);
-    const { dt: dtConc, conta } = dtConcentracao(condConc, { custoPe: custoDe(r), dano: danoConc });
-    const von = calcPericias(personagem).find((x) => x.id === 'vontade') || { dados: 0, bonus: 0 };
-    const bonusTat = bonusConcentracaoTatuagem(personagem, nex, r, marcado);
-    const teste = rolarTeste({
-      nome: `${r.nome || 'Ritual'} — Concentração (Vontade)`,
-      dados: von.dados,
-      bonus: von.bonus + bonusTat,
-    });
-    const passou = teste.total >= dtConc;
-    // Falhar: "o ritual não funciona e os PE são perdidos" — os PE já foram
-    // gastos ao conjurar, por isso não voltam; o que se faz é desligar o
-    // ritual, que deixa de estar em efeito.
-    if (!passou) setPersonagem({ ...personagem, ...patchEstadoRitual(personagem, r, i, 'ativo', false) });
-    onRolar({
-      ...teste, tipo: 'teste',
-      notas: [
-        conta,
-        bonusTat ? `+${bonusTat} de Tatuagem Ritualística (ritual de ${elementoAtual(personagem)} marcado na pele)` : null,
-        passou ? 'Passou — a concentração aguentou' : 'Falhou — o ritual não funciona e os PE são perdidos',
-      ].filter(Boolean),
-      sofreu: !passou,
-    });
-  }
-
-  // Termina a transformação à mão (o livro não dá um gatilho automático de
-  // fim de cena) — desliga o +5 corpo a corpo e volta a permitir conjurar.
-  function terminarTransformacao() {
-    setPersonagem((p) => ({ ...p, formaMonstruosaAtiva: false }));
-  }
-
-  const podeMarcarNaPele = nex >= 40 && personagem.trilhaId === 'monstruoso';
-  const todos = [...(personagem.rituais || []), ...rituaisAtivos(personagem, nex)];
-  function temRecurso(custo) { return custo <= atual; }
-
   return (
-    <div className="rituais-combate">
-      <div className="rotulo-lista">Rituais · {usaPd ? `${atual} PD` : `${atual} PE`} disponíveis{dt ? ` · DT ${dt}` : ''}</div>
+    <div style={{ marginTop: 24 }}>
+      <div className="rotulo-lista" style={{ marginBottom: 10 }}>Rituais Rápidos em Combate</div>
       <div className="lista-blocos">
-        {todos.map((r, i) => {
-          const circulo = Number(r.circulo) || 1;
+        {rituais.map((r, i) => {
           const custo = custoDe(r);
-          const podeGastar = temRecurso(custo);
-          const componenteOk = temComponente(r);
-          const reducao = reducaoDe(r);
-          const transformado = Boolean(personagem.formaMonstruosaAtiva);
-          const podeConjurar = podeGastar && componenteOk && !transformado;
-          const nomeElemento = ELEMENTOS.find((e) => e.id === r.elemento)?.nome || r.elemento;
-          const marcado = marcadoDoRitual(personagem, r);
+          const compOk = temComponente(r);
           const ritualAtivo = ativoDoRitual(personagem, r);
-          const dtInfo = detalheDtRitual(personagem, r, marcado);
-          const dtRitual = dtInfo.total;
-          // Só rituais de duração não instantânea podem ficar ativos (ver
-          // `podeFicarAtivo` em engine/rituais.js). Poderes de toque da
-          // trilha (`_semTeste`) não são conjurações — ficam de fora.
-          const podeAtivar = !r._semTeste && podeFicarAtivo(r);
-          const podeMarcar = podeMarcarNaPele && (podeSerMarcadoNaPele(personagem, nex, r) || marcado);
+          const dtInfo = detalheDtRitual(personagem, r);
           return (
             <div className={'bloco ritual el-' + (r.elemento || 'variavel')} key={r._monstruosoId || i}>
               <div className="topo">
                 <div>
-                  <b style={{ fontSize: '18px', letterSpacing: '0.5px' }}>
-                    {r.nome || 'Sem nome'}
-                    {r._monstruoso && <span className="pill" style={{ marginLeft: 8, fontSize: 10 }} title="Concedido pela Trilha do Monstruoso — só enquanto a etapa de hoje está ativa">MONSTRUOSO</span>}
-                  </b>
+                  <b style={{ fontSize: '18px' }}>{r.nome}</b>
                   <div className="arma-stats" style={{ fontSize: '14px' }}>
-                    {!r._semTeste && <span>{circulo}º círculo</span>}
-                    {r.elemento && <span>{r.elemento}</span>}
-                    <span title={reducao > 0 ? `${custoBaseDe(r)} − ${reducao} da Tatuagem Ritualística (marcado na pele)` : undefined}>
-                      {custo} {usaPd ? 'PD' : 'PE'}{reducao > 0 ? ` (−${reducao})` : ''}
-                    </span>
-                    {marcado && <span title="Marcado na pele" style={{ color: 'var(--txt-fraco)' }}>marcado na pele</span>}
-                    {r.duracao && <span>{r.duracao}</span>}
-                    {!r._semTeste && (
-                      <span
-                        title={dtInfo.bonusTrilha > 0 ? `DT ${dtRitual} (${dtInfo.total - dtInfo.bonusTrilha} base + 2 da Trilha do Monstruoso por estar marcado na pele)` : `DT ${dtRitual} para resistir`}
-                        style={dtInfo.bonusTrilha > 0 ? { color: 'var(--txt)', fontWeight: 'bold' } : undefined}
-                      >
-                        DT {dtRitual}{dtInfo.bonusTrilha > 0 ? ' (+2 pele)' : ''}
-                      </span>
-                    )}
-                    {!r._semTeste && (
-                      <span title="Abaixo disto perdes 1 de Sanidade; abaixo de 10 + círculo, perdes 1 permanente">
-                        Ocultismo {20 + circulo} / {10 + circulo}
-                      </span>
-                    )}
-                    {r._semTeste && <span title="Poder de toque da Trilha do Monstruoso — sem teste de Ocultismo">sem teste</span>}
-                    {r.execucao && <span>{r.execucao}</span>}
+                    <span>{custo} {usaPd ? 'PD' : 'PE'}</span>
+                    <span>DT {dtInfo.total}</span>
                     {r.alcance && <span>{r.alcance}</span>}
-                    {r.resistencia && <span>resistência: {r.resistencia}</span>}
-                    {!componenteOk && (
-                      <span style={{ color: 'var(--sangue-claro)' }} title={`Precisas de "Componentes Ritualísticos de ${nomeElemento}" no inventário`}>
-                        sem componentes de {nomeElemento}
-                      </span>
-                    )}
+                    {r.duracao && <span>{r.duracao}</span>}
+                    {!compOk && <span style={{ color: 'var(--sangue-claro)' }}>sem componentes</span>}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  {podeMarcar && (
-                    <BotaoMarcarNaPele personagem={personagem} setPersonagem={setPersonagem} ritual={r} indice={i} elegivel={podeSerMarcadoNaPele(personagem, nex, r)} />
-                  )}
-                  {podeAtivar && (
+                  {podeFicarAtivo(r) && (
                     <button
                       className={'btn sm' + (ritualAtivo ? '' : ' ghost')}
-                      style={ritualAtivo ? { borderColor: 'var(--sangue)', background: 'var(--sangue)' } : undefined}
-                      title={ritualAtivo
-                        ? `Ativo (duração: ${r.duracao}) — clica para terminar o ritual`
-                        : `Duração: ${r.duracao} — clica para marcar como ativo (conjurar também o liga sozinho)`}
                       onClick={() => setPersonagem({ ...personagem, ...patchEstadoRitual(personagem, r, i, 'ativo', !ritualAtivo) })}
                     >
                       {ritualAtivo ? 'Ativo' : 'Inativo'}
                     </button>
                   )}
-                  {ritualAtivo && (
-                    <button
-                      className="btn sm ghost"
-                      title="Teste de Vontade para manter a concentração — DT 15/20 + custo em PE, ou igual ao dano se fores ferido. Falhar termina o ritual e os PE perdem-se."
-                      onClick={() => abrirModalConcentracao(r, i)}
-                    >
-                      Concentração
-                    </button>
-                  )}
-                  {r.nome === 'Forma Monstruosa' && r._monstruoso && (
-                    <button
-                      className="btn sm ghost"
-                      title="Sempre que sofres dano: teste de Vontade DT 10+dano — se falhares, conjura este ritual automaticamente"
-                      onClick={() => abrirModalVontade(r, i)}
-                    >
-                      Teste de Vontade
-                    </button>
-                  )}
-                  {r.nome === 'Forma Monstruosa' && transformado ? (
-                    <button
-                      className="btn sm"
-                      style={{ borderColor: 'var(--sangue)', background: 'var(--sangue)' }}
-                      title="Termina a transformação — desliga o +5 em ataque/dano corpo a corpo e volta a poder conjurar rituais"
-                      onClick={terminarTransformacao}
-                    >
-                      Terminar transformação
-                    </button>
-                  ) : (
-                    <button
-                      className="btn sm"
-                      disabled={!podeConjurar}
-                      title={
-                        transformado ? 'Transformado pela Forma Monstruosa — não podes conjurar rituais'
-                        : !podeGastar ? 'Não tens pontos que cheguem'
-                        : !componenteOk ? `Precisas de "Componentes Ritualísticos de ${nomeElemento}" no inventário — os de outro elemento não servem`
-                        : r._semTeste ? `Gasta ${custo} ${usaPd ? 'PD' : 'PE'} — sem teste de Ocultismo (poder de toque)`
-                        : `Gasta ${custo} ${usaPd ? 'PD' : 'PE'} e faz o teste de Ocultismo`
-                      }
-                      onClick={() => conjurar(r, i)}
-                    >
-                      Conjurar
-                    </button>
-                  )}
+                  <button className="btn sm" disabled={!compOk} onClick={() => conjurar(r, i)}>Conjurar</button>
                 </div>
               </div>
             </div>
           );
         })}
       </div>
-
-      {modalConc && (
-        <div className="modal-fundo" style={{ zIndex: 100 }} onClick={(e) => e.target === e.currentTarget && setModalConc(null)}>
-          <div className="modal" style={{ maxWidth: 480 }}>
-            <div className="modal-topo">
-              <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>Concentração — {modalConc.r.nome || 'Ritual'}</h3>
-              <button className="fechar" onClick={() => setModalConc(null)}>×</button>
-            </div>
-            <div className="modal-corpo">
-              <p style={{ color: 'var(--txt-dim)', fontSize: 14.5, marginBottom: 16 }}>
-                Em que situação estás? Falhar o teste de Vontade termina o ritual e os PE perdem-se.
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-                {CONDICOES_CONCENTRACAO.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    className={'btn' + (condConc === c.id ? '' : ' ghost')}
-                    style={{ textAlign: 'left', ...(condConc === c.id ? { borderColor: 'var(--sangue)', background: 'var(--sangue)' } : {}) }}
-                    onClick={() => setCondConc(c.id)}
-                  >
-                    <div style={{ fontWeight: 'bold' }}>
-                      {c.rotulo} · {c.base === null ? 'DT = dano sofrido' : `DT ${c.base} + custo em PE`}
-                    </div>
-                    <div style={{ fontSize: 12, opacity: 0.85, fontWeight: 'normal', whiteSpace: 'normal' }}>{c.exemplos}</div>
-                  </button>
-                ))}
-              </div>
-
-              {condConc === 'ferido' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center', marginBottom: 16 }}>
-                  <span style={{ fontSize: 13, color: 'var(--txt-dim)' }}>Dano sofrido</span>
-                  <button type="button" className="btn ghost sm" onClick={() => setDanoConc((v) => Math.max(0, (Number(v) || 0) - 1))}>−</button>
-                  <strong style={{ fontSize: 22, minWidth: 48, textAlign: 'center', fontFamily: 'var(--numeros)' }}>{danoConc}</strong>
-                  <button type="button" className="btn ghost sm" onClick={() => setDanoConc((v) => (Number(v) || 0) + 1)}>+</button>
-                </div>
-              )}
-
-              <div style={{ textAlign: 'center', fontSize: 13.5, color: 'var(--txt-dim)', marginBottom: 18 }}>
-                {dtConcentracao(condConc, { custoPe: custoDe(modalConc.r), dano: danoConc }).conta}
-                {bonusConcentracaoTatuagem(personagem, nex, modalConc.r, marcadoDoRitual(personagem, modalConc.r)) > 0 && (
-                  <div style={{ color: 'var(--txt)' }}>
-                    +{bonusConcentracaoTatuagem(personagem, nex, modalConc.r, marcadoDoRitual(personagem, modalConc.r))} no teste — Tatuagem Ritualística (ritual de {elementoAtual(personagem)} marcado na pele)
-                  </div>
-                )}
-              </div>
-
-              <div style={{ display: 'flex', gap: 14, justifyContent: 'center' }}>
-                <button className="btn ghost" onClick={() => setModalConc(null)}>Cancelar</button>
-                <button className="btn" style={{ borderColor: 'var(--sangue)', background: 'var(--sangue)' }} onClick={confirmarConcentracao}>Rolar Vontade</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {modalVontade && (
-        <div className="modal-fundo" style={{ zIndex: 100 }} onClick={(e) => e.target === e.currentTarget && setModalVontade(null)}>
-          <div className="modal" style={{ maxWidth: 380, textAlign: 'center' }}>
-            <div className="modal-topo">
-              <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>Teste de Vontade — Forma Monstruosa</h3>
-              <button className="fechar" onClick={() => setModalVontade(null)}>×</button>
-            </div>
-            <div className="modal-corpo">
-              <p style={{ color: 'var(--txt-dim)', fontSize: 14.5, marginBottom: 20 }}>
-                Quanto dano sofreste agora? A DT do teste de Vontade é 10 + esse dano — se falhares, o ritual é conjurado automaticamente.
-              </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center', marginBottom: 22 }}>
-                <button type="button" className="btn ghost sm" onClick={() => setDanoRascunho((v) => Math.max(0, (Number(v) || 0) - 1))}>−</button>
-                <strong style={{ fontSize: 22, minWidth: 48, textAlign: 'center', fontFamily: 'var(--numeros)' }}>{danoRascunho}</strong>
-                <button type="button" className="btn ghost sm" onClick={() => setDanoRascunho((v) => (Number(v) || 0) + 1)}>+</button>
-              </div>
-              <div style={{ display: 'flex', gap: 14, justifyContent: 'center' }}>
-                <button className="btn ghost" onClick={() => setModalVontade(null)}>Cancelar</button>
-                <button className="btn" style={{ borderColor: 'var(--sangue)', background: 'var(--sangue)' }} onClick={confirmarTesteVontade}>Confirmar</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-// ----------------------------------------------------------- HABILIDADES
+// ----------------------------------------------------------- HABILIDADES / PODERES
 
 export function AbaHabilidades({ personagem, setPersonagem }) {
   const { lista, adicionar, editar, remover } = useLista(personagem, setPersonagem, 'habilidades');
@@ -713,404 +356,267 @@ export function AbaHabilidades({ personagem, setPersonagem }) {
   const origem = personagem.origemId === '__custom__' ? personagem.origemCustom : ORIGENS_POR_ID[personagem.origemId];
   const nex = nexEfetivo(personagem);
 
-  const automaticas = [
-    origem?.poder?.nome && { nome: origem.poder.nome, descricao: origem.poder.descricao, fonte: 'Origem' },
-    ...(classe?.habilidades || []).filter((h) => !h.nex || Number(h.nex) <= nex).map((h) => ({ ...h, fonte: classe.nome })),
-    ...(trilha?.poderes || []).filter((p) => !p.nex || Number(p.nex) <= nex).map((p) => ({ ...p, fonte: trilha.nome })),
-    // Poderes concedidos por dentro da trilha (ex.: Tatuagem Ritualística ao
-    // Ocultista Monstruoso aos 40%) — só enquanto a etapa do dia está ativa.
-    // Nunca duplica: o livro diz que quem já tem o poder apenas "altera a
-    // maneira como ele funciona" — se já estiver na lista à mão, não repete.
-    ...poderesAtivos(personagem, nex)
-      .filter((p) => !(lista || []).some((h) => String(h?.nome || '').toLowerCase() === String(p.nome).toLowerCase()))
-      .map((p) => ({ nome: p.nome, descricao: p.descricao, nex: p.patamar, fonte: trilha?.nome || 'Trilha' })),
+  const automaticasHabilidades = [
+    origem?.poder?.nome && { nome: origem.poder.nome, descricao: origem.poder.descricao, fonte: 'Origem', tipo: 'habilidade' },
+    ...(classe?.habilidades || []).filter((h) => !h.nex || Number(h.nex) <= nex).map((h) => ({ ...h, fonte: classe.nome, tipo: 'habilidade' })),
   ].filter(Boolean);
 
-  const catalogo = [
-    ...PODERES,
-    ...(classe?.poderes || []).map((p) => ({ ...p, tipo: 'classe', classe: classe.nome })),
+  const automaticasPoderes = [
+    ...(trilha?.poderes || []).filter((p) => !p.nex || Number(p.nex) <= nex).map((p) => ({ ...p, fonte: trilha.nome, tipo: 'poder' })),
+    ...poderesAtivos(personagem, nex)
+      .filter((p) => !(lista || []).some((h) => String(h?.nome || '').toLowerCase() === String(p.nome).toLowerCase()))
+      .map((p) => ({ nome: p.nome, descricao: p.descricao, nex: p.patamar, fonte: trilha?.nome || 'Trilha', tipo: 'poder' })),
+  ].filter(Boolean);
+
+  const listaHabilidades = lista
+    .map((item, idx) => ({ ...item, indiceOriginal: idx }))
+    .filter((item) => item.tipo === 'habilidade' || /habilidade/i.test(item.origem || ''));
+
+  const listaPoderes = lista
+    .map((item, idx) => ({ ...item, indiceOriginal: idx }))
+    .filter((item) => item.tipo !== 'habilidade' && !/habilidade/i.test(item.origem || ''));
+
+  const catalogo = useMemo(() => {
+    const todos = [
+      ...PODERES.map((p) => ({
+        ...p,
+        tipo: p.tipo === 'paranormal' ? 'Poder Paranormal' : 'Poder Geral',
+        grupoTipo: p.tipo === 'paranormal' ? 'Poder Paranormal' : 'Poder Geral',
+        categoriaSecao: 'poder',
+      })),
+      ...CLASSES.flatMap((c) =>
+        (c.poderes || []).map((p) => ({
+          ...p,
+          id: p.id || `poder-classe-${c.id}-${p.nome}`,
+          tipo: `Poder de ${c.nome}`,
+          grupoTipo: c.nome,
+          classe: c.nome,
+          categoriaSecao: 'poder',
+        }))
+      ),
+      ...CLASSES.flatMap((c) =>
+        (c.habilidades || []).map((h) => ({
+          ...h,
+          id: h.id || `hab-classe-${c.id}-${h.nome}`,
+          tipo: `Habilidade de ${c.nome}`,
+          grupoTipo: c.nome,
+          classe: c.nome,
+          categoriaSecao: 'habilidade',
+        }))
+      ),
+      ...TRILHAS.flatMap((t) =>
+        (t.poderes || []).map((p) => ({
+          ...p,
+          id: p.id || `trilha-${t.id}-${p.nome}`,
+          tipo: `Trilha: ${t.nome}`,
+          grupoTipo: 'Trilhas',
+          trilha: t.nome,
+          classe: t.classeNome,
+          categoriaSecao: 'poder',
+        }))
+      ),
+      ...ORIGENS.filter((o) => o.poder?.nome).map((o) => ({
+        id: `origem-${o.id}`,
+        nome: o.poder.nome,
+        descricao: o.poder.descricao,
+        tipo: 'Poder de Origem',
+        grupoTipo: 'Origens',
+        origem: o.nome,
+        categoriaSecao: 'habilidade',
+      })),
+    ];
+    const vistos = new Set();
+    return todos.filter((item) => {
+      const chave = (item.nome || '').trim().toLowerCase();
+      if (!chave || vistos.has(chave)) return false;
+      vistos.add(chave);
+      return true;
+    });
+  }, []);
+
+  const opcoesFiltroTipo = [
+    { valor: 'Poder Geral', label: 'Poderes Gerais' },
+    { valor: 'Poder Paranormal', label: 'Poderes Paranormais' },
+    { valor: 'Combatente', label: 'Combatente' },
+    { valor: 'Especialista', label: 'Especialista' },
+    { valor: 'Ocultista', label: 'Ocultista' },
+    { valor: 'Sobrevivente', label: 'Sobrevivente' },
+    { valor: 'Trilhas', label: 'Poderes de Trilhas' },
+    { valor: 'Origens', label: 'Poderes de Origem' },
   ];
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
         <button className="btn ghost" onClick={() => setAEscolher((v) => !v)}>Do catálogo</button>
-        <button className="btn" onClick={() => adicionar(novaHabilidade())}>Nova Habilidade</button>
+        <button className="btn ghost" onClick={() => adicionar({ ...novaHabilidade(), tipo: 'habilidade', origem: 'Habilidade' })}>+ Nova Habilidade</button>
+        <button className="btn" onClick={() => adicionar({ ...novaHabilidade(), tipo: 'poder', origem: 'Poder' })}>+ Novo Poder</button>
       </div>
 
       {aEscolher && (
         <Seletor
-          titulo={`Poderes (${catalogo.length})`}
+          titulo={`Habilidades e Poderes (${catalogo.length})`}
           itens={catalogo}
-          filtros={[{ id: 'tipo', label: 'Todos os tipos', valorDe: (i) => i.tipo, opcoes: [...new Set(catalogo.map((p) => p.tipo))].map((t) => ({ valor: t, label: t })) }]}
-          aoProcurar={(i, t) => i.nome.toLowerCase().includes(t) || (i.descricao || '').toLowerCase().includes(t)}
+          filtros={[
+            {
+              id: 'grupoTipo',
+              label: 'Todos os tipos',
+              valorDe: (i) => i.grupoTipo,
+              opcoes: opcoesFiltroTipo,
+            },
+          ]}
+          aoProcurar={(i, t) =>
+            i.nome.toLowerCase().includes(t) ||
+            (i.descricao || '').toLowerCase().includes(t) ||
+            (i.classe || '').toLowerCase().includes(t) ||
+            (i.trilha || '').toLowerCase().includes(t) ||
+            (i.origem || '').toLowerCase().includes(t)
+          }
           render={(p) => (
             <>
               <b style={{ fontSize: '18px' }}>{p.nome}</b>
-              <span className="meta">{[p.tipo, p.classe, p.elemento, p.prerequisito].filter(Boolean).join(' · ')}</span>
+              <span className="meta">
+                {[p.tipo, p.classe, p.trilha, p.origem, p.elemento, p.prerequisito].filter(Boolean).join(' · ')}
+              </span>
               <span className="corte">{p.descricao}</span>
             </>
           )}
-          onEscolher={(p) => { adicionar({ nome: p.nome, descricao: p.descricao, origem: p.tipo }); setAEscolher(false); }}
-          onFechar={() => setAEscolher(false)}
-        />
-      )}
-
-      {automaticas.length > 0 && (
-        <div className="lista-blocos" style={{ marginBottom: 14 }}>
-          {automaticas.map((h, i) => (
-            <div className="bloco" key={'auto' + i}>
-              <div className="topo"><b style={{ fontSize: '18px' }}>{h.nome}</b><span className="pill">{h.fonte}{h.nex ? ` · NEX ${h.nex}%` : ''}</span></div>
-              <TextoExpandivel texto={h.descricao} />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {lista.length === 0 && automaticas.length === 0 ? (
-        <div className="painel-vazio">Ainda não possuis habilidades</div>
-      ) : (
-        <div className="lista-blocos">
-          {lista.map((h, i) => (
-            <div className="bloco" key={i}>
-              <div className="topo">
-                <input type="text" placeholder="Nome da habilidade" value={h.nome} onChange={(e) => editar(i, { nome: e.target.value })} style={{ fontSize: '18px', fontWeight: 'bold' }} />
-                <button className="btn sm danger" onClick={() => remover(i)}>Remover</button>
-              </div>
-              <div className="campo" style={{ marginTop: 10, marginBottom: 0 }}>
-                <textarea placeholder="Descrição" value={h.descricao} onChange={(e) => editar(i, { descricao: e.target.value })} style={{ fontSize: '14px' }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// --------------------------------------------------------------- RITUAIS
-
-/**
- * Interruptor "marcado na pele" de um ritual — a Tatuagem Ritualística só
- * atua sobre rituais marcados (o poder base dá −1 PE aos de alcance Pessoal
- * com você como alvo; a Trilha do Monstruoso, aos 40%, alarga isso a todos
- * os rituais do elemento escolhido e junta +5 nos testes de concentração).
- */
-function BotaoMarcarNaPele({ personagem, setPersonagem, ritual, indice, elegivel = true }) {
-  const marcado = marcadoDoRitual(personagem, ritual);
-  // Um ritual que deixou de ser elegível (mudou de elemento, por exemplo) mas
-  // continua marcado ainda mostra o botão — para dar para desmarcar.
-  return (
-    <button
-      type="button"
-      className={'btn sm' + (marcado ? '' : ' ghost')}
-      style={marcado ? { borderColor: 'var(--sangue)', background: 'var(--sangue)' } : undefined}
-      title={marcado
-        ? (elegivel ? 'Marcado na pele — clica para desmarcar' : 'Marcado na pele, mas o poder já não se aplica a este ritual — clica para desmarcar')
-        : 'Marcar na pele (Tatuagem Ritualística): −1 PE onde o poder se aplica e +5 em testes de concentração'}
-      onClick={() => setPersonagem({ ...personagem, ...patchEstadoRitual(personagem, ritual, indice, 'marcado', !marcado) })}
-    >
-      {marcado ? '✦ Na pele' : 'Marcar na pele'}
-    </button>
-  );
-}
-
-export function AbaRituais({ personagem, setPersonagem }) {
-  const { lista: listaPropria, adicionar, editar, remover } = useLista(personagem, setPersonagem, 'rituais');
-  // Rituais concedidos pela Trilha do Monstruoso só existem enquanto a
-  // etapa de hoje está ativa — mostram-se aqui, mas não são editáveis (a
-  // ficha deriva-os sozinha, não há nada para guardar à mão).
-  const nex = nexEfetivo(personagem);
-  const concedidos = rituaisAtivos(personagem, nex);
-  const lista = [...listaPropria, ...concedidos];
-  const [aEscolher, setAEscolher] = useState(false);
-  const circuloMax = circuloMaximoPorNex(nex);
-  // O interruptor "marcado na pele" (Tatuagem Ritualística) só faz sentido a
-  // quem tem o poder — por escolha própria, ou concedido pela Trilha do
-  // Monstruoso aos 40%. Aqui NÃO se exige a etapa do dia ativa: senão o
-  // jogador perdia a forma de marcar rituais sempre que a desligasse.
-  const podeMarcarNaPele = temTatuagemRitualistica(personagem, nex)
-    || (classeMonstruosa(personagem) === 'ocultista' && patamarAtual(nex) >= 40);
-  const dtDetalhe = detalheDtRitual(personagem);
-  const dt = dtDetalhe.total;
-  // Um ritual trazido do catálogo já vem com tudo certo (é conteúdo oficial)
-  // — por isso aparece normal, só de consulta, com um botão "Editar" ao
-  // lado para quem quiser mesmo assim ajustar algo. Um ritual em branco
-  // ("Novo Ritual") não tem nada para mostrar, por isso esse sim começa
-  // logo aberto no formulário. `emEdicao` guarda os índices (em
-  // `listaPropria`) que estão neste momento no modo de edição.
-  const [emEdicao, setEmEdicao] = useState(() => new Set());
-  function alternarEdicao(i) {
-    setEmEdicao((prev) => {
-      const novo = new Set(prev);
-      if (novo.has(i)) novo.delete(i); else novo.add(i);
-      return novo;
-    });
-  }
-  function novoRitualEmBranco() {
-    const i = listaPropria.length;
-    adicionar(novoRitual());
-    setEmEdicao((prev) => new Set(prev).add(i));
-  }
-
-  // Rituais "Variável (à escolha)" (ex.: Amaldiçoar Arma) pedem para
-  // escolher um elemento AO APRENDER — essa escolha fica permanente no
-  // ritual. `escolherElementoPara` guarda a lista de elementos possíveis
-  // (r.elementos) e o que fazer com a escolha; serve tanto para um ritual
-  // novo vindo do catálogo como para trocar o de um já guardado (pelo
-  // lápis, que avisa primeiro que isto não é suposto acontecer).
-  const [escolherElementoPara, setEscolherElementoPara] = useState(null); // { opcoes, aoEscolher(id) }
-  const [avisoTrocarElemento, setAvisoTrocarElemento] = useState(null); // { i, opcoes }
-
-  function pedirElementoParaNovoRitual(r) {
-    setAEscolher(false);
-    setEscolherElementoPara({
-      opcoes: r.elementos,
-      aoEscolher: (id) => { adicionar({ ...r, elemento: id, custo: r.circulo }); setEscolherElementoPara(null); },
-    });
-  }
-
-  function pedirTrocarElemento(i, r) {
-    setAvisoTrocarElemento({ i, opcoes: r.elementos });
-  }
-
-  function confirmarTrocarElemento() {
-    const { i, opcoes } = avisoTrocarElemento;
-    setAvisoTrocarElemento(null);
-    setEscolherElementoPara({
-      opcoes,
-      aoEscolher: (id) => { editar(i, { elemento: id }); setEscolherElementoPara(null); },
-    });
-  }
-
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
-        <div className="campo" style={{ maxWidth: 140, marginBottom: 0 }}>
-          <label>
-            DT de ritual{' '}
-            <span
-              className="info-icone"
-              title={`10 + ${dtDetalhe.bonusNex} (bónus de NEX ${dtDetalhe.nex}%) + ${dtDetalhe.presenca} (${dtDetalhe.atributoDt ? NOME_ATRIBUTO[dtDetalhe.atributoDt] || dtDetalhe.atributoDt : 'Presença'}${dtDetalhe.atributoDt ? ' — Trilha do Monstruoso' : ''}) = ${dtDetalhe.total}${dtDetalhe.temBuff65 ? ` (Rituais de ${dtDetalhe.elementoTrilha} marcados na pele recebem +2 DT → DT ${dtDetalhe.total + 2})` : ''}`}
-            >
-              i
-            </span>
-          </label>
-          <input type="text" readOnly value={dt} />
-        </div>
-        <span className="pill">Círculo máximo em NEX {nexEfetivo(personagem)}%: {circuloMax}º</span>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn ghost" onClick={() => setAEscolher((v) => !v)}>Do catálogo</button>
-          <button className="btn" onClick={novoRitualEmBranco}>Novo Ritual</button>
-        </div>
-      </div>
-
-      {aEscolher && (
-        <Seletor
-          titulo={`Rituais (${RITUAIS.length})`}
-          itens={RITUAIS}
-          filtros={[
-            { id: 'circulo', label: 'Todos os círculos', valorDe: (r) => r.circulo, opcoes: CIRCULOS.map((c) => ({ valor: c, label: `${c}º círculo` })) },
-            { id: 'elemento', label: 'Todos os elementos', valorDe: (r) => r.elemento, opcoes: ELEMENTOS.map((e) => ({ valor: e.id, label: e.nome })) },
-          ]}
-          aoProcurar={(r, t) => r.nome.toLowerCase().includes(t) || (r.descricao || '').toLowerCase().includes(t)}
-          render={(r) => (
-            <>
-              <b style={{ fontSize: '18px' }}>{r.nome}</b>
-              <span className="meta">{r.elemento} {r.circulo}º · {r.execucao} · {r.alcance}</span>
-              <span className="corte">{r.descricao}</span>
-            </>
-          )}
-          onEscolher={(r) => {
-            if (r.elemento === 'variavel') pedirElementoParaNovoRitual(r);
-            else { adicionar({ ...r, custo: r.circulo }); setAEscolher(false); }
+          onEscolher={(p) => {
+            adicionar({ nome: p.nome, descricao: p.descricao, origem: p.tipo, tipo: p.categoriaSecao || 'poder' });
+            setAEscolher(false);
           }}
           onFechar={() => setAEscolher(false)}
         />
       )}
 
-      {escolherElementoPara && (
-        <div className="modal-fundo" style={{ zIndex: 100 }} onClick={(e) => e.target === e.currentTarget && setEscolherElementoPara(null)}>
-          <div className="modal" style={{ maxWidth: 440, textAlign: 'center' }}>
-            <div className="modal-topo">
-              <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>Escolhe o Elemento</h3>
-              <button className="fechar" onClick={() => setEscolherElementoPara(null)}>×</button>
-            </div>
-            <div className="modal-corpo">
-              <p style={{ color: 'var(--txt-dim)', fontSize: 14.5, marginBottom: 24 }}>
-                Escolha permanente — o ritual passa a ser deste elemento.
-              </p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                {escolherElementoPara.opcoes.map((id) => {
-                  const el = ELEMENTOS.find((e) => e.id === id);
-                  if (!el) return null;
-                  return (
-                    <button
-                      key={id} className="btn ghost"
-                      style={{ borderColor: el.cor, color: el.cor, padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center' }}
-                      onClick={() => escolherElementoPara.aoEscolher(id)}
-                    >
-                      <img src={`/img/sigilo-${id}.png`} alt={el.nome} style={{ width: 46, height: 46, objectFit: 'contain', mixBlendMode: 'screen', marginBottom: 8 }} />
-                      <strong style={{ fontSize: 15 }}>{el.nome.toUpperCase()}</strong>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+      {/* SEÇÃO 1: HABILIDADES */}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--display)', color: 'var(--txt)', borderBottom: '1px solid var(--borda)', paddingBottom: 6, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span>Habilidades</span>
+          <span className="pill" style={{ fontSize: 11 }}>{automaticasHabilidades.length + listaHabilidades.length}</span>
         </div>
-      )}
 
-      {avisoTrocarElemento && (
-        <div className="modal-fundo" style={{ zIndex: 100 }} onClick={(e) => e.target === e.currentTarget && setAvisoTrocarElemento(null)}>
-          <div className="modal" style={{ maxWidth: 420, textAlign: 'center' }}>
-            <div className="modal-topo">
-              <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>Trocar de elemento?</h3>
-              <button className="fechar" onClick={() => setAvisoTrocarElemento(null)}>×</button>
-            </div>
-            <div className="modal-corpo">
-              <p style={{ color: 'var(--txt-dim)', fontSize: 14.5, marginBottom: 22 }}>
-                A escolha do elemento deste ritual é <strong>permanente</strong> — não é suposto voltar atrás depois
-                de a fazeres. Isto aqui é só para quando isso aconteceu por engano, ou o mestre permitir uma exceção.
-              </p>
-              <div style={{ display: 'flex', gap: 14, justifyContent: 'center' }}>
-                <button className="btn ghost" onClick={() => setAvisoTrocarElemento(null)}>Cancelar</button>
-                <button className="btn" style={{ borderColor: 'var(--sangue)', background: 'var(--sangue)' }} onClick={confirmarTrocarElemento}>Sim, escolher outro elemento</button>
+        {automaticasHabilidades.length === 0 && listaHabilidades.length === 0 ? (
+          <div className="painel-vazio" style={{ padding: 14 }}>Sem habilidades nesta secção</div>
+        ) : (
+          <div className="lista-blocos">
+            {automaticasHabilidades.map((h, i) => (
+              <div className="bloco" key={'autohab' + i}>
+                <div className="topo"><b style={{ fontSize: '18px' }}>{h.nome}</b><span className="pill">{h.fonte}{h.nex ? ` · NEX ${h.nex}%` : ''}</span></div>
+                <TextoExpandivel texto={h.descricao} />
               </div>
-            </div>
+            ))}
+            {listaHabilidades.map((h) => (
+              <div className="bloco" key={'manhab' + h.indiceOriginal}>
+                <div className="topo">
+                  <input type="text" placeholder="Nome da habilidade" value={h.nome} onChange={(e) => editar(h.indiceOriginal, { nome: e.target.value })} style={{ fontSize: '18px', fontWeight: 'bold' }} />
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <span className="pill">{h.origem || 'Habilidade'}</span>
+                    <button className="btn sm danger" onClick={() => remover(h.indiceOriginal)}>Remover</button>
+                  </div>
+                </div>
+                <div className="campo"><textarea placeholder="Descrição da habilidade" value={h.descricao} onChange={(e) => editar(h.indiceOriginal, { descricao: e.target.value })} /></div>
+              </div>
+            ))}
           </div>
+        )}
+      </div>
+
+      {/* SEÇÃO 2: PODERES */}
+      <div>
+        <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--display)', color: 'var(--sangue-claro)', borderBottom: '1px solid rgba(239,68,68,0.2)', paddingBottom: 6, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span>Poderes</span>
+          <span className="pill" style={{ fontSize: 11, background: 'rgba(239,68,68,0.15)', color: 'var(--sangue-claro)' }}>{automaticasPoderes.length + listaPoderes.length}</span>
         </div>
+
+        {automaticasPoderes.length === 0 && listaPoderes.length === 0 ? (
+          <div className="painel-vazio" style={{ padding: 14 }}>Sem poderes nesta secção</div>
+        ) : (
+          <div className="lista-blocos">
+            {automaticasPoderes.map((p, i) => (
+              <div className="bloco" key={'autopod' + i}>
+                <div className="topo"><b style={{ fontSize: '18px' }}>{p.nome}</b><span className="pill" style={{ borderColor: 'rgba(239,68,68,0.3)', color: '#fca5a5' }}>{p.fonte}{p.nex ? ` · NEX ${p.nex}%` : ''}</span></div>
+                <TextoExpandivel texto={p.descricao} />
+              </div>
+            ))}
+            {listaPoderes.map((p) => (
+              <div className="bloco" key={'manpod' + p.indiceOriginal}>
+                <div className="topo">
+                  <input type="text" placeholder="Nome do poder" value={p.nome} onChange={(e) => editar(p.indiceOriginal, { nome: e.target.value })} style={{ fontSize: '18px', fontWeight: 'bold' }} />
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <span className="pill" style={{ borderColor: 'rgba(239,68,68,0.3)', color: '#fca5a5' }}>{p.origem || 'Poder'}</span>
+                    <button className="btn sm danger" onClick={() => remover(p.indiceOriginal)}>Remover</button>
+                  </div>
+                </div>
+                <div className="campo"><textarea placeholder="Descrição do poder" value={p.descricao} onChange={(e) => editar(p.indiceOriginal, { descricao: e.target.value })} /></div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ------------------------------------------------------------- RITUAIS
+
+export function AbaRituais({ personagem, setPersonagem, onRolar }) {
+  const { lista, adicionar, editar, remover } = useLista(personagem, setPersonagem, 'rituais');
+  const [aEscolher, setAEscolher] = useState(false);
+  const nex = nexEfetivo(personagem);
+  const circuloMax = circuloMaximoPorNex(nex, personagem.classeId);
+
+  const catalogo = RITUAIS;
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 14 }}>
+        <button className="btn ghost" onClick={() => setAEscolher((v) => !v)}>Do catálogo</button>
+        <button className="btn" onClick={() => adicionar(novoRitual())}>Novo Ritual</button>
+      </div>
+
+      {aEscolher && (
+        <Seletor
+          titulo={`Rituais (${catalogo.length})`}
+          itens={catalogo}
+          filtros={[
+            { id: 'elemento', label: 'Todos os elementos', valorDe: (r) => r.elemento, opcoes: ELEMENTOS.map((e) => ({ valor: e.id, label: e.nome })) },
+            { id: 'circulo', label: 'Todos os círculos', valorDe: (r) => r.circulo, opcoes: CIRCULOS.map((c) => ({ valor: c.id, label: c.nome })) },
+          ]}
+          aoProcurar={(r, t) => r.nome.toLowerCase().includes(t) || (r.descricao || '').toLowerCase().includes(t)}
+          render={(r) => (
+            <>
+              <b style={{ fontSize: '18px' }}>{r.nome}</b>
+              <span className="meta">{[r.elemento, `${r.circulo}º círculo`, r.execucao, r.alcance, r.duracao].filter(Boolean).join(' · ')}</span>
+              <span className="corte">{r.descricao}</span>
+            </>
+          )}
+          onEscolher={(r) => { adicionar(r); setAEscolher(false); }}
+          onFechar={() => setAEscolher(false)}
+        />
       )}
 
       {lista.length === 0 ? (
-        <div className="painel-vazio">Ainda não conheces rituais</div>
+        <div className="painel-vazio">Sem rituais aprendidos</div>
       ) : (
         <div className="lista-blocos">
-          {lista.map((r, i) => {
-            if (r._monstruoso) {
-              return (
-                <div className="bloco" key={r._monstruosoId || i}>
-                  <div className="topo">
-                    <b style={{ fontSize: '18px', letterSpacing: '0.5px' }}>{r.nome || 'Sem nome'}</b>
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      {podeMarcarNaPele && (podeSerMarcadoNaPele(personagem, nex, r) || marcadoDoRitual(personagem, r)) && (
-                        <BotaoMarcarNaPele personagem={personagem} setPersonagem={setPersonagem} ritual={r} indice={i} elegivel={podeSerMarcadoNaPele(personagem, nex, r)} />
-                      )}
-                      <span className="pill" title="Concedido pela Trilha do Monstruoso — só enquanto a etapa de hoje está ativa">MONSTRUOSO</span>
-                    </div>
-                  </div>
-                  <div className="arma-stats" style={{ fontSize: '14px' }}>
-                    {r.circulo !== '' && <span>{r.circulo}º círculo</span>}
-                    {r.elemento && <span>{r.elemento}</span>}
-                    {(() => {
-                      const dtInfo = detalheDtRitual(personagem, r, marcadoDoRitual(personagem, r));
-                      return (
-                        <span
-                          title={dtInfo.bonusTrilha > 0 ? `DT ${dtInfo.total} (${dtInfo.total - dtInfo.bonusTrilha} base + 2 da Trilha do Monstruoso por estar marcado na pele)` : `DT ${dtInfo.total} para resistir`}
-                          style={dtInfo.bonusTrilha > 0 ? { color: 'var(--txt)', fontWeight: 'bold' } : undefined}
-                        >
-                          DT {dtInfo.total}{dtInfo.bonusTrilha > 0 ? ' (+2 pele)' : ''}
-                        </span>
-                      );
-                    })()}
-                    {r.execucao && <span>{r.execucao}</span>}
-                    {r.alcance && <span>{r.alcance}</span>}
-                  </div>
-                  <TextoExpandivel texto={r.descricao} />
-                </div>
-              );
-            }
-
-            // Ritual próprio (não concedido pela trilha): vem do catálogo
-            // (conteúdo oficial, mostra-se normal, com "Editar" ao lado) ou
-            // é um ritual em branco/à mão, que começa logo no formulário.
-            if (!emEdicao.has(i)) {
-              const marcado = marcadoDoRitual(personagem, r);
-              const dtInfo = detalheDtRitual(personagem, r, marcado);
-              return (
-                <div className="bloco" key={i}>
-                  <div className="topo">
-                    <b style={{ fontSize: '18px' }}>{r.nome || 'Sem nome'}</b>
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      {podeMarcarNaPele && (podeSerMarcadoNaPele(personagem, nex, r) || marcado) && (
-                        <BotaoMarcarNaPele personagem={personagem} setPersonagem={setPersonagem} ritual={r} indice={i} elegivel={podeSerMarcadoNaPele(personagem, nex, r)} />
-                      )}
-                      <button className="btn ghost sm" onClick={() => alternarEdicao(i)}>Editar</button>
-                      <button className="btn sm danger" onClick={() => remover(i)}>Remover</button>
-                    </div>
-                  </div>
-                  <div className="arma-stats" style={{ fontSize: '14px' }}>
-                    {r.circulo !== '' && r.circulo != null && <span>{r.circulo}º círculo</span>}
-                    {r.elemento && (
-                      <span>
-                        {ELEMENTOS.find((e) => e.id === r.elemento)?.nome || r.elemento}
-                        {r.elementos?.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => pedirTrocarElemento(i, r)}
-                            title="Trocar de elemento (não é suposto — só para engano ou exceção do mestre)"
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--txt-fraco)', marginLeft: 4, fontSize: 12, padding: 0 }}
-                          >
-                            ✎
-                          </button>
-                        )}
-                      </span>
-                    )}
-                    <span
-                      title={dtInfo.bonusTrilha > 0 ? `DT ${dtInfo.total} (${dtInfo.total - dtInfo.bonusTrilha} base + 2 da Trilha do Monstruoso por estar marcado na pele)` : `DT ${dtInfo.total} para resistir`}
-                      style={dtInfo.bonusTrilha > 0 ? { color: 'var(--txt)', fontWeight: 'bold' } : undefined}
-                    >
-                      DT {dtInfo.total}{dtInfo.bonusTrilha > 0 ? ' (+2 pele)' : ''}
-                    </span>
-                    {r.execucao && <span>{r.execucao}</span>}
-                    {r.alcance && <span>{r.alcance}</span>}
-                    {r.alvo && <span>{r.alvo}</span>}
-                    {r.duracao && <span>{r.duracao}</span>}
-                    {r.resistencia && <span>{r.resistencia}</span>}
-                    {r.custo !== '' && r.custo != null && <span>{r.custo} PE</span>}
-                  </div>
-                  <TextoExpandivel texto={r.descricao} />
-                  {(r.discente || r.verdadeiro) && (
-                    <div style={{ fontSize: 13, color: 'var(--txt-dim)', marginTop: 8 }}>
-                      {r.discente && <div><b>Discente ({r.discente.custo}):</b> {r.discente.texto} {r.discente.requer}</div>}
-                      {r.verdadeiro && <div><b>Verdadeiro ({r.verdadeiro.custo}):</b> {r.verdadeiro.texto} {r.verdadeiro.requer}</div>}
-                    </div>
-                  )}
-                </div>
-              );
-            }
-
-            return (
-              <div className="bloco" key={i}>
-                <div className="topo">
-                  <input type="text" placeholder="Nome do ritual" value={r.nome} onChange={(e) => editar(i, { nome: e.target.value })} style={{ fontSize: '18px', fontWeight: 'bold' }} />
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button className="btn ghost sm" onClick={() => alternarEdicao(i)}>Concluir edição</button>
-                    <button className="btn sm danger" onClick={() => remover(i)}>Remover</button>
-                  </div>
-                </div>
-                <div className="grelha">
-                  <Campo label="Círculo" valor={r.circulo} onChange={(v) => editar(i, { circulo: Number(v) })} opcoes={CIRCULOS.map((c) => ({ value: c, label: `${c}º` }))} />
-                  <Campo label="Elemento" valor={r.elemento} onChange={(v) => editar(i, { elemento: v })} opcoes={ELEMENTOS.map((e) => ({ value: e.id, label: e.nome }))} />
-                  <Campo label="Execução" valor={r.execucao} onChange={(v) => editar(i, { execucao: v })} />
-                  <Campo label="Alcance" valor={r.alcance} onChange={(v) => editar(i, { alcance: v })} />
-                  <Campo label="Alvo" valor={r.alvo} onChange={(v) => editar(i, { alvo: v })} />
-                  <Campo label="Duração" valor={r.duracao} onChange={(v) => editar(i, { duracao: v })} />
-                  <Campo label="Resistência" valor={r.resistencia} onChange={(v) => editar(i, { resistencia: v })} />
-                  <Campo label="Custo (PE)" valor={r.custo} onChange={(v) => editar(i, { custo: v })} />
-                </div>
-                <div className="campo" style={{ marginTop: 10, marginBottom: 0 }}>
-                  <textarea placeholder="Descrição" value={r.descricao} onChange={(e) => editar(i, { descricao: e.target.value })} style={{ fontSize: '14px' }} />
-                </div>
-                {(r.discente || r.verdadeiro) && (
-                  <div style={{ fontSize: 13, color: 'var(--txt-dim)', marginTop: 8 }}>
-                    {r.discente && <div><b>Discente ({r.discente.custo}):</b> {r.discente.texto} {r.discente.requer}</div>}
-                    {r.verdadeiro && <div><b>Verdadeiro ({r.verdadeiro.custo}):</b> {r.verdadeiro.texto} {r.verdadeiro.requer}</div>}
-                  </div>
-                )}
+          {lista.map((r, i) => (
+            <div className={'bloco ritual el-' + (r.elemento || 'variavel')} key={i}>
+              <div className="topo">
+                <input type="text" placeholder="Nome do ritual" value={r.nome} onChange={(e) => editar(i, { nome: e.target.value })} style={{ fontSize: '18px', fontWeight: 'bold' }} />
+                <button className="btn sm danger" onClick={() => remover(i)}>Remover</button>
               </div>
-            );
-          })}
+              <div className="grelha" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))' }}>
+                <Campo label="Círculo" valor={r.circulo} onChange={(v) => editar(i, { circulo: Number(v) })} tipo="number" />
+                <Campo label="Elemento" valor={r.elemento} onChange={(v) => editar(i, { elemento: v })} opcoes={[{ value: '', label: '—' }, ...ELEMENTOS.map((e) => ({ value: e.id, label: e.nome }))]} />
+                <Campo label="Execução" valor={r.execucao} onChange={(v) => editar(i, { execucao: v })} />
+                <Campo label="Alcance" valor={r.alcance} onChange={(v) => editar(i, { alcance: v })} />
+                <Campo label="Duração" valor={r.duracao} onChange={(v) => editar(i, { duracao: v })} />
+                <Campo label="Resistência" valor={r.resistencia} onChange={(v) => editar(i, { resistencia: v })} />
+              </div>
+              <div className="campo"><textarea placeholder="Descrição e efeitos do ritual" value={r.descricao} onChange={(e) => editar(i, { descricao: e.target.value })} /></div>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -1124,27 +630,18 @@ export function AbaInventario({ personagem, setPersonagem }) {
   const armas = useLista(personagem, setPersonagem, 'ataques');
   const [aEscolher, setAEscolher] = useState(false);
   const [aEscolherArma, setAEscolherArma] = useState(false);
-  const [aEditarArma, setAEditarArma] = useState(null);   
+  const [aEditarArma, setAEditarArma] = useState(null);
   const [aEditarItem, setAEditarItem] = useState(null);
   const [aviso, setAviso] = useState(null);
-  // "Componentes Ritualísticos de (Elemento)" é o mesmo item para os 4
-  // elementos — antes de o meter no inventário, pergunta-se qual (mesmo
-  // popup de escolha usado no elemento do Monstruoso).
   const [aEscolherElementoComponente, setAEscolherElementoComponente] = useState(null);
-  // Depois de escolher um item do catálogo (não arma, não ritual) pergunta-se
-  // quantos meter de uma vez — { item, quantidade, nomeOverride }.
   const [aEscolherQtd, setAEscolherQtd] = useState(null);
+
   const catalogoArmas = ITENS.filter(ehArma);
   const catalogoItens = ITENS.filter((i) => !ehArma(i));
   const carga = calcCarga(personagem);
   const cats = calcItensPorCategoria(personagem);
   const set = (patch) => setPersonagem({ ...personagem, ...patch });
 
-  /**
-   * Mete `qtd` unidades de `i` no inventário. Se já houver uma entrada igual
-   * (mesmo nome, vinda do catálogo) faz stack somando à quantidade em vez de
-   * duplicar a linha.
-   */
   function adicionarItemComQtd(i, qtd, nomeOverride) {
     const nome = nomeOverride || i.nome;
     const indiceExistente = lista.findIndex((x) => x.manual !== true && x.nome === nome);
@@ -1159,10 +656,62 @@ export function AbaInventario({ personagem, setPersonagem }) {
         descricao: i.descricao || '',
         manual: false,
         itemId: i.id,
+        tipo: i.tipo || 'geral',
+        defesa: i.defesa || 0,
+        pericia: i.pericia || '',
+        bonus: i.bonus || 0,
+        vestido: false,
         quantidade: qtd,
       });
     }
     setAviso(null);
+  }
+
+  function ehVestivel(it) {
+    const n = String(it.nome || '').toLowerCase();
+    const id = String(it.itemId || '').toLowerCase();
+    return (
+      it.tipo === 'vestimenta' ||
+      it.tipo === 'protecao' ||
+      Boolean(it.defesa) ||
+      Boolean(it.pericia) ||
+      id.includes('protecao') ||
+      id.includes('escudo') ||
+      n.includes('vestimenta') ||
+      n.includes('proteção') ||
+      n.includes('protecao') ||
+      n.includes('escudo') ||
+      n.includes('traje') ||
+      n.includes('armadura')
+    );
+  }
+
+  function alternarVestir(i, it) {
+    const novoVestido = !it.vestido;
+    editar(i, { vestido: novoVestido });
+
+    const nomeNorm = String(it.nome || '').toLowerCase();
+    const itemId = String(it.itemId || '').toLowerCase();
+    let idProtecao = null;
+
+    if (itemId === 'protecao-leve' || nomeNorm.includes('proteção leve') || nomeNorm.includes('protecao leve')) {
+      idProtecao = 'protecao-leve';
+    } else if (itemId === 'protecao-pesada' || nomeNorm.includes('proteção pesada') || nomeNorm.includes('protecao pesada')) {
+      idProtecao = 'protecao-pesada';
+    } else if (itemId === 'escudo' || nomeNorm.includes('escudo')) {
+      idProtecao = 'escudo';
+    }
+
+    if (idProtecao) {
+      const protecoesAtuais = Array.isArray(personagem.protecao) ? personagem.protecao : [];
+      let novasProtecoes;
+      if (novoVestido) {
+        novasProtecoes = [...new Set([...protecoesAtuais, idProtecao])];
+      } else {
+        novasProtecoes = protecoesAtuais.filter((p) => p !== idProtecao);
+      }
+      setPersonagem((prev) => ({ ...prev, protecao: novasProtecoes }));
+    }
   }
 
   return (
@@ -1233,12 +782,36 @@ export function AbaInventario({ personagem, setPersonagem }) {
         <Seletor
           titulo={`Armas (${catalogoArmas.length})`}
           itens={catalogoArmas}
-          filtros={[{ id: 'grupo', label: 'Todos os grupos', valorDe: (i) => i.grupo, opcoes: [...new Set(catalogoArmas.map((a) => a.grupo).filter(Boolean))].map((g) => ({ valor: g, label: g })) }]}
+          filtros={[
+            {
+              id: 'grupo',
+              label: 'Todos os grupos',
+              valorDe: (i) => i.grupo,
+              opcoes: [...new Set(catalogoArmas.map((a) => a.grupo).filter(Boolean))].map((g) => ({ valor: g, label: g })),
+            },
+            {
+              id: 'categoria',
+              label: 'Todas as categorias',
+              valorDe: (i) => categoriaRomana(i.categoria),
+              opcoes: CATEGORIAS.map((c) => ({ valor: c, label: `Categoria ${c}` })),
+            },
+          ]}
           aoProcurar={(i, t) => i.nome.toLowerCase().includes(t) || (i.descricao || '').toLowerCase().includes(t)}
           render={(a) => (
             <>
               <b style={{ fontSize: '18px' }}>{a.nome}</b>
-              <span className="meta">{[a.dano, a.critico, a.tipoDano, a.alcance, a.grupo, a.espacos != null ? `${a.espacos} esp.` : null].filter(Boolean).join(' · ')}</span>
+              <span className="meta">
+                {[
+                  categoriaRomana(a.categoria) ? `Cat. ${categoriaRomana(a.categoria)}` : 'Cat. 0',
+                  a.dano ? `Dano ${a.dano}` : null,
+                  a.critico && a.critico !== '-' ? `Crítico ${a.critico}` : null,
+                  a.tipoDano,
+                  a.alcance,
+                  a.grupo,
+                  a.espacos != null ? `${a.espacos} esp.` : null,
+                ].filter(Boolean).join(' · ')}
+              </span>
+              {a.descricao && <span className="corte">{a.descricao}</span>}
             </>
           )}
           onEscolher={(a) => { armas.adicionar(armaDoItem(a)); setAEscolherArma(false); setAviso(null); }}
@@ -1260,7 +833,7 @@ export function AbaInventario({ personagem, setPersonagem }) {
 
       {aEditarItem !== null && (
         <div className="modal-fundo" style={{ zIndex: 100 }}>
-          <div className="modal" style={{ maxWidth: 400 }}>
+          <div className="modal" style={{ maxWidth: 460 }}>
             <div className="modal-topo">
               <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>Editar Item</h3>
               <button className="fechar" onClick={() => setAEditarItem(null)}>×</button>
@@ -1270,10 +843,28 @@ export function AbaInventario({ personagem, setPersonagem }) {
                 <label>Nome</label>
                 <input type="text" value={aEditarItem.item.nome} onChange={(e) => setAEditarItem({ ...aEditarItem, item: { ...aEditarItem.item, nome: e.target.value } })} />
               </div>
-              <div className="grelha">
+              <div className="grelha" style={{ gridTemplateColumns: '1fr 1fr' }}>
                 <Campo label="Categoria" valor={aEditarItem.item.categoria} onChange={(v) => setAEditarItem({ ...aEditarItem, item: { ...aEditarItem.item, categoria: v } })}
                   opcoes={[{ value: '', label: '—' }, ...CATEGORIAS.map((c) => ({ value: c, label: c }))]} />
                 <Campo label="Espaços" valor={aEditarItem.item.espacos} onChange={(v) => setAEditarItem({ ...aEditarItem, item: { ...aEditarItem.item, espacos: Number(v) } })} tipo="number" />
+              </div>
+              <div className="grelha" style={{ gridTemplateColumns: '1.4fr 1fr' }}>
+                <div className="campo">
+                  <label>Perícia Beneficiada (Vestimenta)</label>
+                  <select
+                    value={aEditarItem.item.pericia || ''}
+                    onChange={(e) => setAEditarItem({ ...aEditarItem, item: { ...aEditarItem.item, pericia: e.target.value } })}
+                  >
+                    <option value="">Nenhuma / Não aplicável</option>
+                    {PERICIAS.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                  </select>
+                </div>
+                <Campo
+                  label="Bónus na Perícia"
+                  valor={aEditarItem.item.bonus ?? ''}
+                  onChange={(v) => setAEditarItem({ ...aEditarItem, item: { ...aEditarItem.item, bonus: Number(v) || 0 } })}
+                  tipo="number"
+                />
               </div>
               <div className="campo">
                 <label>Descrição</label>
@@ -1293,8 +884,22 @@ export function AbaInventario({ personagem, setPersonagem }) {
           titulo={`Itens (${catalogoItens.length})`}
           itens={catalogoItens}
           filtros={[
-            { id: 'tipo', label: 'Todos os tipos', valorDe: (i) => i.tipo, opcoes: TIPOS_ITEM.filter((t) => t.id !== 'arma').map((t) => ({ valor: t.id, label: t.nome })) },
-            { id: 'categoria', label: 'Todas as categorias', valorDe: (i) => categoriaRomana(i.categoria), opcoes: CATEGORIAS.map((c) => ({ valor: c, label: `Categoria ${c}` })) },
+            {
+              id: 'tipo',
+              label: 'Todos os tipos',
+              valorDe: (i) => i.tipo,
+              opcoes: [
+                { valor: 'geral', label: 'Equipamento Geral' },
+                { valor: 'protecao', label: 'Proteções' },
+                { valor: 'amaldicoado', label: 'Itens Amaldiçoados & Paranormais' },
+              ],
+            },
+            {
+              id: 'categoria',
+              label: 'Todas as categorias',
+              valorDe: (i) => categoriaRomana(i.categoria),
+              opcoes: CATEGORIAS.map((c) => ({ valor: c, label: `Categoria ${c}` })),
+            },
           ]}
           aoProcurar={(i, t) => i.nome.toLowerCase().includes(t) || (i.descricao || '').toLowerCase().includes(t)}
           render={(i) => (
@@ -1314,8 +919,6 @@ export function AbaInventario({ personagem, setPersonagem }) {
           onEscolher={(i) => {
             setAEscolher(false);
             if (i.id === 'componentes-ritualisticos-de-elemento') {
-              // Este item serve para os 4 elementos — pergunta qual antes de o
-              // meter no inventário, em vez de ficar com "(Elemento)" no nome.
               setAEscolherElementoComponente(i);
             } else {
               setAEscolherQtd({ item: i, quantidade: 1, nomeOverride: null });
@@ -1407,6 +1010,7 @@ export function AbaInventario({ personagem, setPersonagem }) {
                     onClick={() => armas.editar(i, { equipado: !equipado })}
                   />
                   <span className="nome" style={{ fontSize: '18px', fontWeight: 'bold' }}>{a.nome || 'Sem nome'}</span>
+                  <span className="estado" style={{ color: 'var(--txt-dim)', fontSize: '13px' }}>{categoriaRomana(a.categoria) ? `CAT. ${categoriaRomana(a.categoria)}` : 'CAT. 0'}</span>
                   <span className="estado">{equipado ? 'equipada' : 'guardada'}</span>
                   <span className="esp">{Number(a.espacos) || 0} esp.</span>
                   <button className="btn ghost sm" onClick={() => setAEditarArma({ indice: i, arma: a })}>Editar</button>
@@ -1427,25 +1031,46 @@ export function AbaInventario({ personagem, setPersonagem }) {
             <div className="rotulo-lista">Itens ({carga.dosItens} espaços)</div>
             <ul>
               {lista.map((it, i) => {
-                const ehManual = it.manual === true;
                 const ehUltimo = i === lista.length - 1;
+                const vestivel = ehVestivel(it);
                 return (
                   <li key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '12px 14px', borderBottom: ehUltimo ? 'none' : '1px solid var(--linha)', flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 150 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 150 }}>
                       <span className="nome" style={{ fontSize: '18px', fontWeight: 'bold' }}>{it.nome || 'Sem nome'}</span>
-                      <span className="estado" style={{ color: 'var(--txt-dim)', fontSize: '14px' }}>CAT. {it.categoria || '0'}</span>
-                      <span className="esp" style={{ color: 'var(--txt-dim)', fontSize: '14px' }}>{Number(it.espacos) || 0} esp.</span>
+                      <span className="estado" style={{ color: 'var(--txt-dim)', fontSize: '13px' }}>CAT. {it.categoria || '0'}</span>
+                      <span className="esp" style={{ color: 'var(--txt-dim)', fontSize: '13px' }}>{Number(it.espacos) || 0} esp.</span>
+                      {it.vestido && (
+                        <span className="pill" style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', borderColor: 'rgba(34, 197, 94, 0.3)', fontSize: 11 }}>
+                          VESTIDO / ATIVO
+                        </span>
+                      )}
+                      {it.pericia && it.vestido && (
+                        <span className="pill" style={{ fontSize: 11 }}>
+                          +{it.bonus || 2} {it.pericia}
+                        </span>
+                      )}
                     </div>
                     {it.descricao && (
                       <div style={{ width: '100%' }}>
                         <TextoExpandivel texto={it.descricao} />
                       </div>
                     )}
-                    <SeletorQuantidade
-                      valor={Number(it.quantidade) || 1}
-                      onChange={(v) => editar(i, { quantidade: v })}
-                    />
-                    <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      {vestivel && (
+                        <button
+                          type="button"
+                          className={'btn sm' + (it.vestido ? '' : ' ghost')}
+                          style={it.vestido ? { background: '#22c55e', borderColor: '#22c55e', color: '#000', fontWeight: 700 } : {}}
+                          onClick={() => alternarVestir(i, it)}
+                          title={it.vestido ? 'Vestido. Clica para despir.' : 'Despido. Clica para vestir e aplicar os bónus na ficha.'}
+                        >
+                          {it.vestido ? 'Despir' : 'Vestir'}
+                        </button>
+                      )}
+                      <SeletorQuantidade
+                        valor={Number(it.quantidade) || 1}
+                        onChange={(v) => editar(i, { quantidade: v })}
+                      />
                       <button className="btn ghost sm" onClick={() => setAEditarItem({ indice: i, item: it })}>Editar</button>
                       <button className="btn danger sm" onClick={() => remover(i)}>Remover</button>
                     </div>

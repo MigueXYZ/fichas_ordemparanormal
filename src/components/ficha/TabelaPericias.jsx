@@ -4,6 +4,7 @@ import { ATRIBUTOS } from '../../data/atributos.js';
 import { calcPericias } from '../../engine/calc.js';
 import { rolarTeste, rolarExpressao, quantidadeDados } from '../../engine/dados.js';
 import IconeD20 from '../IconeD20.jsx';
+import ModalDetalhePericia from './ModalDetalhePericia.jsx';
 
 function InputNumeroScroll({ value, onChange, ...props }) {
   const ref = useRef(null);
@@ -13,6 +14,7 @@ function InputNumeroScroll({ value, onChange, ...props }) {
     if (!el) return;
 
     const handleWheel = (e) => {
+      if (document.activeElement !== el) return;
       e.preventDefault();
       e.stopPropagation();
       const delta = e.deltaY < 0 ? 1 : -1;
@@ -43,6 +45,7 @@ function SelectScroll({ value, onChange, onScrollStep, children, ...props }) {
     if (!el) return;
 
     const handleWheel = (e) => {
+      if (document.activeElement !== el) return;
       e.preventDefault();
       e.stopPropagation();
       const delta = e.deltaY < 0 ? 1 : -1;
@@ -66,6 +69,7 @@ export default function TabelaPericias({ personagem, setPersonagem, onRolar }) {
   const linhas = calcPericias(personagem);
   const [roladorAberto, setRoladorAberto] = useState(false);
   const [exprLivre, setExprLivre] = useState('');
+  const [modalPericia, setModalPericia] = useState(null);
 
   function rolarDadoLivre(expr) {
     const texto = expr || exprLivre;
@@ -115,6 +119,15 @@ export default function TabelaPericias({ personagem, setPersonagem, onRolar }) {
           background-image: none !important;
           background: transparent !important;
           background-color: transparent !important;
+        }
+        .nome-link-pericia {
+          cursor: pointer;
+          transition: color 0.15s ease;
+        }
+        .nome-link-pericia:hover {
+          color: var(--primaria-clara, #fca5a5);
+          text-decoration: underline dotted;
+          text-underline-offset: 3px;
         }
       `}</style>
 
@@ -196,7 +209,13 @@ export default function TabelaPericias({ personagem, setPersonagem, onRolar }) {
                   >
                     <IconeD20 />
                   </button>
-                  {l.nome}
+                  <span
+                    className="nome-link-pericia"
+                    onClick={() => setModalPericia(l)}
+                    title="Clica para ver as regras completas e utilidades desta perícia"
+                  >
+                    {l.nome}
+                  </span>
                   <span className="marca">{(l.treinada ? '*' : '') + (l.carga ? '+' : '')}</span>
                   {/* O bónus de dado extra da Trilha do Monstruoso (+1d6/+2d6, etc.) já
                       entra sozinho na rolagem (o dado dela junta-se ao resultado) e
@@ -260,6 +279,15 @@ export default function TabelaPericias({ personagem, setPersonagem, onRolar }) {
         </tbody>
       </table>
       <div className="rodape-pericias">+ Penalidade de carga. * Somente treinada.</div>
+
+      {modalPericia && (
+        <ModalDetalhePericia
+          pericia={modalPericia}
+          personagem={personagem}
+          onRolar={onRolar}
+          onFechar={() => setModalPericia(null)}
+        />
+      )}
     </div>
   );
 }

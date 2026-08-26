@@ -678,9 +678,35 @@ export function rituaisAtivos(personagem, nex) {
  * trilha substitui o próprio grau que ela deu em Ser Experimentado, não é
  * cumulativo com o progresso normal de NEX da personagem).
  */
+/**
+ * Penalidades permanentes em perícias da Trilha do Monstruoso (NEX 10%+).
+ * Conforme regras oficiais, a perda de humanidade (penalidades em Diplomacia,
+ * Enganação, Intuição ou outras perícias do elemento) é permanente e não
+ * depende da transformação diária.
+ */
+export function penalidadesPericiasPermanentes(personagem, nex) {
+  const classe = classeMonstruosa(personagem);
+  const elemento = elementoAtual(personagem);
+  const patamar = patamarAtual(nex);
+  const dadosPericia = {};
+  const flatPericia = {};
+
+  if (!classe || !elemento || patamar < 10) return { dadosPericia, flatPericia };
+
+  const penalizadas = PERICIAS_PENALIZADAS[classe]?.[elemento] || [];
+  const prog = PROGRESSAO_PENALIDADE[classe]?.[patamar];
+  if (prog) {
+    for (const id of penalizadas) {
+      if (prog.dados) dadosPericia[id] = (dadosPericia[id] || 0) + prog.dados;
+      if (prog.flat) flatPericia[id] = (flatPericia[id] || 0) + prog.flat;
+    }
+  }
+  return { dadosPericia, flatPericia };
+}
+
 export function periciasTreinadasAtivas(personagem, nex) {
   const resultado = { forcar: new Set(), flatExtra: {}, expertForcado: new Set() };
-  if (!efetivamenteAtivo(personagem, nex)) return resultado;
+  // Treinamento e bónus de Ocultismo (10%+) são permanentes da trilha
   const classe = classeMonstruosa(personagem);
   const elemento = elementoAtual(personagem);
   const patamar = patamarAtual(nex);
@@ -764,10 +790,20 @@ function efeitosDrenagem(personagem, patamar) {
  * dados extra aos testes de ataque.
  */
 export function efeitosDiarios(personagem, nex) {
+  const perm = penalidadesPericiasPermanentes(personagem, nex);
   const vazio = {
-    dadosPericia: {}, flatPericia: {}, atributoPericia: {}, defesaExtra: 0, deslocamentoExtra: 0,
-    peAtributo: null, resistenciaDano: 0, danoExtra: [], ataqueBonusDados: [],
-    testeBonusDadoGenerico: null, pvTempCena: null, turnosMorrendoExtra: 0,
+    dadosPericia: { ...perm.dadosPericia },
+    flatPericia: { ...perm.flatPericia },
+    atributoPericia: {},
+    defesaExtra: 0,
+    deslocamentoExtra: 0,
+    peAtributo: null,
+    resistenciaDano: 0,
+    danoExtra: [],
+    ataqueBonusDados: [],
+    testeBonusDadoGenerico: null,
+    pvTempCena: null,
+    turnosMorrendoExtra: 0,
   };
   const classe = classeMonstruosa(personagem);
   const elemento = elementoAtual(personagem);
