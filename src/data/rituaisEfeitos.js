@@ -20,6 +20,9 @@
  *
  * Efeitos de `ativo` suportados hoje:
  *   { tipo: 'defesa',        valor }
+ *   { tipo: 'atributo',      atributo, valor }
+ *   { tipo: 'dadosPericia',  pericia, dados }        (pool de d20, não bónus)
+ *   { tipo: 'ataqueCorpoACorpo', ataque, dano }
  *   { tipo: 'pericia',       pericia, valor }
  *   { tipo: 'deslocamento',  valor }   (em metros)
  *
@@ -56,11 +59,73 @@ export const EFEITOS_RITUAIS = {
     nota: '+10 em Furtividade.',
   },
 
+  // ------------------------------------------------- ligados a uma arma
+  // "1 arma corpo a corpo" — ao conjurar pergunta-se em qual das armas, e o
+  // bónus fica só nessa (guardado em `r.armaAlvo`, pelo nome da arma).
+  'arma-atroz': {
+    escolhaArma: true,
+    naArma: { ataque: 2, margem: 1 },
+    nota: '+2 em testes de ataque e +1 na margem de ameaça, só na arma escolhida.',
+  },
+
+  // Pacote grande. Automatiza-se o que é número; o resto (faro, visão no
+  // escuro, cura acelerada 10, o dado extra nos desarmados, não poder
+  // conjurar mais, e o fim da personagem) fica na nota — não são coisas que
+  // a ficha saiba modelar.
+  'martirio-de-sangue': {
+    alvo: 'voce',
+    ativo: [
+      { tipo: 'defesa', valor: 10 },
+      { tipo: 'ataqueCorpoACorpo', ataque: 10, dano: 10 },
+      { tipo: 'dadosPericia', pericia: 'diplomacia', dados: -3 },
+      { tipo: 'dadosPericia', pericia: 'enganacao', dados: -3 },
+    ],
+    pvTempAoConjurar: 30,
+    nota: 'Também dá faro, visão no escuro, cura acelerada 10 e 1 dado extra nos ataques desarmados (letais). Não podes conjurar mais rituais. Quando a cena acabar, perdes a personagem para sempre.',
+  },
+
   // ---------------------------------------------------------------- dano
-  decadencia: { dano: { formula: '2d8+2', tipo: 'Morte' } },
+  // `tipo` é o id de TIPOS_DANO (engine/danoRecetor.js) — é o que dá a cor
+  // certa ao total no painel de rolagens. Escrever "Morte" com maiúscula
+  // deixa a soma cinzenta.
+  decadencia: { dano: { formula: '2d8+2', tipo: 'morte' } },
   esfolar: { dano: { formula: '3d4+3', tipo: 'corte' }, nota: 'O alvo fica sangrando.' },
   eletrocussao: { dano: { formula: '3d6', tipo: 'eletricidade' } },
-  'desfazer-sinapses': { dano: { formula: '2d6+2', tipo: 'Conhecimento' }, nota: 'O alvo fica frustrado por 1 rodada.' },
+  'desfazer-sinapses': { dano: { formula: '2d6+2', tipo: 'conhecimento' }, nota: 'O alvo fica frustrado por 1 rodada.' },
+
+  // 6d8 "metade corte, metade Sangue" — a ficha rola o total como Sangue e
+  // avisa; separar em dois tipos daria dois totais e baralhava a leitura.
+  descarnar: {
+    // "6d8 (metade corte, metade Sangue)" — rolam-se as duas metades em
+    // separado, cada uma com a sua cor no painel de rolagens.
+    dano: { formula: '3d8', tipo: 'corte', extras: [{ expr: '3d8', tipoDano: 'sangue', elemental: true }] },
+    nota: 'Hemorragia: no início de cada turno dele, Fortitude ou mais 2d8 de Sangue.',
+  },
+  hemofagia: {
+    dano: { formula: '6d6', tipo: 'sangue' },
+    // "recuperando pontos de vida iguais à metade do dano causado" — o que
+    // conta é o dano que o alvo SOFREU de facto, depois das resistências
+    // dele (e a Fortitude reduz este ritual a metade). Por isso, a seguir à
+    // rolagem, abre-se o recetor de dano para confirmar o número final.
+    curaMetadeDoDano: true,
+    nota: 'Recuperas PV iguais a metade do dano que o alvo sofrer de facto.',
+  },
+  'miasma-entropico': {
+    dano: { formula: '4d8', tipo: 'quimico' },
+    nota: 'Em área. Quem passar na Fortitude sofre metade e não fica enjoado.',
+  },
+  paradoxo: {
+    dano: { formula: '6d6', tipo: 'morte' },
+    nota: 'Em área, em todos os seres. Fortitude reduz à metade.',
+  },
+  'conhecendo-o-medo': {
+    dano: { formula: '10d6', tipo: 'mental' },
+    nota: 'Só quem PASSAR na Vontade é que sofre este dano. Quem falhar fica com a Sanidade a 0 e enlouquecendo.',
+  },
+  'lamina-do-medo': {
+    dano: { formula: '10d8', tipo: 'medo' },
+    nota: 'Só quem PASSAR na Fortitude é que sofre este dano (ignora todas as resistências). Quem falhar fica com 0 PV e morrendo.',
+  },
 };
 
 /** O ritual tem leitura mecânica automatizada? */

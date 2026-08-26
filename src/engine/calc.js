@@ -5,13 +5,30 @@ import { CLASSES_POR_ID } from '../data/classes.js';
 import { PATENTES_POR_ID, CATEGORIAS, categoriaRomana, patentePorPrestigio } from '../data/patentes.js';
 import { PROGRESSAO_PD, ALTERACOES_GERAIS } from '../data/regrasOpcionais.js';
 import {
-  efeitosDiarios as efeitosDiariosMonstruoso, atributosEfetivos as atributosEfetivosMonstruoso,
+  efeitosDiarios as efeitosDiariosMonstruoso, atributosEfetivos as atributosDaTrilha,
   periciasTreinadasAtivas as periciasTreinadasAtivasMonstruoso, resistenciaTextoAtual as resistenciaTextoAtualMonstruoso,
   elementoAtual as elementoAtualMonstruoso, classeMonstruosa, efetivamenteAtivo as efetivamenteAtivoMonstruoso,
   patamarAtual as patamarAtualMonstruoso,
 } from './monstruoso.js';
 import { ATRIBUTO_DO_ELEMENTO } from '../data/monstruoso.js';
 import { PROTECOES } from '../data/itens.js';
+
+/**
+ * Atributos EFETIVOS da ficha: os da Trilha do Monstruoso mais o que os
+ * rituais ativos acrescentem (Aprimorar Físico/Mente dão +1 num atributo à
+ * escolha, e só contam quando o ritual foi lançado na própria personagem).
+ * Todas as contas desta ficha passam por aqui — PV, PE, Defesa, perícias,
+ * carga. Nunca ler `personagem.atributos` diretamente.
+ */
+function atributosDaFicha(personagem, nex) {
+  const base = atributosDaTrilha(personagem, nex);
+  const extra = efeitosRituaisAtivos(personagem, nex).atributos;
+  if (!extra || Object.keys(extra).length === 0) return base;
+  const saida = { ...base };
+  for (const [k, v] of Object.entries(extra)) saida[k] = Math.max(0, Number(saida[k] || 0) + v);
+  return saida;
+}
+
 
 export const NEX_TRACK = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 99];
 
@@ -85,7 +102,7 @@ export function calcMaximos(personagem) {
   // Ver engine/monstruoso.js (efeitosDiarios/atributosEfetivos) para a regra.
   const efMonstruoso = efeitosDiariosMonstruoso(personagem, nex);
 
-  const a = atributosEfetivosMonstruoso(personagem, nex);
+  const a = atributosDaFicha(personagem, nex);
   if (efMonstruoso.peAtributo) a.pre = a[efMonstruoso.peAtributo];
 
   const semSanidade = Boolean(personagem.regras?.semSanidade);
@@ -160,7 +177,14 @@ export function calcPenalidadesCondicoes(personagem) {
   }
   if (efMonstruoso.defesaExtra) penalidadeDefesa += efMonstruoso.defesaExtra;
 
-  return { condicoes: conds, penalidadeDefesa, dadosGeral, dadosAttr, dadosPericia, flatPericia, deslocamentoEfeito, monstruoso: efMonstruoso };
+  // Rituais ativos que mexem no POOL de dados de uma perícia (ex.: Martírio
+  // de Sangue, −3Ø em Diplomacia e Enganação).
+  const efRituais = efeitosRituaisAtivos(personagem, nex);
+  for (const [per, val] of Object.entries(efRituais.dadosPericia || {})) {
+    dadosPericia[per] = (dadosPericia[per] || 0) + val;
+  }
+
+  return { condicoes: conds, penalidadeDefesa, dadosGeral, dadosAttr, dadosPericia, flatPericia, deslocamentoEfeito, monstruoso: efMonstruoso, rituais: efRituais };
 }
 
 export function calcDeslocamento(personagem) {
@@ -279,7 +303,7 @@ export function calcDefesa(personagem) {
   const carga = calcCarga(personagem);
   const penalidadeCarga = carga.sobrecarregado ? -5 : 0;
   const nex = nexEfetivo(personagem);
-  const a = atributosEfetivosMonstruoso(personagem, nex);
+  const a = atributosDaFicha(personagem, nex);
   const bonusDefesaEnergia = Number(personagem?.monstruosoDefesaEnergiaBonus || 0);
   const buffs = calcBuffsPoderes(personagem, nex);
   return (
@@ -309,7 +333,7 @@ export function calcDtRitual(personagem, ritual = null, marcado = false) {
 /** Mesmo cálculo de `calcDtRitual`, mas devolve as parcelas para mostrar a conta (tooltip). */
 export function detalheDtRitual(personagem, ritual = null, marcado = false) {
   const nex = nexEfetivo(personagem);
-  const a = atributosEfetivosMonstruoso(personagem, nex);
+  const a = atributosDaFicha(personagem, nex);
   const bonusNex = nexIndex(nex) + 1;
   // Especialista/Ocultista da Trilha do Monstruoso, desde os 10%: o atributo
   // do elemento escolhido passa a valer no lugar de Presença — não só para
@@ -378,7 +402,7 @@ export function calcDefesas(personagem) {
     && elementoAtualMonstruoso(personagem) === 'Energia'
     && patamarAtualMonstruoso(nex) >= 10
     && efetivamenteAtivoMonstruoso(personagem, nex)
-  ) ? Number(atributosEfetivosMonstruoso(personagem, nex).agi || 0) : 0;
+  ) ? Number(atributosDaFicha(personagem, nex).agi || 0) : 0;
 
   const buffs = calcBuffsPoderes(personagem, nex);
   const bloqueioAuto = fortitude.bonus + Number(personagem.bloqueioExtra || 0) + rdTrilhaGeral + agiBloqueioEnergia + buffs.bloqueioExtra;
@@ -431,7 +455,7 @@ export function calcPericias(personagem) {
   const penalidadeCarga = carga.penalidade + (Number(personagem.penalidadeCarga) || 0);
   const conds = calcPenalidadesCondicoes(personagem);
   const nex = nexEfetivo(personagem);
-  const a = atributosEfetivosMonstruoso(personagem, nex);
+  const a = atributosDaFicha(personagem, nex);
   // Treino concedido pela trilha do Monstruoso (Ocultismo desde 10%; e as
   // perícias livres do Especialista/Conhecimento, 2 desde 10% / 3 desde
   // 99%, essas também a Expert desde os 99%) — só está em efeito enquanto a
@@ -522,7 +546,7 @@ export function bonusDeCarga(personagem) {
 
 export function calcCargaMaxima(personagem) {
   const nex = nexEfetivo(personagem);
-  const forca = Number(atributosEfetivosMonstruoso(personagem, nex).for || 0);
+  const forca = Number(atributosDaFicha(personagem, nex).for || 0);
   const base = forca <= 0 ? 2 : forca * 5;
   const buffs = calcBuffsPoderes(personagem, nex);
   return base + bonusDeCarga(personagem) + buffs.cargaExtra;

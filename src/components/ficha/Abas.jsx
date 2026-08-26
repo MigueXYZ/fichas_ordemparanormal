@@ -287,6 +287,11 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
   const [modalConc, setModalConc] = useState(null);
   const [condConc, setCondConc] = useState('ruim');
   const [danoConc, setDanoConc] = useState(0);
+  // Rituais que pedem uma arma na conjuração (Arma Atroz): { r, i }
+  const [modalArma, setModalArma] = useState(null);
+  // Cura a calcular a partir do dano sofrido pelo alvo (Hemofagia): { r, rolado }
+  const [modalCura, setModalCura] = useState(null);
+  const [danoSofrido, setDanoSofrido] = useState(0);
 
   const nex = nexEfetivo(personagem);
   const rituais = [...(personagem.rituais || []), ...rituaisAtivos(personagem, nex)];
@@ -299,9 +304,55 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
   function precisaComponente(r) { return Boolean(r.elemento) && r.elemento !== 'medo' && r.elemento !== 'variavel'; }
   function temComponente(r) { return !precisaComponente(r) || temComponentesDoElemento(personagem.inventario, r.elemento); }
 
-  function conjurar(r, i) {
-    const res = conjurarRitual(personagem, r, { onRolar, index: i });
-    if (res.patch) setPersonagem({ ...personagem, ...res.patch });
+  /**
+   * Conjura. Se o ritual estiver ligado a uma arma (Arma Atroz), pergunta
+   * primeiro qual — só depois é que se gasta PE e se rola.
+   */
+  function conjurar(r, i, arma = null) {
+    const ef = efeitosDe(r);
+    if (ef?.escolhaArma && !arma) { setModalArma({ r, i }); return; }
+
+    let patchArma = {};
+    if (arma) {
+      // A arma escolhida fica guardada no próprio ritual, pelo nome — é o
+      // que faz `efeitosRituaisNaArma` saber a que arma somar o bónus.
+      const proprios = [...(personagem.rituais || [])];
+      if (proprios[i]) {
+        proprios[i] = { ...proprios[i], armaAlvo: arma };
+        patchArma = { rituais: proprios };
+      }
+    }
+
+    const base = { ...personagem, ...patchArma };
+    const res = conjurarRitual(base, r, { onRolar, index: i });
+    if (res.erro) return;
+    const novo = res.patch ? { ...base, ...res.patch } : base;
+    setPersonagem(novo);
+
+    // Hemofagia: a cura depende do dano que o alvo sofrer DE FACTO (as
+    // resistências dele reduzem-no, e a Fortitude corta-o a metade), por
+    // isso pergunta-se o número final em vez de curar pelo rolado.
+    if (res.curaPendente != null) {
+      setDanoSofrido(res.curaPendente);
+      setModalCura({ r, rolado: res.curaPendente });
+    }
+  }
+
+  function confirmarCura() {
+    const m = modalCura;
+    setModalCura(null);
+    if (!m) return;
+    const sofrido = Math.max(0, Math.trunc(Number(danoSofrido) || 0));
+    const cura = Math.floor(sofrido / 2);
+    if (cura <= 0) return;
+    const maxAgora = calcMaximos(personagem);
+    setPersonagem((p) => ({ ...p, pvAtual: Math.min(maxAgora.pv, Number(p.pvAtual ?? maxAgora.pv) + cura) }));
+    onRolar({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      tipo: 'teste', nome: `${m.r.nome} — sangue absorvido`, total: cura,
+      notas: [`O alvo sofreu ${sofrido}; recuperas metade (${cura} PV).`],
+      critico: false, falhaCritica: false,
+    });
   }
 
   /**
@@ -388,6 +439,77 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
           );
         })}
       </div>
+
+      {modalArma && (() => {
+        const armas = (personagem.ataques || []).filter((a) => a.pericia === 'luta');
+        return (
+          <div className="modal-fundo" style={{ zIndex: 100 }} onClick={(e) => e.target === e.currentTarget && setModalArma(null)}>
+            <div className="modal" style={{ maxWidth: 420, textAlign: 'center' }}>
+              <div className="modal-topo">
+                <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>{modalArma.r.nome}</h3>
+                <button className="fechar" onClick={() => setModalArma(null)}>×</button>
+              </div>
+              <div className="modal-corpo">
+                <p style={{ color: 'var(--txt-dim)', fontSize: 14.5, marginBottom: 18 }}>
+                  Em que arma corpo a corpo? O bónus fica só nessa.
+                </p>
+                {armas.length === 0 ? (
+                  <p style={{ color: 'var(--sangue-claro)', fontSize: 14 }}>
+                    Não tens nenhuma arma corpo a corpo no inventário.
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {armas.map((a, k) => (
+                      <button
+                        key={k}
+                        className="btn"
+                        onClick={() => { const m = modalArma; setModalArma(null); conjurar(m.r, m.i, a.nome); }}
+                      >
+                        {a.nome}{a.equipado ? '' : ' (guardada)'}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {modalCura && (
+        <div className="modal-fundo" style={{ zIndex: 100 }} onClick={(e) => e.target === e.currentTarget && setModalCura(null)}>
+          <div className="modal" style={{ maxWidth: 420, textAlign: 'center' }}>
+            <div className="modal-topo">
+              <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>{modalCura.r.nome} — sangue absorvido</h3>
+              <button className="fechar" onClick={() => setModalCura(null)}>×</button>
+            </div>
+            <div className="modal-corpo">
+              <p style={{ color: 'var(--txt-dim)', fontSize: 14.5, marginBottom: 16 }}>
+                Recuperas metade do dano que o alvo <strong>sofreu de facto</strong> — as resistências dele
+                contam, e passar na Fortitude corta o dano a metade. Rolaste <strong>{modalCura.rolado}</strong>;
+                corrige aqui se o alvo aguentou menos.
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center', marginBottom: 8 }}>
+                <button type="button" className="btn ghost sm" onClick={() => setDanoSofrido((v) => Math.max(0, (Number(v) || 0) - 1))}>−</button>
+                <input
+                  type="number"
+                  value={danoSofrido}
+                  onChange={(e) => setDanoSofrido(e.target.value)}
+                  style={{ width: 90, textAlign: 'center', fontSize: 20, fontFamily: 'var(--numeros)' }}
+                />
+                <button type="button" className="btn ghost sm" onClick={() => setDanoSofrido((v) => (Number(v) || 0) + 1)}>+</button>
+              </div>
+              <p style={{ color: 'var(--sangue-claro)', fontSize: 15, marginBottom: 18 }}>
+                Recuperas {Math.floor(Math.max(0, Number(danoSofrido) || 0) / 2)} PV
+              </p>
+              <div style={{ display: 'flex', gap: 14, justifyContent: 'center' }}>
+                <button className="btn ghost" onClick={() => setModalCura(null)}>Não curar</button>
+                <button className="btn" onClick={confirmarCura}>Recuperar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {modalConc && (
         <div className="modal-fundo" style={{ zIndex: 100 }} onClick={(e) => e.target === e.currentTarget && setModalConc(null)}>
