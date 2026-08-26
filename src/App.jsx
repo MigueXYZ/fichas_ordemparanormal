@@ -244,9 +244,6 @@ export default function App() {
               >
                 <IconeHistorico size={16} />
                 <span className="texto-btn-historico">Histórico</span>
-                {Boolean(personagem?.historico?.length) && (
-                  <span className="badge-contagem">{personagem.historico.length}</span>
-                )}
               </button>
 
               {/* Botão Definições / Opções do Personagem */}
@@ -269,11 +266,24 @@ export default function App() {
                 {som ? 'Som ligado' : 'Som mudo'}
               </button>
               <button
-                className={'btn ghost sm' + (coracao ? ' a-bater' : '')}
-                title={coracao ? 'Desligar o batimento cardíaco' : 'Ligar o batimento cardíaco'}
+                className={'btn ghost sm btn-coracao' + (coracao ? ' a-bater' : ' desligado')}
+                title={coracao ? 'Desligar o batimento cardíaco (som e pulso)' : 'Ligar o batimento cardíaco (som e pulso)'}
                 onClick={() => setCoracao(alternarCoracao())}
+                aria-label="Batimento cardíaco"
               >
-                {coracao ? '' : ''}
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill={coracao ? 'var(--sangue-claro)' : 'none'}
+                  stroke={coracao ? 'var(--sangue-claro)' : 'currentColor'}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="icone-coracao-svg"
+                >
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                </svg>
               </button>
             </>
           )}

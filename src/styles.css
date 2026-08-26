@@ -83,13 +83,15 @@ body {
   background-attachment: fixed;
 }
 
-/* sigilos do Outro Lado, muito ténues, por trás de tudo */
+/* sigilos de Sangue espalhados organicamente no fundo com opacidade subtil (sem sobrepor a entidade) */
 body::before {
   content: '';
-  position: fixed; inset: 0; pointer-events: none; z-index: -1;
-  background: url('/img/sigilos.webp') repeat;
-  background-size: 520px;
-  opacity: .05;
+  position: fixed; inset: 0; pointer-events: none; z-index: -2;
+  background: url('/img/sigilos-sangue.png') repeat;
+  background-size: 580px;
+  opacity: .09;
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 60%, rgba(0,0,0,0.2) 74%, transparent 86%);
+  mask-image: linear-gradient(to right, #000 0%, #000 60%, rgba(0,0,0,0.2) 74%, transparent 86%);
 }
 
 /* granulado sobre tudo, para não ficar "liso" */
@@ -125,8 +127,9 @@ body.sem-scroll { overflow: hidden; }
 /* ---------------------------------------------------------- topo */
 .topbar {
   display: flex; align-items: center; justify-content: space-between; gap: 14px;
-  padding: 10px 20px; border-bottom: 1px solid var(--linha);
-  background: linear-gradient(180deg, #150d0f, #0b0708);
+  padding: 10px 22px 14px;
+  background: linear-gradient(180deg, rgba(16, 10, 12, 0.80) 0%, rgba(14, 9, 11, 0.38) 65%, rgba(11, 7, 8, 0) 100%);
+  border-bottom: none;
   position: sticky; top: 0; z-index: 40;
 }
 .topbar h1 {
@@ -1463,7 +1466,8 @@ body.bate-forte .barra-recurso .preenchido::before {
 }
 
 /* ---------------------------------------------------------- ecrã inicial */
-.inicio { width: 100%; max-width: 1000px; margin: 0 auto; padding: 56px 18px 90px; text-align: center; }
+.inicio { width: 100%; max-width: 1000px; margin: 0 auto; padding: 56px 18px 90px; text-align: center; position: relative; }
+.inicio .assinatura, .inicio .marca, .inicio .sub, .inicio .elementos { position: relative; z-index: 1; }
 .inicio .marca {
   font-family: var(--marca); font-size: 60px; letter-spacing: .06em; margin: 0;
   text-transform: uppercase; line-height: 1;
@@ -1869,7 +1873,25 @@ body.bate-forte .barra-recurso .preenchido::before {
   display: flex; justify-content: flex-end; gap: 10px;
   padding: 14px 20px; border-top: 1px solid var(--linha);
 }
-.grelha-editor { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; }
+.grelha-editor {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+.grelha-editor .campo {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  margin-bottom: 0;
+}
+.grelha-editor .campo label {
+  min-height: 28px;
+  display: flex;
+  align-items: flex-end;
+  margin-bottom: 4px;
+  line-height: 1.2;
+}
 .resumo-mods { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 
 /* ---------------------------------------------------------- armas */
@@ -2016,8 +2038,40 @@ body.bate-forte .barra-recurso .preenchido::before {
   .brasas { display: none; }
 }
 
-/* botão do coração: pisca ao ritmo do fundo */
-.btn.a-bater { color: var(--sangue-claro); border-color: var(--sangue-escuro); }
+/* Botão e Símbolo animado do coração / batimento */
+.btn-coracao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 10px;
+  min-width: 34px;
+  height: 31px;
+  transition: all .2s ease;
+}
+.btn-coracao.a-bater {
+  border-color: var(--sangue);
+  color: var(--sangue-claro);
+  background: rgba(192, 21, 33, 0.15);
+}
+.btn-coracao.a-bater .icone-coracao-svg {
+  animation: coracao-pulsa 1.3s ease-in-out infinite;
+}
+.btn-coracao.desligado {
+  opacity: 0.45;
+  color: var(--txt-fraco);
+}
+.btn-coracao:hover {
+  opacity: 1;
+}
+
+@keyframes coracao-pulsa {
+  0%   { transform: scale(1); filter: drop-shadow(0 0 1px rgba(232, 50, 63, 0.4)); }
+  14%  { transform: scale(1.24); filter: drop-shadow(0 0 8px rgba(232, 50, 63, 0.85)); }
+  28%  { transform: scale(1.04); filter: drop-shadow(0 0 3px rgba(232, 50, 63, 0.4)); }
+  42%  { transform: scale(1.18); filter: drop-shadow(0 0 6px rgba(232, 50, 63, 0.7)); }
+  60%  { transform: scale(1); filter: drop-shadow(0 0 1px rgba(232, 50, 63, 0.3)); }
+  100% { transform: scale(1); }
+}
 
 /* ---------------------------------------------------------- Aniquilação */
 /* a criatura do capítulo 7 (Livro Base, p. 184) a espreitar da margem */
@@ -2252,17 +2306,16 @@ body.bate-forte .barra-recurso .preenchido::before {
   color: var(--txt-fraco); text-transform: none;
 }
 
-/* a roda de sigilos por trás da marca, a rodar devagar */
+/* a roda de sigilos por trás da marca, a rodar devagar com opacidade subtil */
 .roda-sigilos {
   position: absolute; left: 50%; top: 150px; transform: translate(-50%, -50%);
   width: 420px; height: 420px; pointer-events: none; z-index: -1;
   background: url('/img/roda-sigilos.png') center/contain no-repeat;
-  opacity: .07; animation: girar 240s linear infinite;
+  opacity: .08; animation: girar 240s linear infinite;
 }
 @keyframes girar { to { transform: translate(-50%, -50%) rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .roda-sigilos { animation: none; } }
 @media (max-width: 700px) { .roda-sigilos { width: 300px; height: 300px; } }
-.inicio { position: relative; }
 
 /* Linha de trilha personalizada com botão Monstruoso */
 .linha-trilha-flex {

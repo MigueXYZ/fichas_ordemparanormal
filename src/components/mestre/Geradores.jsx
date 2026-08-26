@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { CLASSES, TRILHAS } from '../../data/classes.js';
 import { ORIGENS } from '../../data/origens.js';
 import { PERICIAS_TEXTO } from '../../data/periciasTexto.js';
@@ -7,7 +7,7 @@ import { quantidadeDados } from '../../engine/dados.js';
 import {
   CONCEITOS, ARQUETIPOS_AMEACA, VD_SUGERIDOS, TAMANHOS,
   ELEMENTOS_CULTISTAS, PATENTES_CULTISTAS,
-  gerarFicha, gerarNpcAgente, gerarAmeaca, gerarOcultistaInimigo, vdParaGrupo,
+  gerarFicha, gerarNpcAgente, gerarAmeaca, gerarOcultista, vdParaGrupo,
 } from '../../engine/geradores.js';
 import ModalDetalheGenerico from './ModalDetalheGenerico.jsx';
 
@@ -20,7 +20,8 @@ const SEPARADORES = [
 
 const ROTULO_GRAU = { treinado: 'T', veterano: 'V', expert: 'E' };
 
-function Resumo({ p, aoVerDetalhe }) {
+function Resumo({ p, aoVerDetalhe, editando, onAtualizarCampo, aoUploadImagem }) {
+  const fileInputRef = useRef(null);
   const classe = CLASSES.find((c) => c.id === p.classeId);
   const trilha = TRILHAS.find((t) => t.id === p.trilhaId);
   const origem = ORIGENS.find((o) => o.id === p.origemId);
@@ -34,23 +35,114 @@ function Resumo({ p, aoVerDetalhe }) {
   const poderes = p.poderes || [];
   const rituais = p.rituais || [];
 
+  function handleFileChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      aoUploadImagem(reader.result);
+    };
+    reader.readAsDataURL(file);
+  }
+
   return (
-    <div className="previa">
-      <div className="previa-nome">{p.nome}</div>
-      <div className="previa-linha">
-        {[
-          origem?.nome,
-          classe?.nome,
-          trilha ? `Trilha: ${trilha.nome}` : null,
-          `NEX ${p.nex}%`,
-        ].filter(Boolean).join(' · ')}
+    <div className="previa" style={{ marginTop: 16 }}>
+      {/* Bloco de Imagem e Identificação */}
+      <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+        {/* Avatar / Imagem */}
+        <div style={{ position: 'relative', width: 90, height: 90, borderRadius: 8, overflow: 'hidden', border: '2px solid var(--borda)', background: '#0e0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {p.imagem ? (
+            <img src={p.imagem} alt={p.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <span style={{ fontSize: 11, color: 'var(--txt-fraco)', textAlign: 'center', padding: 4 }}>Sem Imagem</span>
+          )}
+          {editando && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                background: 'rgba(0,0,0,0.75)',
+                color: '#fff',
+                border: 'none',
+                fontSize: 10,
+                padding: '3px 0',
+                cursor: 'pointer',
+              }}
+            >
+              Trocar
+            </button>
+          )}
+          <input type="file" accept="image/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
+        </div>
+
+        <div style={{ flex: 1, minWidth: 200 }}>
+          {editando ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <input
+                type="text"
+                value={p.nome}
+                onChange={(e) => onAtualizarCampo('nome', e.target.value)}
+                placeholder="Nome do agente"
+                style={{ fontSize: 18, fontWeight: 'bold', width: '100%' }}
+              />
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  type="text"
+                  placeholder="URL da Imagem"
+                  value={p.imagem || ''}
+                  onChange={(e) => onAtualizarCampo('imagem', e.target.value)}
+                  style={{ fontSize: 12, flex: 1 }}
+                />
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="previa-nome" style={{ margin: 0 }}>{p.nome}</div>
+              <div className="previa-linha" style={{ marginTop: 4 }}>
+                {[
+                  origem?.nome,
+                  classe?.nome,
+                  trilha ? `Trilha: ${trilha.nome}` : null,
+                  `NEX ${p.nex}%`,
+                ].filter(Boolean).join(' · ')}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
-      <div className="previa-attrs">
-        {Object.entries(p.atributos).map(([k, v]) => (
-          <span key={k}><b>{v}</b> {k.toUpperCase()}</span>
-        ))}
-      </div>
+      {/* Atributos */}
+      {editando ? (
+        <div className="grelha-editor" style={{ gridTemplateColumns: 'repeat(5, 1fr)', marginBottom: 10 }}>
+          {['for', 'agi', 'int', 'pre', 'vig'].map((k) => (
+            <div className="campo" key={k}>
+              <label>{k.toUpperCase()}</label>
+              <input
+                type="number"
+                value={p.atributos?.[k] ?? 1}
+                onChange={(e) =>
+                  onAtualizarCampo('atributos', {
+                    ...(p.atributos || {}),
+                    [k]: Number(e.target.value),
+                  })
+                }
+              />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="previa-attrs">
+          {Object.entries(p.atributos || {}).map(([k, v]) => (
+            <span key={k}><b>{v}</b> {k.toUpperCase()}</span>
+          ))}
+        </div>
+      )}
+
+      {/* Vitais */}
       <div className="previa-attrs">
         <span><b>{max.pv}</b> PV</span>
         <span><b>{max.san}</b> SAN</span>
@@ -59,25 +151,55 @@ function Resumo({ p, aoVerDetalhe }) {
       </div>
 
       {/* Comportamento e Roleplay */}
-      {(p.comportamento || p.aparencia || p.dicaRp) && (
-        <div className="previa-bloco" style={{ background: 'rgba(255,255,255,0.03)', padding: 8, borderRadius: 4, marginTop: 10 }}>
-          <div className="previa-rotulo" style={{ color: 'var(--txt)' }}>Interpretação & RP</div>
-          {p.comportamento && (
-            <div style={{ fontSize: 12, marginBottom: 4 }}>
-              <b style={{ color: 'var(--energia-claro)' }}>Comportamento fora do comum:</b> {p.comportamento}
-            </div>
-          )}
-          {p.aparencia && (
-            <div style={{ fontSize: 12, marginBottom: 4 }}>
-              <b style={{ color: 'var(--txt-dim)' }}>Aparência marcante:</b> {p.aparencia}
-            </div>
-          )}
-          {p.dicaRp && (
-            <div style={{ fontSize: 12 }}>
-              <b style={{ color: 'var(--conhecimento-claro)' }}>Dica de RP:</b> {p.dicaRp}
-            </div>
-          )}
+      {editando ? (
+        <div className="previa-bloco" style={{ background: 'rgba(255,255,255,0.03)', padding: 10, borderRadius: 4, marginTop: 10 }}>
+          <div className="previa-rotulo">Editar Interpretação & RP</div>
+          <div className="campo" style={{ marginBottom: 6 }}>
+            <label>Comportamento fora do comum</label>
+            <input
+              type="text"
+              value={p.comportamento || ''}
+              onChange={(e) => onAtualizarCampo('comportamento', e.target.value)}
+            />
+          </div>
+          <div className="campo" style={{ marginBottom: 6 }}>
+            <label>Aparência marcante</label>
+            <input
+              type="text"
+              value={p.aparencia || ''}
+              onChange={(e) => onAtualizarCampo('aparencia', e.target.value)}
+            />
+          </div>
+          <div className="campo">
+            <label>Dica de RP</label>
+            <input
+              type="text"
+              value={p.dicaRp || ''}
+              onChange={(e) => onAtualizarCampo('dicaRp', e.target.value)}
+            />
+          </div>
         </div>
+      ) : (
+        (p.comportamento || p.aparencia || p.dicaRp) && (
+          <div className="previa-bloco" style={{ background: 'rgba(255,255,255,0.03)', padding: 8, borderRadius: 4, marginTop: 10 }}>
+            <div className="previa-rotulo" style={{ color: 'var(--txt)' }}>Interpretação & RP</div>
+            {p.comportamento && (
+              <div style={{ fontSize: 12, marginBottom: 4 }}>
+                <b style={{ color: 'var(--energia-claro)' }}>Comportamento:</b> {p.comportamento}
+              </div>
+            )}
+            {p.aparencia && (
+              <div style={{ fontSize: 12, marginBottom: 4 }}>
+                <b style={{ color: 'var(--txt-dim)' }}>Aparência:</b> {p.aparencia}
+              </div>
+            )}
+            {p.dicaRp && (
+              <div style={{ fontSize: 12 }}>
+                <b style={{ color: 'var(--conhecimento-claro)' }}>Dica de RP:</b> {p.dicaRp}
+              </div>
+            )}
+          </div>
+        )
       )}
 
       {/* Perícias Treinadas (Clicáveis) */}
@@ -236,41 +358,150 @@ function Resumo({ p, aoVerDetalhe }) {
   );
 }
 
-function FichaAmeacaPrevia({ a, aoVerDetalhe }) {
+function FichaAmeacaPrevia({ a, aoVerDetalhe, editando, onAtualizarCampo, aoUploadImagem }) {
+  const fileInputRef = useRef(null);
   const habilidades = a.habilidades || [];
   const rituais = a.rituais || [];
 
-  return (
-    <div className="previa">
-      <div className="previa-nome">{a.nome}</div>
-      <div className="previa-linha">{a.descritores.join(' · ')} · {a.tamanho} · VD {a.vd}</div>
-      <div className="previa-attrs">
-        <span><b>{a.defesa}</b> DEFESA</span>
-        <span><b>{a.pv}</b> PV</span>
-        <span><b>{a.dt}</b> DT</span>
-        {a.pe != null && <span><b>{a.pe}</b> PE</span>}
-      </div>
+  function handleFileChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      aoUploadImagem(reader.result);
+    };
+    reader.readAsDataURL(file);
+  }
 
-      {/* Comportamento e Dicas de RP */}
-      {(a.comportamento || a.aparencia || a.dicaRp) && (
-        <div className="previa-bloco" style={{ background: 'rgba(255,255,255,0.03)', padding: 8, borderRadius: 4, marginTop: 10 }}>
-          <div className="previa-rotulo" style={{ color: 'var(--txt)' }}>Comportamento & Narração</div>
-          {a.comportamento && (
-            <div style={{ fontSize: 12, marginBottom: 4 }}>
-              <b style={{ color: 'var(--sangue-claro)' }}>Comportamento:</b> {a.comportamento}
-            </div>
+  return (
+    <div className="previa" style={{ marginTop: 16 }}>
+      {/* Bloco de Imagem e Identificação */}
+      <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+        <div style={{ position: 'relative', width: 90, height: 90, borderRadius: 8, overflow: 'hidden', border: '2px solid var(--borda)', background: '#0e0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {a.imagem ? (
+            <img src={a.imagem} alt={a.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <span style={{ fontSize: 11, color: 'var(--txt-fraco)', textAlign: 'center', padding: 4 }}>Sem Imagem</span>
           )}
-          {a.aparencia && (
-            <div style={{ fontSize: 12, marginBottom: 4 }}>
-              <b style={{ color: 'var(--txt-dim)' }}>Aparência:</b> {a.aparencia}
-            </div>
+          {editando && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                background: 'rgba(0,0,0,0.75)',
+                color: '#fff',
+                border: 'none',
+                fontSize: 10,
+                padding: '3px 0',
+                cursor: 'pointer',
+              }}
+            >
+              Trocar
+            </button>
           )}
-          {a.dicaRp && (
-            <div style={{ fontSize: 12 }}>
-              <b style={{ color: 'var(--conhecimento-claro)' }}>Dica para o Mestre:</b> {a.dicaRp}
+          <input type="file" accept="image/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
+        </div>
+
+        <div style={{ flex: 1, minWidth: 200 }}>
+          {editando ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <input
+                type="text"
+                value={a.nome}
+                onChange={(e) => onAtualizarCampo('nome', e.target.value)}
+                placeholder="Nome da ameaça"
+                style={{ fontSize: 18, fontWeight: 'bold', width: '100%' }}
+              />
+              <input
+                type="text"
+                placeholder="URL da Imagem"
+                value={a.imagem || ''}
+                onChange={(e) => onAtualizarCampo('imagem', e.target.value)}
+                style={{ fontSize: 12 }}
+              />
             </div>
+          ) : (
+            <>
+              <div className="previa-nome" style={{ margin: 0 }}>{a.nome}</div>
+              <div className="previa-linha" style={{ marginTop: 4 }}>
+                {a.descritores?.join(' · ')} · {a.tamanho} · VD {a.vd}
+              </div>
+            </>
           )}
         </div>
+      </div>
+
+      {/* Vitais */}
+      {editando ? (
+        <div className="grelha-editor" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 10 }}>
+          <div className="campo">
+            <label>DEFESA</label>
+            <input type="number" value={a.defesa} onChange={(e) => onAtualizarCampo('defesa', Number(e.target.value))} />
+          </div>
+          <div className="campo">
+            <label>PV MÁXIMO</label>
+            <input type="number" value={a.pv} onChange={(e) => onAtualizarCampo('pv', Number(e.target.value))} />
+          </div>
+          <div className="campo">
+            <label>DT</label>
+            <input type="number" value={a.dt} onChange={(e) => onAtualizarCampo('dt', Number(e.target.value))} />
+          </div>
+          <div className="campo">
+            <label>VD</label>
+            <input type="number" value={a.vd} onChange={(e) => onAtualizarCampo('vd', Number(e.target.value))} />
+          </div>
+        </div>
+      ) : (
+        <div className="previa-attrs">
+          <span><b>{a.defesa}</b> DEFESA</span>
+          <span><b>{a.pv}</b> PV</span>
+          <span><b>{a.dt}</b> DT</span>
+          {a.pe != null && <span><b>{a.pe}</b> PE</span>}
+        </div>
+      )}
+
+      {/* Comportamento e Dicas de RP */}
+      {editando ? (
+        <div className="previa-bloco" style={{ background: 'rgba(255,255,255,0.03)', padding: 10, borderRadius: 4, marginTop: 10 }}>
+          <div className="previa-rotulo">Editar Narração & RP</div>
+          <div className="campo" style={{ marginBottom: 6 }}>
+            <label>Comportamento sinistro</label>
+            <input type="text" value={a.comportamento || ''} onChange={(e) => onAtualizarCampo('comportamento', e.target.value)} />
+          </div>
+          <div className="campo" style={{ marginBottom: 6 }}>
+            <label>Aparência</label>
+            <input type="text" value={a.aparencia || ''} onChange={(e) => onAtualizarCampo('aparencia', e.target.value)} />
+          </div>
+          <div className="campo">
+            <label>Dica para o Mestre</label>
+            <input type="text" value={a.dicaRp || ''} onChange={(e) => onAtualizarCampo('dicaRp', e.target.value)} />
+          </div>
+        </div>
+      ) : (
+        (a.comportamento || a.aparencia || a.dicaRp) && (
+          <div className="previa-bloco" style={{ background: 'rgba(255,255,255,0.03)', padding: 8, borderRadius: 4, marginTop: 10 }}>
+            <div className="previa-rotulo" style={{ color: 'var(--txt)' }}>Comportamento & Narração</div>
+            {a.comportamento && (
+              <div style={{ fontSize: 12, marginBottom: 4 }}>
+                <b style={{ color: 'var(--sangue-claro)' }}>Comportamento:</b> {a.comportamento}
+              </div>
+            )}
+            {a.aparencia && (
+              <div style={{ fontSize: 12, marginBottom: 4 }}>
+                <b style={{ color: 'var(--txt-dim)' }}>Aparência:</b> {a.aparencia}
+              </div>
+            )}
+            {a.dicaRp && (
+              <div style={{ fontSize: 12 }}>
+                <b style={{ color: 'var(--conhecimento-claro)' }}>Dica para o Mestre:</b> {a.dicaRp}
+              </div>
+            )}
+          </div>
+        )
       )}
 
       {/* Perícias */}
@@ -331,7 +562,7 @@ function FichaAmeacaPrevia({ a, aoVerDetalhe }) {
         </div>
       )}
 
-      {/* Rituais (para Ocultistas Inimigos) */}
+      {/* Rituais (para Ocultistas) */}
       {rituais.length > 0 && (
         <div className="previa-bloco">
           <div className="previa-rotulo" style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -405,6 +636,7 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
   const [patenteCultista, setPatenteCultista] = useState('');
   const [nexGrupo, setNexGrupo] = useState(20);
   const [resultado, setResultado] = useState(null);
+  const [editando, setEditando] = useState(false);
   const [itemDetalhe, setItemDetalhe] = useState(null);
 
   const trilhasDisponiveis = useMemo(() => {
@@ -414,12 +646,13 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
   }, [classeId]);
 
   function gerar() {
+    setEditando(false);
     if (aba === 'ameaca') {
       setResultado(gerarAmeaca({ vd: Number(vd), arquetipo: arquetipo || null, tamanho: tamanho || null }));
       return;
     }
     if (aba === 'ocultista') {
-      setResultado(gerarOcultistaInimigo({
+      setResultado(gerarOcultista({
         vd: Number(vd),
         elemento: elementoCultista || null,
         patente: patenteCultista || null,
@@ -436,6 +669,20 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
     setResultado(aba === 'npc' ? gerarNpcAgente(opcoes) : gerarFicha(opcoes));
   }
 
+  function handleAtualizarCampo(campo, valor) {
+    setResultado((ant) => ({
+      ...ant,
+      [campo]: valor,
+    }));
+  }
+
+  function handleUploadImagem(dataUrl) {
+    setResultado((ant) => ({
+      ...ant,
+      imagem: dataUrl,
+    }));
+  }
+
   return (
     <div>
       <div className="abas" style={{ marginBottom: 20 }}>
@@ -443,7 +690,7 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
           <button
             key={s.id}
             className={aba === s.id ? 'ativa' : ''}
-            onClick={() => { setAba(s.id); setResultado(null); }}
+            onClick={() => { setAba(s.id); setResultado(null); setEditando(false); }}
           >
             {s.nome}
           </button>
@@ -506,7 +753,7 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
         </>
       )}
 
-      {/* Aba 3: Ocultista Inimigo */}
+      {/* Aba 3: Ocultista */}
       {aba === 'ocultista' && (
         <>
           <p className="dica" style={{ marginTop: 0 }}>
@@ -536,10 +783,10 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
             <div className="campo">
               <label>NEX somado do grupo</label>
               <input type="number" value={nexGrupo} onChange={(e) => setNexGrupo(Number(e.target.value))} />
-              <span className="dica">
-                fácil {vdParaGrupo(nexGrupo, 'facil')} · equilibrado {vdParaGrupo(nexGrupo)} · difícil {vdParaGrupo(nexGrupo, 'dificil')}
-              </span>
             </div>
+          </div>
+          <div className="dica" style={{ marginTop: 6, fontSize: 12 }}>
+            Referência de VD para o grupo: fácil {vdParaGrupo(nexGrupo, 'facil')} · equilibrado {vdParaGrupo(nexGrupo)} · difícil {vdParaGrupo(nexGrupo, 'dificil')}
           </div>
         </>
       )}
@@ -550,7 +797,7 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
           <p className="dica" style={{ marginTop: 0 }}>
             Ameaças e criaturas com habilidades especiais, comportamento sinistro, descrição aterrorizante e dicas de narração para o Mestre.
           </p>
-          <div className="grelha-editor">
+          <div className="grelha-editor" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
             <div className="campo">
               <label>Valor de desafio</label>
               <select value={vd} onChange={(e) => setVd(Number(e.target.value))}>
@@ -574,19 +821,26 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
             <div className="campo">
               <label>NEX somado do grupo</label>
               <input type="number" value={nexGrupo} onChange={(e) => setNexGrupo(Number(e.target.value))} />
-              <span className="dica">
-                fácil {vdParaGrupo(nexGrupo, 'facil')} · equilibrado {vdParaGrupo(nexGrupo)} · difícil {vdParaGrupo(nexGrupo, 'dificil')}
-              </span>
             </div>
+          </div>
+          <div className="dica" style={{ marginTop: 6, fontSize: 12 }}>
+            Referência de VD para o grupo: fácil {vdParaGrupo(nexGrupo, 'facil')} · equilibrado {vdParaGrupo(nexGrupo)} · difícil {vdParaGrupo(nexGrupo, 'dificil')}
           </div>
         </>
       )}
 
-      <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap', alignItems: 'center' }}>
         <button className="btn" onClick={gerar}>Gerar</button>
         {resultado && <button className="btn ghost" onClick={gerar}>Outra vez</button>}
         {resultado && (
           <>
+            <button
+              type="button"
+              className={`btn ${editando ? '' : 'ghost'}`}
+              onClick={() => setEditando(!editando)}
+            >
+              {editando ? 'Concluir Edição' : 'Editar Ficha'}
+            </button>
             <button className="btn ghost" onClick={() => aoGuardar(resultado)}>Guardar</button>
             {resultado.tipo !== 'ameaca' && (
               <button className="btn" onClick={() => { const g = aoGuardar(resultado); aoAbrir(g || resultado); }}>
@@ -598,8 +852,20 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
       </div>
 
       {resultado && (resultado.tipo === 'ameaca'
-        ? <FichaAmeacaPrevia a={resultado} aoVerDetalhe={setItemDetalhe} />
-        : <Resumo p={resultado} aoVerDetalhe={setItemDetalhe} />)}
+        ? <FichaAmeacaPrevia
+            a={resultado}
+            aoVerDetalhe={setItemDetalhe}
+            editando={editando}
+            onAtualizarCampo={handleAtualizarCampo}
+            aoUploadImagem={handleUploadImagem}
+          />
+        : <Resumo
+            p={resultado}
+            aoVerDetalhe={setItemDetalhe}
+            editando={editando}
+            onAtualizarCampo={handleAtualizarCampo}
+            aoUploadImagem={handleUploadImagem}
+          />)}
 
       {/* Modal de Detalhe Genérico */}
       {itemDetalhe && (

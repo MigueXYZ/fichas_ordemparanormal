@@ -13,31 +13,44 @@ import { aplicarConcessoes } from '../../engine/concessoes.js';
 function IconeClasse({ id }) {
   return (
     <svg className="classe-icone-svg" viewBox="0 0 100 100" aria-hidden="true">
-      <circle cx="50" cy="50" r="46" fill="#0c0808" stroke="var(--linha-forte)" strokeWidth="2" />
-      <circle cx="50" cy="50" r="40" fill="none" stroke="var(--sangue)" strokeWidth="1.5" opacity=".55" />
+      {/* Círculo base limpo */}
+      <circle cx="50" cy="50" r="44" fill="#120c0e" stroke="var(--linha-forte)" strokeWidth="1.5" />
+      <circle cx="50" cy="50" r="39" fill="none" stroke="var(--sangue)" strokeWidth="1" opacity="0.4" />
+
+      {/* COMBATENTE: Espadas cruzadas simples e diretas */}
       {id === 'combatente' && (
-        <g stroke="var(--sangue-claro)" strokeWidth="3" strokeLinecap="round" fill="none">
-          <line x1="30" y1="30" x2="70" y2="70" />
-          <line x1="70" y1="30" x2="30" y2="70" />
-          <circle cx="50" cy="50" r="6" fill="var(--sangue)" stroke="none" />
+        <g stroke="var(--sangue-claro)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" fill="none">
+          <line x1="28" y1="28" x2="72" y2="72" />
+          <line x1="32" y1="24" x2="24" y2="32" strokeWidth="2.5" />
+          <line x1="72" y1="28" x2="28" y2="72" />
+          <line x1="68" y1="24" x2="76" y2="32" strokeWidth="2.5" />
+          <circle cx="50" cy="50" r="3.5" fill="var(--sangue-claro)" stroke="none" />
         </g>
       )}
+
+      {/* ESPECIALISTA: Lupa minimalista e nítida */}
       {id === 'especialista' && (
-        <g stroke="var(--sangue-claro)" strokeWidth="3" strokeLinecap="round" fill="none">
-          <circle cx="43" cy="43" r="16" />
-          <line x1="54" y1="54" x2="72" y2="72" />
+        <g stroke="var(--sangue-claro)" strokeWidth="3.5" strokeLinecap="round" fill="none">
+          <circle cx="43" cy="43" r="18" />
+          <line x1="56" y1="56" x2="74" y2="74" strokeWidth="4.5" />
+          <circle cx="43" cy="43" r="3" fill="var(--sangue-claro)" stroke="none" />
         </g>
       )}
+
+      {/* OCULTISTA: Triângulo com olho místico central direto */}
       {id === 'ocultista' && (
-        <g stroke="var(--sangue-claro)" strokeWidth="2.5" strokeLinejoin="round" fill="none">
-          <path d="M50 27 L75 69 L25 69 Z" />
-          <circle cx="50" cy="55" r="8" fill="var(--sangue)" stroke="none" />
+        <g stroke="var(--sangue-claro)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none">
+          <polygon points="50,25 76,70 24,70" />
+          <path d="M37 53 Q50 43 63 53 Q50 63 37 53 Z" strokeWidth="2" fill="none" />
+          <circle cx="50" cy="53" r="3.5" fill="var(--sangue-claro)" stroke="none" />
         </g>
       )}
+
+      {/* SOBREVIVENTE: Escudo com batimento cardíaco resiliente */}
       {id === 'sobrevivente' && (
         <g stroke="var(--sangue-claro)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none">
-          <circle cx="50" cy="50" r="22" />
-          <path d="M50 34 L50 50 L62 62" />
+          <path d="M50 25 C66 25 72 32 72 48 C72 64 50 74 50 74 C50 74 28 64 28 48 C28 32 34 25 50 25 Z" />
+          <path d="M38 50 L44 50 L48 42 L52 58 L56 50 L62 50" strokeWidth="2.5" />
         </g>
       )}
     </svg>

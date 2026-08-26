@@ -10,10 +10,10 @@ import { SubscritorMestre, lerCodigosMestre, guardarCodigosMestre } from '../../
 
 const ABAS = [
   { id: 'hub', nome: 'Hub de Equipa' },
-  { id: 'combate', nome: 'Rastreador de Combate' },
   { id: 'gerar', nome: 'Gerar' },
   { id: 'bestiario', nome: 'Bestiário' },
   { id: 'encontro', nome: 'Encontro' },
+  { id: 'combate', nome: 'Rastreador de Combate' },
 ];
 
 function ameacasGuardadas() {

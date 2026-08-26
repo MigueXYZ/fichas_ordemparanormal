@@ -655,20 +655,33 @@ export default function Combate({
             >
               {/* Cabeçalho da Coluna da Equipa */}
               <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--borda)' }}>
-                <input
-                  type="text"
-                  value={eq.nome}
-                  onChange={(e) => handleRenomearEquipa(eq.id, e.target.value)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    fontWeight: 'bold',
-                    fontSize: 16,
-                    color: eq.cor,
-                    width: '100%',
-                  }}
-                />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--txt-dim)', marginTop: 4 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                  <input
+                    type="text"
+                    value={eq.nome}
+                    onChange={(e) => handleRenomearEquipa(eq.id, e.target.value)}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      fontWeight: 'bold',
+                      fontSize: 16,
+                      color: eq.cor,
+                      flex: 1,
+                    }}
+                  />
+                  {equipas.length > 1 && (
+                    <button
+                      type="button"
+                      className="btn ghost sm"
+                      style={{ fontSize: 11, padding: '2px 8px', color: 'var(--sangue-claro)', borderColor: 'rgba(239,68,68,0.3)' }}
+                      onClick={() => handleRemoverEquipa(eq.id)}
+                      title="Remover esta equipa / lado"
+                    >
+                      Remover Equipa
+                    </button>
+                  )}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--txt-dim)', marginTop: 6 }}>
                   <span><b>VD/NEX Total:</b> {eq.totalVD}</span>
                   <span>{eq.membros.length} {eq.membros.length === 1 ? 'membro' : 'membros'}</span>
                 </div>
