@@ -1093,4 +1093,64 @@ teste('maldições de armas - Empuxo e Erosiva', async () => {
   assert.equal(est.maldicoes.categoriaExtra, 4);
 });
 
+
+teste('efeitosRituaisAtivos - buffs de rituais ativos na ficha (Velocidade Mortal, Ódio Incontrolável, Forma Monstruosa)', async () => {
+  const { efeitosRituaisAtivos } = await import('../src/engine/rituaisEfeitos.js');
+  
+  const p = {
+    rituais: [
+      { id: 'velocidade-mortal', nome: 'Velocidade Mortal', ativo: true },
+      { id: 'odio-incontrolavel', nome: 'Ódio Incontrolável', ativo: true },
+      { id: 'forma-monstruosa', nome: 'Forma Monstruosa', ativo: true },
+    ]
+  };
+
+  const ef = efeitosRituaisAtivos(p, 50);
+  // Velocidade Mortal: +6m deslocamento, Forma Monstruosa: +3m deslocamento -> +9m
+  assert.equal(ef.deslocamentoExtra, 9);
+  // Ódio Incontrolável: -5 Defesa, Forma Monstruosa: +5 Defesa -> 0
+  assert.equal(ef.defesaExtra, 0);
+  // Ódio Incontrolável: +2 ataque e +2 dano corpo a corpo
+  assert.equal(ef.ataqueCorpoACorpo.ataque, 2);
+  assert.equal(ef.ataqueCorpoACorpo.dano, 2);
+  // Forma Monstruosa: +2 dados em Luta, Atletismo, Fortitude
+  assert.equal(ef.dadosPericia['luta'], 2);
+  assert.equal(ef.dadosPericia['atletismo'], 2);
+});
+
+teste('conjurarRitual - rola dano e cura corretamente para rituais', async () => {
+  const { conjurarRitual } = await import('../src/engine/rituais.js');
+  
+  const p = {
+    peAtual: 20,
+    sanAtual: 20,
+    atributos: { PRE: 2, INT: 2, VIG: 2, FOR: 1, AGI: 1 },
+    pericias: [{ id: 'ocultismo', grau: 1 }],
+    inventario: [
+      { id: 'comp-energia', nome: 'Componentes Ritualísticos de Energia', elemento: 'energia', tipo: 'componente' },
+      { id: 'comp-morte', nome: 'Componentes Ritualísticos de Morte', elemento: 'morte', tipo: 'componente' },
+    ],
+  };
+
+  const rolagens = [];
+  const onRolar = (r) => rolagens.push(r);
+
+  // Chamas do Caos (2º círculo, 6d6 fogo)
+  const ritualChamas = { id: 'chamas-do-caos', nome: 'Chamas do Caos', circulo: 2, elemento: 'energia' };
+  const resChamas = conjurarRitual(p, ritualChamas, { onRolar });
+  assert.ok(!resChamas.erro, resChamas.erro);
+  const roloDanoChamas = rolagens.find((r) => r.nome?.includes('Chamas do Caos — dano'));
+  assert.ok(roloDanoChamas);
+  assert.equal(roloDanoChamas.tipoDano, 'fogo');
+
+  // Cicatrização (1º círculo, 3d8+3 cura)
+  rolagens.length = 0;
+  const ritualCura = { id: 'cicatrizacao', nome: 'Cicatrização', circulo: 1, elemento: 'morte' };
+  const resCura = conjurarRitual(p, ritualCura, { onRolar });
+  assert.ok(!resCura.erro, resCura.erro);
+  const roloCura = rolagens.find((r) => r.nome?.includes('Cicatrização — cura'));
+  assert.ok(roloCura);
+  assert.equal(roloCura.tipoDano, 'cura');
+});
+
 console.log(`\n${passou} testes ok`);

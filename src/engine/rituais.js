@@ -306,6 +306,27 @@ export function conjurarRitual(personagem, r, { onRolar, index = null, ehReacao 
       // partir do dano que o alvo sofrer de facto.
       if (efeitos.curaMetadeDoDano && roloDano) curaPendente = roloDano.total;
     }
+
+    if (efeitos?.cura) {
+      const roloCura = rolarDano({
+        nome: `${r.nome} — cura`,
+        dano: efeitos.cura.formula,
+        tipoDano: 'cura',
+      });
+      if (roloCura) onRolar(roloCura);
+    }
+
+    if (efeitos?.pvTempFormula) {
+      const roloTemp = rolarDano({
+        nome: `${r.nome} — PV temporários`,
+        dano: efeitos.pvTempFormula,
+        tipoDano: 'cura',
+      });
+      if (roloTemp) {
+        onRolar(roloTemp);
+        patch.pvTemp = Number(personagem.pvTemp || 0) + Number(roloTemp.total || 0);
+      }
+    }
   }
 
   return { patch, teste, curaPendente };

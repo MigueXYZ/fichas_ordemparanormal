@@ -889,7 +889,7 @@ export function AbaRituais({ personagem, setPersonagem, onRolar }) {
                       : 'Marcar na pele (Tatuagem Ritualística): −1 PE onde o poder se aplica e +5 em testes de concentração'}
                     onClick={() => setPersonagem({ ...personagem, ...patchEstadoRitual(personagem, r, i, 'marcado', !marcado) })}
                   >
-                    {marcado ? '✦ Na pele' : 'Marcar na pele'}
+                    {marcado ? 'Na pele' : 'Marcar na pele'}
                   </button>
                 )}
                 <button className="btn ghost sm" onClick={() => alternarEdicao(i)}>
@@ -917,7 +917,7 @@ export function AbaRituais({ personagem, setPersonagem, onRolar }) {
                   </div>
                   {ef && (
                     <div style={{ fontSize: 13, color: 'var(--sangue-claro)', marginTop: 6 }}>
-                      {ef.ativo ? '⚙ Automatizado — o bónus entra na ficha enquanto o ritual estiver Ativo.' : '⚙ Automatizado — o dano é rolado ao conjurar.'}
+                      {ef.ativo ? 'Automatizado — o bónus entra na ficha enquanto o ritual estiver Ativo.' : 'Automatizado — o dano é rolado ao conjurar.'}
                       {ef.nota ? ` ${ef.nota}` : ''}
                     </div>
                   )}
