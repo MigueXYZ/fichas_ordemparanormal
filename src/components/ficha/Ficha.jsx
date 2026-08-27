@@ -41,6 +41,8 @@ import WidgetContainer from './WidgetContainer.jsx';
 import ModalWidgetCustom from './ModalWidgetCustom.jsx';
 import ModalReceberDano from './ModalReceberDano.jsx';
 import ModalDescanso from './ModalDescanso.jsx';
+import ModalSubidaNex from './ModalSubidaNex.jsx';
+import { resumoSubida } from '../../engine/subirNex.js';
 import { IconeEngrenagem } from '../Icones.jsx';
 
 function InputNumeroScroll({ value, onChange, ...props }) {
@@ -179,6 +181,22 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
     const r = aplicarPresencaPendente(personagem, nexUtil);
     if (r) setPersonagem((p) => ({ ...p, ...r.patch }));
   }, [personagem, nexUtil, setPersonagem]);
+
+  // Subida de NEX (ou de nível, com a regra de nível separado): assim que o
+  // degrau efetivo passa para cima, mostra o que a personagem ganhou. Fica
+  // aqui e não no onChange do campo para apanhar todos os caminhos (campo,
+  // assistente, importação). A referência guarda o degrau anterior e é
+  // reposta sem aviso quando se muda de personagem.
+  const [subida, setSubida] = useState(null);
+  const nexAnterior = useRef({ id: personagem?.id, nex: nexUtil });
+  useEffect(() => {
+    const ant = nexAnterior.current;
+    nexAnterior.current = { id: personagem?.id, nex: nexUtil };
+    if (ant.id !== personagem?.id) return;
+    if (nexUtil <= ant.nex) return;
+    const r = resumoSubida(personagem, ant.nex, nexUtil);
+    if (r) setSubida(r);
+  }, [nexUtil, personagem]);
 
   const max = calcMaximos(personagem);
   const d = calcDefesas(personagem);
@@ -986,6 +1004,9 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
           aoFechar={() => setModalDanoAberto(false)}
         />
       )}
+
+      {/* O que a personagem ganhou ao subir de NEX / nível */}
+      {subida && <ModalSubidaNex resumo={subida} aoFechar={() => setSubida(null)} />}
 
       {/* Modal de Descanso & Interlúdio */}
       {modalDescansoAberto && (

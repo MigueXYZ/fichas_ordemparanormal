@@ -5,6 +5,9 @@
  */
 import { TEMA_PADRAO, temaExiste } from '../data/temas.js';
 
+// NOTA: a app passou a chamar-se Ordo, mas as chaves de localStorage
+// mantêm o prefixo antigo de propósito — mudá-las apagava o tema e as
+// preferências de quem já usa a app.
 const CHAVE = 'claudio:tema';
 
 export function lerTema() {

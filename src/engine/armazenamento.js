@@ -95,6 +95,127 @@ export function importarJson(ficheiro) {
   });
 }
 
+// ------------------------------------------------ cópia de segurança total
+
+/**
+ * CÓPIA DE SEGURANÇA
+ *
+ * Os agentes vivem só no localStorage deste browser. Limpar dados do site,
+ * trocar de máquina ou abrir numa janela privada faz desaparecer tudo, sem
+ * aviso — e não há servidor nenhum a segurar a queda.
+ *
+ * Estas funções exportam e reimportam a coleção INTEIRA num só ficheiro.
+ * O formato leva um cabeçalho para se saber de onde veio e quando:
+ *
+ *   { tipo: 'ordo:copia', versao, guardadoEm, total, agentes: [...] }
+ */
+export const TIPO_COPIA = 'ordo:copia';
+
+function descarregar(nome, texto) {
+  const blob = new Blob([texto], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nome;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+/** Data no nome do ficheiro, para as cópias ficarem ordenadas sozinhas. */
+function carimbo() {
+  const d = new Date();
+  const dois = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${dois(d.getMonth() + 1)}-${dois(d.getDate())}-${dois(d.getHours())}${dois(d.getMinutes())}`;
+}
+
+/** Exporta TODOS os agentes num único ficheiro. Devolve quantos foram. */
+export function exportarTudo() {
+  const agentes = ler();
+  const pacote = {
+    tipo: TIPO_COPIA,
+    versao: VERSAO_FICHA,
+    guardadoEm: new Date().toISOString(),
+    total: agentes.length,
+    agentes,
+  };
+  descarregar(`ordo-copia-${carimbo()}.json`, JSON.stringify(pacote, null, 2));
+  return agentes.length;
+}
+
+/**
+ * Importa um ficheiro — aceita tanto uma cópia completa como uma ficha
+ * solta, para o mesmo botão servir para os dois casos.
+ *
+ * `modo`:
+ *   'juntar'     — acrescenta aos que já existem (por omissão). Nunca
+ *                  sobrepõe: cada agente entra com id novo.
+ *   'substituir' — apaga o que está e fica só com o do ficheiro.
+ *
+ * Devolve `{ importados, modo, total }`.
+ */
+export function importarCopia(ficheiro, modo = 'juntar') {
+  return new Promise((resolve, reject) => {
+    const leitor = new FileReader();
+    leitor.onload = () => {
+      try {
+        const dados = JSON.parse(leitor.result);
+        let agentes;
+        if (dados && dados.tipo === TIPO_COPIA && Array.isArray(dados.agentes)) {
+          agentes = dados.agentes;
+        } else if (Array.isArray(dados)) {
+          agentes = dados;                       // lista solta
+        } else if (dados && typeof dados === 'object' && dados.atributos) {
+          agentes = [dados];                     // uma ficha só
+        } else {
+          throw new Error('Este ficheiro não é uma cópia do Ordo nem uma ficha.');
+        }
+
+        const validos = agentes.filter((a) => a && typeof a === 'object' && a.atributos);
+        if (validos.length === 0) throw new Error('O ficheiro não tem nenhuma ficha reconhecível.');
+
+        const base = modo === 'substituir' ? [] : ler();
+        // id novo em todos: evita colisões com quem já cá está e torna a
+        // importação sempre segura de repetir.
+        const novos = validos.map((a) => ({ ...a, id: novoId() }));
+        escrever([...base, ...novos]);
+        resolve({ importados: novos.length, modo, total: base.length + novos.length });
+      } catch (e) {
+        reject(e);
+      }
+    };
+    leitor.onerror = () => reject(new Error('Não foi possível ler o ficheiro.'));
+    leitor.readAsText(ficheiro);
+  });
+}
+
+// -------------------------------------------- lembrete de cópia de segurança
+
+const CHAVE_COPIA = 'ordo:ultima-copia';
+
+/** Quando foi a última cópia (ISO), ou null se nunca houve. */
+export function ultimaCopia() {
+  try { return localStorage.getItem(CHAVE_COPIA); } catch { return null; }
+}
+
+export function marcarCopiaFeita() {
+  try { localStorage.setItem(CHAVE_COPIA, new Date().toISOString()); } catch { /* ignora */ }
+}
+
+/**
+ * Deve mostrar-se o lembrete? Só com agentes guardados, e se nunca houve
+ * cópia ou a última já leva mais de 14 dias. Sem agentes não há nada a
+ * perder, e o aviso só seria ruído.
+ */
+export function precisaDeCopia(dias = 14) {
+  if (ler().length === 0) return false;
+  const ultima = ultimaCopia();
+  if (!ultima) return true;
+  const passou = Date.now() - new Date(ultima).getTime();
+  return !Number.isFinite(passou) || passou > dias * 24 * 60 * 60 * 1000;
+}
+
 /** Tamanho máximo para guardar um GIF/animação tal como está (o localStorage é pequeno). */
 export const LIMITE_ANIMACAO = 1.6 * 1024 * 1024;
 

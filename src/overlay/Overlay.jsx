@@ -74,7 +74,7 @@ export default function Overlay({ config, semDiagnostico = false }) {
       <div className="ov-espera">
         <IconeD20 className="icone" />
         <div>
-          <b>Overlay do Claudio</b>
+          <b>Overlay do Ordo</b>
           <div className="ov-detalhe">
             sala <code>{config.codigo}</code> · status: <b>{ligacao}</b>
           </div>

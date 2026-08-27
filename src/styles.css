@@ -349,8 +349,8 @@
   --sangue-veu: rgba(var(--sangue-rgb), .16);
 
   /* halos cruzados: violeta em cima, azul elétrico em baixo */
-  --halo-topo: rgba(134, 54, 207, .30);
-  --halo-baixo: rgba(70, 161, 255, .20);
+  --halo-topo: rgba(134, 54, 207, .20);
+  --halo-baixo: rgba(70, 161, 255, .14);
 
   --sigilos-fundo: url('/img/sigilos-energia.png');
   --sigilos-tamanho: 620px;
@@ -615,6 +615,13 @@ body.sem-scroll { overflow: hidden; }
 .topbar h1 {
   font-size: 22px; margin: 0; letter-spacing: .16em; text-transform: uppercase;
   color: var(--txt); font-family: var(--marca);
+  white-space: nowrap;
+}
+/* em ecrã estreito a marca fica só "ORDO": o subtítulo partia para a segunda
+   linha e chocava com os botões do topo */
+@media (max-width: 560px) {
+  .topbar h1 .marca-sub { display: none; }
+  .topbar h1 { font-size: 18px; letter-spacing: .12em; }
 }
 .topbar h1 em { color: var(--sangue); font-style: normal; }
 .topbar .acoes { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -1952,11 +1959,24 @@ body.bate-forte .barra-recurso .preenchido::before {
 .inicio { width: 100%; max-width: 1000px; margin: 0 auto; padding: 56px 18px 90px; text-align: center; position: relative; }
 .inicio .assinatura, .inicio .marca, .inicio .sub, .inicio .elementos { position: relative; z-index: 1; }
 .inicio .marca {
-  font-family: var(--marca); font-size: 60px; letter-spacing: .06em; margin: 0;
+  font-family: var(--marca);
+  /* 60px em ecrã largo (igual ao que era), a encolher só quando não cabe —
+     a 390px a palavra PARANORMAL transbordava e punha scroll horizontal na
+     página toda. O `min` do clamp é o que impede isso. */
+  font-size: clamp(30px, 8.2vw, 60px);
+  letter-spacing: .06em; margin: 0;
   text-transform: uppercase; line-height: 1;
+  overflow-wrap: anywhere;
 }
 .inicio .marca em { color: var(--sangue); font-style: normal; display: block; }
 .inicio .sub { color: var(--txt-dim); letter-spacing: .3em; text-transform: uppercase; font-size: 12px; margin: 16px 0 10px; }
+/* avisos do ecrã inicial — cópia de segurança */
+.inicio .aviso.ok-aviso { border-color: var(--ok); color: var(--txt); }
+.inicio .lembrete-copia {
+  max-width: 760px; margin: 18px auto 0; text-align: left; line-height: 1.5;
+  font-size: 14px; position: relative; z-index: 1;
+}
+
 .elementos { display: flex; gap: 26px; justify-content: center; margin: 18px 0 4px; }
 .elementos span, .elementos button {
   width: 40px; height: 40px; display: block;
@@ -2814,7 +2834,7 @@ body.bate-forte .barra-recurso .preenchido::before {
   /* A arte é vermelha (#e9363e) e ficava vermelha em todos os temas — era a
      "aura" que sobrava no fundo. Passa a máscara e é o acento do tema que a
      pinta. */
-  background: var(--roda-cor, var(--sangue-claro));
+  background: var(--sangue-claro);
   -webkit-mask: url('/img/roda-sigilos.png') center/contain no-repeat;
   mask: url('/img/roda-sigilos.png') center/contain no-repeat;
   opacity: var(--roda-opacidade, .10); animation: girar 240s linear infinite;
@@ -3780,3 +3800,136 @@ body.bate-forte .barra-recurso .preenchido::before {
 
 
 
+
+/* ── Condições no Recetor de Dano ─────────────────────────────────────────
+   A maioria dos ataques que causa dano também impõe uma condição; dá para
+   marcá-las aqui em vez de ir depois ao painel de condições da ficha. */
+.seccao-condicoes-dano {
+  border-top: 1px solid var(--linha);
+  padding-top: 12px;
+}
+.topo-condicoes-dano {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.contador-cond-dano { color: var(--sangue-claro); }
+.painel-escolha-cond-dano {
+  margin-top: 8px;
+  background: var(--bg-2);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio);
+  padding: 10px;
+}
+.busca-cond-dano {
+  width: 100%;
+  background: var(--bg-3);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio);
+  color: var(--txt);
+  font-family: var(--corpo);
+  font-size: 13px;
+  padding: 6px 8px;
+}
+.grelha-cond-dano {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  max-height: 190px;
+  overflow-y: auto;
+}
+.btn-cond-dano {
+  background: var(--bg-3);
+  border: 1px solid var(--linha);
+  border-radius: 4px;
+  color: var(--txt-dim);
+  font-family: var(--corpo);
+  font-size: 12.5px;
+  padding: 4px 9px;
+  cursor: pointer;
+}
+.btn-cond-dano:hover {
+  border-color: var(--btn-borda);
+  color: var(--txt);
+}
+.btn-cond-dano.escolhida {
+  border-color: var(--sangue-claro);
+  background: var(--acento-fundo);
+  color: var(--txt);
+  font-weight: 600;
+}
+
+/* ── Pop-up de subida de NEX / nível ──────────────────────────────────── */
+.subida-salto {
+  font-family: var(--numeros);
+  font-size: 16px;
+  color: var(--sangue-claro);
+  margin-left: 10px;
+}
+.subida-bloco {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.subida-recursos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.subida-recurso {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  background: var(--bg-3);
+  border: 1px solid var(--linha);
+  border-radius: var(--raio);
+  padding: 6px 10px;
+}
+.subida-recurso-nome {
+  font-size: 12px;
+  color: var(--txt-dim);
+  text-transform: uppercase;
+  letter-spacing: .3px;
+}
+.subida-recurso-delta {
+  font-family: var(--numeros);
+  font-size: 15px;
+  font-weight: bold;
+  color: var(--ok);
+}
+.subida-recurso-delta.desce { color: var(--penalidade); }
+.subida-recurso-valores {
+  font-family: var(--numeros);
+  font-size: 12px;
+  color: var(--txt-fraco);
+}
+.subida-via {
+  border-left: 2px solid var(--btn-borda);
+  padding-left: 12px;
+}
+.subida-via-titulo {
+  font-family: var(--display);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: var(--sangue-claro);
+  margin-bottom: 4px;
+}
+.subida-lista {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.subida-poder { margin-bottom: 8px; }
+.subida-poder b { font-size: 14.5px; }
+.subida-poder p {
+  margin: 3px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--txt-dim);
+  white-space: pre-line;
+}

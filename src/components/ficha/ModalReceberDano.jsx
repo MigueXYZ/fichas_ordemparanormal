@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { TIPOS_DANO, TIPOS_DANO_POR_ID, calcularDanoRecebido, repartirResistenciasFicha } from '../../engine/danoRecetor.js';
 import { reducaoDanoTrilhaAtiva } from '../../engine/monstruoso.js';
+import { CONDICOES, CONDICOES_POR_ID } from '../../data/condicoes.js';
 import { IconeLixo, IconeEscudo } from '../Icones.jsx';
 
 export default function ModalReceberDano({
@@ -19,6 +20,29 @@ export default function ModalReceberDano({
   const [rdExtra, setRdExtra] = useState('');
   const [rdCustom, setRdCustom] = useState({});
   const [mostrarAjusteRd, setMostrarAjusteRd] = useState(false);
+
+  // Condições a aplicar junto com o dano — a maioria dos ataques que fazem
+  // dano também impõem alguma coisa (sangrando, atordoado, caído...), e ter
+  // de ir depois ao painel de condições era um passo a mais. Só entram
+  // condições que a ficha ainda não tem.
+  const [condicoesNovas, setCondicoesNovas] = useState([]);
+  const [buscaCondicao, setBuscaCondicao] = useState('');
+  const [mostrarCondicoes, setMostrarCondicoes] = useState(false);
+
+  const condicoesAtuais = useMemo(() => new Set(personagem?.condicoes || []), [personagem?.condicoes]);
+
+  const condicoesFiltradas = useMemo(() => {
+    const termo = buscaCondicao.trim().toLowerCase();
+    return CONDICOES.filter((c) => {
+      if (condicoesAtuais.has(c.id)) return false;
+      if (!termo) return true;
+      return c.nome.toLowerCase().includes(termo) || String(c.descricao || '').toLowerCase().includes(termo);
+    });
+  }, [buscaCondicao, condicoesAtuais]);
+
+  function alternarCondicao(id) {
+    setCondicoesNovas((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
 
   const rdBloqueio = Number(defesas?.bloqueio?.valor || 0);
   const temBloqueioDisponivel = Boolean(defesas?.bloqueio?.disponivel);
@@ -76,9 +100,15 @@ export default function ModalReceberDano({
       }
     }
 
+    if (condicoesNovas.length > 0) {
+      patch.condicoes = [...new Set([...(personagem?.condicoes || []), ...condicoesNovas])];
+    }
+
     aoAplicarDano(patch);
     aoFechar();
   }
+
+  const nadaParaAplicar = resultado.totalBruto === 0 && condicoesNovas.length === 0;
 
   return (
     <div className="modal-fundo" onClick={(e) => e.target === e.currentTarget && aoFechar()}>
@@ -248,6 +278,84 @@ export default function ModalReceberDano({
             </div>
           </div>
 
+          {/* Condições impostas pelo ataque */}
+          <div className="seccao-condicoes-dano">
+            <div className="topo-condicoes-dano">
+              <label className="rotulo-seccao-dano">
+                Condições a aplicar
+                {condicoesNovas.length > 0 && <span className="contador-cond-dano"> ({condicoesNovas.length})</span>}
+              </label>
+              <button
+                type="button"
+                className="btn-link-ajuste-rd"
+                onClick={() => setMostrarCondicoes(!mostrarCondicoes)}
+              >
+                {mostrarCondicoes ? '▲ Fechar lista' : '▼ Escolher condições'}
+              </button>
+            </div>
+
+            {condicoesNovas.length > 0 && (
+              <div className="chips-condicoes" style={{ marginTop: 6 }}>
+                {condicoesNovas.map((id) => {
+                  const c = CONDICOES_POR_ID[id];
+                  if (!c) return null;
+                  return (
+                    <div key={id} className={`chip-condicao tipo-${c.tipo}`} title={c.descricao}>
+                      <span className="nome-condicao">{c.nome}</span>
+                      <button
+                        type="button"
+                        className="btn-remover-chip"
+                        onClick={() => alternarCondicao(id)}
+                        aria-label={`Tirar ${c.nome}`}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {mostrarCondicoes && (
+              <div className="painel-escolha-cond-dano">
+                <input
+                  type="search"
+                  placeholder="Procurar condição (ex: Sangrando, Atordoado, Caído)…"
+                  value={buscaCondicao}
+                  onChange={(e) => setBuscaCondicao(e.target.value)}
+                  className="busca-cond-dano"
+                />
+                <div className="grelha-cond-dano">
+                  {condicoesFiltradas.map((c) => {
+                    const escolhida = condicoesNovas.includes(c.id);
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        className={`btn-cond-dano tipo-${c.tipo}` + (escolhida ? ' escolhida' : '')}
+                        onClick={() => alternarCondicao(c.id)}
+                        title={c.descricao}
+                      >
+                        {c.nome}
+                      </button>
+                    );
+                  })}
+                  {condicoesFiltradas.length === 0 && (
+                    <span className="dica">
+                      {buscaCondicao ? 'Nenhuma condição com esse nome.' : 'A ficha já tem todas as condições.'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {condicoesAtuais.size > 0 && (
+              <div className="dica" style={{ marginTop: 6 }}>
+                Já ativas na ficha: {[...condicoesAtuais].map((id) => CONDICOES_POR_ID[id]?.nome).filter(Boolean).join(', ')}
+              </div>
+            )}
+          </div>
+
           {/* Resumo do Cálculo e Impacto */}
           <div className="card-resumo-calculo-dano">
             <div className="titulo-resumo-dano">Pré-visualização do Impacto</div>
@@ -309,9 +417,11 @@ export default function ModalReceberDano({
               type="button"
               className="btn btn-aplicar-dano"
               onClick={confirmarDano}
-              disabled={resultado.totalBruto === 0}
+              disabled={nadaParaAplicar}
             >
-              Aplicar Dano à Ficha
+              {resultado.totalBruto === 0 && condicoesNovas.length > 0
+                ? `Aplicar ${condicoesNovas.length === 1 ? 'Condição' : 'Condições'} à Ficha`
+                : 'Aplicar Dano à Ficha'}
             </button>
           </div>
         </div>

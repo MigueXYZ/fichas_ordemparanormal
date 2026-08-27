@@ -1,5 +1,5 @@
 {
-  "name": "claudio",
+  "name": "ordo",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -20,5 +20,5 @@
     "@vitejs/plugin-react": "^6.0.5",
     "vite": "^8.2.1"
   },
-  "description": "Claudio — criador de fichas de Ordem Paranormal RPG"
+  "description": "Ordo — criador de fichas de Ordem Paranormal RPG"
 }
