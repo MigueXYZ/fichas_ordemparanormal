@@ -42,7 +42,7 @@ export default function Alteracoes({ aoFechar, nex = 0 }) {
       <div className="modal modal-estreito">
         <div className="modal-topo">
           <h3>Alterações <span className="pagina">(p. 99–102)</span></h3>
-          <button className="fechar" onClick={aoFechar} aria-label="Fechar">✕</button>
+          <button className="fechar" onClick={aoFechar} aria-label="Fechar"></button>
         </div>
 
         <div className="modal-corpo">

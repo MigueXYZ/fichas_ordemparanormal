@@ -24,7 +24,7 @@ export default function ModalDefinicoes({
             Opções do Agente
             {personagem?.nome && <span style={{ color: 'var(--sangue-claro)', fontSize: 16, marginLeft: 8 }}>· {personagem.nome}</span>}
           </h3>
-          <button className="fechar" onClick={aoFechar} aria-label="Fechar">✕</button>
+          <button className="fechar" onClick={aoFechar} aria-label="Fechar"></button>
         </div>
 
         <div className="modal-corpo" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -137,7 +137,7 @@ export default function ModalDefinicoes({
               <div className="card-opcao-def">
                 <div>
                   <b style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15 }}>
-                    <span style={{ color: coracao ? '#f04653' : 'var(--txt-dim)' }}>{coracao ? '♥' : '♡'}</span>
+                    <span style={{ color: coracao ? '#f04653' : 'var(--txt-dim)' }}>{coracao ? '' : ''}</span>
                     Batimento Cardíaco
                   </b>
                   <span className="dica" style={{ display: 'block', marginTop: 2 }}>

@@ -26,7 +26,7 @@ export default function RegrasOpcionais({ regras = {}, aoMudar, aoFechar, nex = 
       <div className="modal modal-estreito">
         <div className="modal-topo">
           <h3>Regras opcionais · Sobrevivendo ao Horror</h3>
-          <button className="fechar" onClick={aoFechar} aria-label="Fechar">✕</button>
+          <button className="fechar" onClick={aoFechar} aria-label="Fechar"></button>
         </div>
 
         <div className="modal-corpo">

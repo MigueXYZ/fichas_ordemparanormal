@@ -1,10 +1,12 @@
 import { calcMaximos, nexEfetivo, calcPericias, calcDtRitual } from './calc.js';
-import { rolarTeste } from './dados.js';
+
 import {
   temComponentesDoElemento, reducaoTatuagemRitualistica,
   armarServirSangue, armarRevelacaoConhecimento, armarDefesaEnergia,
   classeMonstruosa, patamarAtual, elementoAtual,
 } from './monstruoso.js';
+import { rolarTeste, rolarDano } from './dados.js';
+import { efeitosDe } from '../data/rituaisEfeitos.js';
 
 /**
  * O preço de conjurar.
@@ -240,6 +242,12 @@ export function conjurarRitual(personagem, r, { onRolar, index = null, ehReacao 
     Object.assign(patch, patchEstadoRitual(personagem, r, index, 'ativo', true));
   }
 
+  // PV temporários concedidos na conjuração (ex.: Martírio de Sangue, 30)
+  const efRit = efeitosDe(r);
+  if (efRit?.pvTempAoConjurar) {
+    patch.pvTemp = Number(personagem.pvTemp || 0) + Number(efRit.pvTempAoConjurar);
+  }
+
   // Efeitos específicos (ex: Forma Monstruosa)
   if (r.nome === 'Forma Monstruosa') {
     patch.pvTemp = Number(personagem.pvTemp || 0) + 30;
@@ -261,6 +269,17 @@ export function conjurarRitual(personagem, r, { onRolar, index = null, ehReacao 
         : `${limiteSan} ou mais: a mente aguentou`,
   ].filter(Boolean);
 
+  // Leitura mecânica do ritual (ver data/rituaisEfeitos.js). Só os rituais
+  // que lá estão têm efeito automático; os outros continuam a funcionar,
+  // apenas sem somar nada sozinhos.
+  let curaPendente = null;
+  const efeitos = efRit;
+  if (efeitos?.nota) notas.push(efeitos.nota);
+  if (efeitos?.pvTempAoConjurar) notas.push(`+${efeitos.pvTempAoConjurar} PV temporários`);
+  if (efeitos?.ativo && podeFicarAtivo(r)) {
+    notas.push('Efeito ligado na ficha enquanto o ritual estiver Ativo.');
+  }
+
   if (onRolar) {
     onRolar({
       ...teste,
@@ -270,9 +289,47 @@ export function conjurarRitual(personagem, r, { onRolar, index = null, ehReacao 
       notas,
       sofreu: perdeSan,
     });
+
+    // Dano: rola-se logo a seguir ao teste, como rolagem própria, para o
+    // total aparecer separado no histórico em vez de escondido numa nota.
+    if (efeitos?.dano) {
+      // `tipoDano` tem de ser o id de TIPOS_DANO: é ele que pinta o total
+      // com a cor do tipo no painel de rolagens (ver PainelRolagem.jsx).
+      const roloDano = rolarDano({
+        nome: `${r.nome} — dano`,
+        dano: efeitos.dano.formula,
+        tipoDano: efeitos.dano.tipo,
+        extras: efeitos.dano.extras || [],
+      });
+      if (roloDano) onRolar(roloDano);
+      // Hemofagia e afins: quem chama fica a saber que há cura a calcular a
+      // partir do dano que o alvo sofrer de facto.
+      if (efeitos.curaMetadeDoDano && roloDano) curaPendente = roloDano.total;
+    }
+
+    if (efeitos?.cura) {
+      const roloCura = rolarDano({
+        nome: `${r.nome} — cura`,
+        dano: efeitos.cura.formula,
+        tipoDano: 'cura',
+      });
+      if (roloCura) onRolar(roloCura);
+    }
+
+    if (efeitos?.pvTempFormula) {
+      const roloTemp = rolarDano({
+        nome: `${r.nome} — PV temporários`,
+        dano: efeitos.pvTempFormula,
+        tipoDano: 'cura',
+      });
+      if (roloTemp) {
+        onRolar(roloTemp);
+        patch.pvTemp = Number(personagem.pvTemp || 0) + Number(roloTemp.total || 0);
+      }
+    }
   }
 
-  return { patch, teste };
+  return { patch, teste, curaPendente };
 }
 
 /** A DT do teste de Vontade, e a conta em texto para mostrar ao lado do resultado. */

@@ -5,13 +5,34 @@ import { ITENS_AMALDICOADOS } from './itens/amaldicoados.js';
 
 export { ARMAS, ITENS_GERAIS, PROTECOES, ITENS_AMALDICOADOS, GRUPOS_ITENS_GERAIS, MODIFICACOES_PROTECAO, MODIFICACOES_ACESSORIO, MODIFICACOES_GRANADA };
 
-// atenção: alguns itens já trazem um campo `tipo` do livro (ex.: proteção "Leve",
-// item amaldiçoado "Arma"). Guardamos esse valor em `subtipo` para não o perder.
-const comTipo = (lista, tipo) => lista.map((i) => ({ ...i, subtipo: i.tipo ?? null, tipo }));
+function determinarTipoItem(item, tipoPadrao) {
+  if (tipoPadrao === 'arma' || (item.grupo && String(item.grupo).toLowerCase().includes('arma')) || item.pericia === 'pontaria' || item.pericia === 'luta') {
+    return 'arma';
+  }
+  if (tipoPadrao === 'protecao' || item.grupo === 'Proteções' || item.tipo === 'Leve' || item.tipo === 'Pesada' || item.tipo === 'Escudo') {
+    return 'protecao';
+  }
+  if (
+    tipoPadrao === 'amaldicoado' ||
+    item.grupo === 'Itens Paranormais' ||
+    item.grupo === 'Catalisadores Ritualísticos de (Elemento)' ||
+    item.elemento
+  ) {
+    return 'amaldicoado';
+  }
+  return 'geral';
+}
 
-// alguns itens aparecem em mais do que uma lista dos livros (as granadas, por
-// exemplo, estão nas armas e no equipamento geral). Ficamos com a primeira
-// ocorrência e completamos os campos que faltarem com a segunda.
+const comTipo = (lista, tipoPadrao) =>
+  lista.map((i) => {
+    const tipoFinal = determinarTipoItem(i, tipoPadrao);
+    return {
+      ...i,
+      subtipo: i.tipo ?? null,
+      tipo: tipoFinal,
+    };
+  });
+
 function juntar(...listas) {
   const porId = new Map();
   for (const item of listas.flat()) {
@@ -34,22 +55,16 @@ export const ITENS = juntar(
   comTipo(ARMAS, 'arma'),
   comTipo(PROTECOES, 'protecao'),
   comTipo(ITENS_GERAIS, 'geral'),
-  // As entradas com `maldicao: true` são só definições de maldição
-  // (modificadores para aplicar a uma arma/proteção/acessório já existente,
-  // ver MALDICOES_ARMAS em data/maldicoes.js e o seletor em EditorArma.jsx) —
-  // não são itens que se possam meter no inventário sozinhos, por isso ficam
-  // de fora do catálogo geral (senão apareciam nos seletores de "Armas do
-  // Catálogo"/"Itens do Catálogo" como se fossem armas/itens normais).
   comTipo(ITENS_AMALDICOADOS.filter((i) => i.maldicao !== true), 'amaldicoado'),
 );
 
 export const ITENS_POR_ID = Object.fromEntries(ITENS.map((i) => [i.id, i]));
 
 export const TIPOS_ITEM = [
-  { id: 'arma', nome: 'Armas' },
-  { id: 'protecao', nome: 'Proteções' },
   { id: 'geral', nome: 'Equipamento Geral' },
-  { id: 'amaldicoado', nome: 'Itens Amaldiçoados' },
+  { id: 'protecao', nome: 'Proteções' },
+  { id: 'amaldicoado', nome: 'Itens Amaldiçoados e Paranormais' },
+  { id: 'arma', nome: 'Armas' },
 ];
 
 export const TIPOS_DANO = [
@@ -64,10 +79,6 @@ export const TIPOS_DANO = [
   { id: 'conhecimento', nome: 'Conhecimento', pdf: 'conhecimento' },
 ];
 
-// As 5 categorias de proficiência oficiais do livro (armas e proteções) —
-// usadas como checkboxes no campo "Proficiências" da ficha, em vez de texto
-// livre. As mesmas etiquetas já vêm nos catálogos de classe (ex.:
-// data/classes/combatente.js: `proficiencias: ['Armas simples', ...]`).
 export const PROFICIENCIAS_OP = ['Armas simples', 'Armas táticas', 'Armas pesadas', 'Proteções leves', 'Proteções pesadas'];
 
 export function itensFiltrados({ tipo = null, texto = '' } = {}) {

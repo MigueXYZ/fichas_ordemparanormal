@@ -75,7 +75,7 @@ export default function PainelCondicoes({ condicoes = [], aoMudar }) {
                 onClick={() => alternarCondicao(c.id)}
                 aria-label={`Remover condição ${c.nome}`}
               >
-                ✕
+                
               </button>
             </div>
           ))}
@@ -87,7 +87,7 @@ export default function PainelCondicoes({ condicoes = [], aoMudar }) {
           <div className="modal modal-condicoes">
             <div className="modal-topo">
               <h3>Condições do Personagem</h3>
-              <button className="fechar" onClick={() => setModalAberto(false)} aria-label="Fechar">✕</button>
+              <button className="fechar" onClick={() => setModalAberto(false)} aria-label="Fechar"></button>
             </div>
 
             <div className="modal-corpo">
@@ -129,7 +129,7 @@ export default function PainelCondicoes({ condicoes = [], aoMudar }) {
                       </div>
                       <p className="descricao">{c.descricao}</p>
                       <div className="estado-card">
-                        {ativa ? <span className="marcado">✓ Ativa (clique para remover)</span> : <span className="desmarcado">+ Clique para aplicar</span>}
+                        {ativa ? <span className="marcado">Ativa (clique para remover)</span> : <span className="desmarcado">+ Clique para aplicar</span>}
                       </div>
                     </div>
                   );

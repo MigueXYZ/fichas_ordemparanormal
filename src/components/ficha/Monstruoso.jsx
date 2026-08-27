@@ -153,7 +153,7 @@ export function MonstruosoBotao({ personagem, setPersonagem, onRolar }) {
             <div className="modal-topo">
               <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>Etapa Ritualística — {elemento}</h3>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <button type="button" onClick={() => setModal('confirmarMudarElemento')} title="Trocar de elemento (não é suposto — só para engano ou exceção do mestre)" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, color: 'var(--txt-fraco)' }}>✎</button>
+                <button type="button" onClick={() => setModal('confirmarMudarElemento')} title="Trocar de elemento (não é suposto — só para engano ou exceção do mestre)" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, color: 'var(--txt-fraco)' }}></button>
                 <button className="fechar" onClick={() => setModal(null)}>×</button>
               </div>
             </div>
@@ -194,7 +194,7 @@ export function MonstruosoBotao({ personagem, setPersonagem, onRolar }) {
             <div className="modal-topo">
               <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>Desativar Etapa de Hoje</h3>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <button type="button" onClick={() => setModal('confirmarMudarElemento')} title="Trocar de elemento (não é suposto — só para engano ou exceção do mestre)" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, color: 'var(--txt-fraco)' }}>✎</button>
+                <button type="button" onClick={() => setModal('confirmarMudarElemento')} title="Trocar de elemento (não é suposto — só para engano ou exceção do mestre)" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, color: 'var(--txt-fraco)' }}></button>
                 <button className="fechar" onClick={() => setModal(null)}>×</button>
               </div>
             </div>
@@ -996,7 +996,7 @@ export function MonstruosoPainel({ personagem, setPersonagem, onRolar }) {
                                   {r.nome || 'Ritual'}
                                 </strong>
                                 {marcado ? (
-                                  <span className="pill" style={{ borderColor: cor, color: cor, fontSize: 10 }}>✦ NA PELE</span>
+                                  <span className="pill" style={{ borderColor: cor, color: cor, fontSize: 10 }}> NA PELE</span>
                                 ) : (
                                   <button
                                     type="button"

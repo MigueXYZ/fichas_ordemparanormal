@@ -1,4 +1,5 @@
-import { Peer } from 'peerjs';
+import PeerPkg from 'peerjs';
+const Peer = PeerPkg?.Peer || PeerPkg;
 
 export const CHAVE_CONFIG = 'op-ficha:overlay:v1';
 

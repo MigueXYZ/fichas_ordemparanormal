@@ -69,7 +69,7 @@ export default function ModalDescanso({
           <h3 style={{ margin: 0, fontFamily: 'var(--display)', fontSize: 20 }}>
             Descanso & Interlúdio
           </h3>
-          <button className="fechar" onClick={aoFechar} aria-label="Fechar">✕</button>
+          <button className="fechar" onClick={aoFechar} aria-label="Fechar"></button>
         </div>
 
         {/* Abas do Modal */}

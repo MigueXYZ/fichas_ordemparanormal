@@ -1,0 +1,16 @@
+import React`
+            idx_start = text.find("import React")
+            if idx_start != -1:
+                idx_end = text.find("export function AbaDescricao")
+                if idx_end != -1:
+                    idx_final = text.find("}", idx_end + 300)
+                    print(f"Start: {idx_start}, End: {idx_final}")
+                    sub = text[idx_start:idx_final+1]
+                    sub = sub.replace(\'\\
+\', \'\
+\').replace(\'\\"\', \'"\').replace(\'\\\\\', \'\\\')
+                    with open(r\'d:\Claudio\claudio\src\components\ficha\Abas.jsx.bak\', \'w\', encoding=\'utf-8\') as out:
+                        out.write(sub)
+                    print("Saved to Abas.jsx.bak! Length:", len(sub))
+                    break
+', 'Description': 'Extract exact JSON from transcript', 'Overwrite': True, 'TargetFile': 'C:\Users\azaza\.gemini\antigravity\brain\73d4facd-ee77-4d88-9263-ed34027dfb92\scratch\extract_exact_json.py', 'toolAction': 'Writing extract_exact_json.py', 'toolSummary': 'Write extract_exact_json.py'}

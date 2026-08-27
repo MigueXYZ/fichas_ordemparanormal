@@ -103,7 +103,7 @@ export default function PainelMorrendo({ personagem, nex, onRolar, aoMudar }) {
         {popupAberto && (
           <div className="modal-fundo" onClick={(e) => e.target === e.currentTarget && setPopupAberto(false)}>
             <div className="modal modal-popup-morrendo">
-              <div className="popup-morrendo-icone">☠</div>
+              <div className="popup-morrendo-icone"></div>
               <h3>PV chegou a 0!</h3>
               <p>
                 O agente cai indefeso e inconsciente. Se entrar em Morrendo e não for socorrido, morre ao
@@ -174,7 +174,7 @@ export default function PainelMorrendo({ personagem, nex, onRolar, aoMudar }) {
               className="popup-morte-logo"
               onError={(e) => { e.currentTarget.style.display = 'none'; }}
             />
-            <div className="popup-morte-icone">☠</div>
+            <div className="popup-morte-icone"></div>
             <h3>{(personagem.nome || 'O agente').trim()} caiu em campo</h3>
             <p>
               Mais um serviço prestado contra o Inefável — pago com a própria vida. Que o que foi descoberto,

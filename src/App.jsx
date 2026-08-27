@@ -4,6 +4,7 @@ import Wizard from './components/wizard/Wizard.jsx';
 import Ficha from './components/ficha/Ficha.jsx';
 import PainelRolagem from './components/PainelRolagem.jsx';
 import Fundo from './components/Fundo.jsx';
+import { lerTema, guardarTema, aplicarTema, lerFundoEscuro, guardarFundoEscuro, aplicarFundoEscuro } from './engine/tema.js';
 import EspacoToken from './components/EspacoToken.jsx';
 import HistoricoRolagens from './components/HistoricoRolagens.jsx';
 import PainelOverlay from './components/PainelOverlay.jsx';
@@ -23,6 +24,22 @@ import { lerLayout, guardarLayout } from './overlay/layoutConfig.js';
 
 export default function App() {
   const [vista, setVista] = useState('inicio'); // inicio | wizard | ficha | mestre
+  // Tema (pele por elemento) — global e guardado no browser. Aplicado no
+  // <html> por `aplicarTema`, que é onde o CSS declara a paleta.
+  const [tema, setTemaEstado] = useState(lerTema);
+  useEffect(() => { aplicarTema(tema); }, [tema]);
+  const trocarTema = useCallback((id) => {
+    setTemaEstado(aplicarTema(id));
+    guardarTema(id);
+  }, []);
+
+  // Fundo escuro: baixa a decoração (sigilos, entidade, roda, brasas, halos)
+  // para quem tenha dificuldade em ler por cima dela. Não troca a paleta.
+  const [fundoEscuro, setFundoEscuro] = useState(lerFundoEscuro);
+  useEffect(() => { aplicarFundoEscuro(fundoEscuro); }, [fundoEscuro]);
+  const alternarFundoEscuro = useCallback(() => {
+    setFundoEscuro((v) => { guardarFundoEscuro(!v); return !v; });
+  }, []);
   const [personagem, setPersonagem] = useState(null);
   const [rolagens, setRolagens] = useState([]);
   const [erro, setErro] = useState(null);
@@ -53,6 +70,14 @@ export default function App() {
     if (vista !== 'wizard') return undefined;
     document.body.classList.add('sem-scroll');
     return () => document.body.classList.remove('sem-scroll');
+  }, [vista]);
+
+  // No ecrã inicial o mosaico de sigilos abre um buraco por cima do bloco do
+  // título (ver `body.no-inicio` em styles.css) — é a zona mais carregada da
+  // app e o padrão por trás tornava-a suja. Fora do início não se aplica.
+  useEffect(() => {
+    document.body.classList.toggle('no-inicio', vista === 'inicio');
+    return () => document.body.classList.remove('no-inicio');
   }, [vista]);
 
   const [som, setSom] = useState(somLigado);
@@ -185,7 +210,7 @@ export default function App() {
 
   return (
     <div className={'app' + (vista === 'wizard' ? ' app-wizard-fixo' : '')}>
-      <Fundo />
+      <Fundo tema={tema} />
       {comToken && (
         <EspacoToken
           token={personagem.token || null}
@@ -217,6 +242,26 @@ export default function App() {
         )}
 
         <div className="acoes">
+          {/* Fundo escuro — acessibilidade. Fica FORA do ternário de vistas
+              para estar sempre visível na barra do topo, tanto no ecrã
+              inicial como dentro de uma ficha ou do modo mestre. Só ícone,
+              porque na ficha a barra já leva Overlay, Histórico e
+              Definições. */}
+          <button
+            className={'btn ghost sm btn-fundo-escuro' + (fundoEscuro ? ' ativo' : '')}
+            title={fundoEscuro
+              ? 'Fundo escuro ligado — o cenário está esbatido. Clica para o trazer de volta.'
+              : 'Esbate o fundo (sigilos, entidade, brasas) para o texto se ler melhor'}
+            aria-pressed={fundoEscuro}
+            aria-label="Esbater o fundo"
+            onClick={alternarFundoEscuro}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+              <circle cx="8" cy="8" r="6.4" fill="none" stroke="currentColor" strokeWidth="1.4" />
+              <path d="M8 1.6 A6.4 6.4 0 0 1 8 14.4 Z" fill="currentColor" />
+            </svg>
+          </button>
+
           {vista !== 'inicio' ? (
             <>
               {guardadoEm && (
@@ -244,9 +289,6 @@ export default function App() {
               >
                 <IconeHistorico size={16} />
                 <span className="texto-btn-historico">Histórico</span>
-                {Boolean(personagem?.historico?.length) && (
-                  <span className="badge-contagem">{personagem.historico.length}</span>
-                )}
               </button>
 
               {/* Botão Definições / Opções do Personagem */}
@@ -266,14 +308,27 @@ export default function App() {
                 title={som ? 'Desligar som dos dados' : 'Ligar som dos dados'}
                 onClick={() => setSom(alternarSom())}
               >
-                {som ? '♪ dados' : '♪ mudo'}
+                {som ? 'Som ligado' : 'Som mudo'}
               </button>
               <button
-                className={'btn ghost sm' + (coracao ? ' a-bater' : '')}
-                title={coracao ? 'Desligar o batimento cardíaco' : 'Ligar o batimento cardíaco'}
+                className={'btn ghost sm btn-coracao' + (coracao ? ' a-bater' : ' desligado')}
+                title={coracao ? 'Desligar o batimento cardíaco (som e pulso)' : 'Ligar o batimento cardíaco (som e pulso)'}
                 onClick={() => setCoracao(alternarCoracao())}
+                aria-label="Batimento cardíaco"
               >
-                {coracao ? '♥' : '♡'}
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill={coracao ? 'var(--sangue-claro)' : 'none'}
+                  stroke={coracao ? 'var(--sangue-claro)' : 'currentColor'}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="icone-coracao-svg"
+                >
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                </svg>
               </button>
             </>
           )}
@@ -282,7 +337,7 @@ export default function App() {
 
       {erro && <div className="container" style={{ paddingBottom: 0 }}><div className="aviso"><strong>Erro:</strong> {erro}</div></div>}
 
-      {vista === 'inicio' && <Inicio aoCriar={criar} aoAbrir={abrir} aoAbrirMestre={abrirMestre} />}
+      {vista === 'inicio' && <Inicio aoCriar={criar} aoAbrir={abrir} aoAbrirMestre={abrirMestre} tema={tema} aoTrocarTema={trocarTema} />}
       {vista === 'wizard' && personagem && (
         <Wizard personagem={personagem} setPersonagem={setPersonagem} onRolar={rolar} onFinalizar={() => setVista('ficha')} onSair={sairDoWizard} />
       )}

@@ -5,6 +5,7 @@ import { listarAgentes, apagarAgente, apagarVariosAgentes, duplicarAgente, impor
 import EditorTags from './EditorTags.jsx';
 import { IconeCopiar, IconeLixo, IconeTag } from './Icones.jsx';
 import { ELEMENTOS, ORDEM_ELEMENTOS } from '../data/rituais.js';
+import { TEMAS_POR_ID, TEMA_PADRAO } from '../data/temas.js';
 
 function descrever(a) {
   if (a.tipo === 'ameaca') return [`VD ${a.vd}`, `Defesa ${a.defesa}`, `${a.pv} PV`].join(' · ');
@@ -20,7 +21,7 @@ function normalizar(texto) {
     .replace(/[\u0300-\u036f]/g, '');
 }
 
-export default function Inicio({ aoCriar, aoAbrir, aoAbrirMestre }) {
+export default function Inicio({ aoCriar, aoAbrir, aoAbrirMestre, tema = TEMA_PADRAO, aoTrocarTema }) {
   const [lista, setLista] = useState(listarAgentes);
   const [busca, setBusca] = useState('');
   const [tagSelecionada, setTagSelecionada] = useState(null);
@@ -154,14 +155,28 @@ export default function Inicio({ aoCriar, aoAbrir, aoAbrirMestre }) {
       <div className="assinatura">Claudio</div>
       <h1 className="marca">Ordem<em>Paranormal</em></h1>
       <div className="sub">Ordo Realitas · Ficha de Agente</div>
+      {/* Os sigilos trocam a pele da app. Só os elementos com tema feito é
+          que são botões; os outros ficam como estavam, decorativos. */}
       <div className="elementos">
-        {ORDEM_ELEMENTOS.map((id) => ELEMENTOS.find((e) => e.id === id)).filter(Boolean).map((e) => (
-          <span
-            key={e.id}
-            title={e.nome}
-            style={{ color: e.cor, '--sigilo': `url(/img/sigilo-${e.id}.png)` }}
-          />
-        ))}
+        {ORDEM_ELEMENTOS.map((id) => ELEMENTOS.find((e) => e.id === id)).filter(Boolean).map((e) => {
+          const temTema = Boolean(TEMAS_POR_ID[e.id]?.pronto);
+          const ativo = tema === e.id;
+          const estilo = { color: e.cor, '--sigilo': `url(/img/sigilo-${e.id}.png)` };
+          if (!temTema) {
+            return <span key={e.id} className="sigilo-por-fazer" title={`${e.nome} — tema por fazer`} style={estilo} />;
+          }
+          return (
+            <button
+              key={e.id}
+              type="button"
+              className={'sigilo-tema' + (ativo ? ' ativo' : '')}
+              title={ativo ? `${e.nome} — tema atual` : `Vestir a app de ${e.nome}`}
+              aria-pressed={ativo}
+              onClick={() => aoTrocarTema?.(e.id)}
+              style={estilo}
+            />
+          );
+        })}
       </div>
 
       {erro && <div className="aviso"><strong>Erro:</strong> {erro}</div>}
@@ -293,7 +308,7 @@ export default function Inicio({ aoCriar, aoAbrir, aoAbrirMestre }) {
                     alternarSelecao(a.id);
                   }}
                 >
-                  {estaSelecionado ? '✓' : ''}
+                  {estaSelecionado ? '' : ''}
                 </div>
               )}
               <div className="foto" style={a.imagem ? { backgroundImage: `url(${a.imagem})` } : undefined}>

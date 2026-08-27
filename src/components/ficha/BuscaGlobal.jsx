@@ -68,7 +68,7 @@ export default function BuscaGlobal({ aoFechar }) {
           ) : (
             <h3>Busca Rápida <span className="dica-atalho">Ctrl+K</span></h3>
           )}
-          <button className="fechar" onClick={aoFechar} aria-label="Fechar">✕</button>
+          <button className="fechar" onClick={aoFechar} aria-label="Fechar"></button>
         </div>
 
         {!entrada && (

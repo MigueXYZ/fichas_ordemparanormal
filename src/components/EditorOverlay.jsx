@@ -186,7 +186,7 @@ export default function EditorOverlay({ layoutInicial, personagem, aoGuardar, ao
       {/* Topo com Presets, Importar/Exportar e Botões de Guardar */}
       <div className="editor-topo">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span className="editor-topo-titulo">🎨 Editor Visual de Overlay (720p)</span>
+          <span className="editor-topo-titulo">Editor Visual de Overlay (720p)</span>
           <select
             style={{ width: 'auto', padding: '6px 12px', fontSize: 13 }}
             onChange={(e) => {
@@ -214,7 +214,7 @@ export default function EditorOverlay({ layoutInicial, personagem, aoGuardar, ao
             disabled={widgetsOcultos.length === 0}
           >
             <option value="" disabled>
-              {widgetsOcultos.length === 0 ? '✓ Todos os componentes ativos' : '+ Adicionar Componente...'}
+              {widgetsOcultos.length === 0 ? 'Todos os componentes ativos' : '+ Adicionar Componente...'}
             </option>
             {widgetsOcultos.map((w) => (
               <option key={w.id} value={w.id}>+ {w.nome}</option>
@@ -303,7 +303,7 @@ export default function EditorOverlay({ layoutInicial, personagem, aoGuardar, ao
                   {dados.foto ? (
                     <img src={dados.foto} alt="" className="overlay-avatar" style={{ borderRadius }} />
                   ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', color: '#666', fontSize: 32 }}>👁️</div>
+                    <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', color: '#666', fontSize: 32 }}></div>
                   )}
                 </div>
               </div>

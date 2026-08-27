@@ -73,7 +73,7 @@ export default function EditorArma({ arma, aoGuardar, aoFechar }) {
       <div className="modal">
         <div className="modal-topo">
           <h3>{arma?.nome ? `Editar — ${arma.nome}` : 'Nova arma'}</h3>
-          <button className="fechar" onClick={aoFechar} aria-label="Fechar">✕</button>
+          <button className="fechar" onClick={aoFechar} aria-label="Fechar"></button>
         </div>
 
         <div className="modal-corpo">
@@ -177,7 +177,7 @@ export default function EditorArma({ arma, aoGuardar, aoFechar }) {
                       style={{ fontSize: 12, color: 'inherit' }}
                       onClick={() => set({ danoExtra: a.danoExtra.filter((_, j) => j !== i) })}
                     >
-                      ✕
+                      
                     </button>
                   </span>
                 );
@@ -205,11 +205,11 @@ export default function EditorArma({ arma, aoGuardar, aoFechar }) {
               >
                 <option value="">Tipo (Padrão/Físico)</option>
                 <optgroup label="Elementos Paranormais">
-                  <option value="Sangue">🩸 Sangue</option>
-                  <option value="Morte">💀 Morte</option>
-                  <option value="Energia">⚡ Energia</option>
-                  <option value="Conhecimento">👁️ Conhecimento</option>
-                  <option value="Medo">🕯️ Medo</option>
+                  <option value="Sangue">Sangue</option>
+                  <option value="Morte">Morte</option>
+                  <option value="Energia"> Energia</option>
+                  <option value="Conhecimento">Conhecimento</option>
+                  <option value="Medo">Medo</option>
                 </optgroup>
                 <optgroup label="Físico & Outros">
                   <option value="Balístico">Balístico</option>

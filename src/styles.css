@@ -14,6 +14,10 @@
 @font-face { font-family: 'CrackBold'; src: url('/fontes/CFCrackAndBold.ttf') format('truetype'); font-display: swap; }
 
 :root {
+  /* ---- TEMA. Tudo o que muda de elemento para elemento vive aqui e é
+     redefinido por [data-tema="..."] mais abaixo. As cores semânticas
+     (vida, sanidade, esforço, ok, warn) NÃO mudam: são leitura de ficha,
+     não decoração. */
   --preto: #070506;
   --bg: #0b0708;
   --bg-2: #120c0e;
@@ -30,7 +34,59 @@
   --sangue: #c01521;
   --sangue-claro: #e8323f;
   --sangue-escuro: #6d0d15;
-  --sangue-veu: rgba(192, 21, 33, .12);
+  --sangue-vivo: #f04653;
+  --sangue-suave: #e0616c;
+  /* trios RGB para os rgba(...) — sem isto, cada transparência ficava com o
+     vermelho escrito à mão e não trocava de tema */
+  --sangue-rgb: 192, 21, 33;
+  --sangue-claro-rgb: 232, 50, 63;
+  --sangue-vivo-rgb: 240, 70, 83;
+  --linha-rgb: 58, 34, 38;
+  --sangue-veu: rgba(var(--sangue-rgb), .12);
+
+  /* halos do fundo, mosaico de sigilos e brasas a subir */
+  --halo-topo: rgba(140, 12, 20, .22);
+  --halo-baixo: rgba(90, 8, 14, .18);
+  --sigilos-fundo: url('/img/sigilos-sangue.png');
+  --sigilos-tamanho: 620px;
+  --sigilos-opacidade: .11;
+  --brasa-nucleo: #ff7b3d;
+  --brasa-orla: #c01521;
+  --brasa-halo: rgba(232, 90, 40, .55);
+
+  /* o pulsar do coração (camada .pulso, atrás de tudo) */
+  --pulso-1: rgba(176, 14, 26, .38);
+  --pulso-2: rgba(140, 12, 20, .30);
+
+  /* contorno dos botões e fundos muito escuros tingidos pelo acento */
+  /* texto por cima do acento (botões cheios). Precisa de ser variável: no
+     tema Conhecimento o acento é ouro, e branco sobre ouro dá 2.6:1 — não
+     se lê. Lá dentro passa a castanho muito escuro. */
+  --btn-txt: #fff;
+
+  --btn-borda: #7d1119;
+  --btn-borda-suave: #5a2126;
+  --acento-fundo: #2a1418;
+  --acento-fundo-2: #170a0a;
+
+  /* a "chapa" dos botões +/− e « » das barras de recurso, e a calha onde
+     assentam — eram todos castanhos-avermelhados escritos à mão */
+  --chapa-1: #241619;
+  --chapa-2: #150d0f;
+  --chapa-hover-1: #47191f;
+  --chapa-hover-2: #2a1013;
+  --chapa-txt: #e6d9d4;
+  --chapa-borda: #241a1c;
+  --chapa-fundo: #0a0708;
+  --barra-fundo: #150c0e;
+
+  /* PENALIDADE — vermelho semântico, IGUAL em todos os temas. Um valor
+     penalizado tem de continuar a ler-se como mau: se seguisse o acento,
+     no tema Morte ficava verde, indistinguível de um bónus. Fica ao lado
+     das outras cores de leitura (vida, sanidade, esforço...), que também
+     não mudam de pele. */
+  --penalidade: #e8434f;
+  --penalidade-rgb: 232, 67, 79;
 
   --vida: #b3202e;
   --sanidade: #7a3ea8;
@@ -46,6 +102,376 @@
   --display: 'Elite', 'BlurLight', Georgia, serif;
   --corpo: 'BlurLight', 'Elite', -apple-system, 'Segoe UI', sans-serif;
   --numeros: 'Minion', Georgia, serif;
+
+  /* ---- MÁSCARAS DO MOSAICO DE SIGILOS ----------------------------------
+     Três camadas cruzadas em `body::before` com `mask-composite: intersect`.
+     Vivem AQUI, no :root principal, e não num :root mais abaixo: os blocos
+     [data-tema] têm a mesma especificidade que :root, por isso um :root
+     declarado depois deles ganharia e anularia os temas.
+     NUNCA usar `none` como camada — com `intersect`, `none` apaga tudo. O
+     "não corta nada" é um gradiente preto sólido. */
+
+  /* buraco à volta do token do agente — redefinido acima de 1550px */
+  --sigilos-mascara: linear-gradient(#000, #000);
+
+  /* lado direito: sem corte nenhum — os sigilos passam por cima da entidade
+     nos cinco temas. Chegou a haver aqui um esbatimento a partir dos 56% da
+     largura (a máscara original da app); o Rodrigo pediu para o tirar. A
+     camada fica declarada, e não removida, para voltar a ser fácil cortar
+     um lado se algum tema vier a precisar. */
+  --sigilos-lado-direito: linear-gradient(#000, #000);
+
+  /* Buraco por cima da ENTIDADE, no canto inferior direito. Serve para tirar
+     os sigilos de cima da figura sem esvaziar o resto do lado direito — é a
+     diferença entre "não há sigilos naquela metade" e "não há sigilos em
+     cima do desenho". A elipse cobre a caixa do `.criatura` (encostada a
+     `right: 0; bottom: 0`, `min(88vh, 820px)` de alto por até 34vw).
+     Ligado por omissão (tema Sangue, cuja arte é densa e ficava suja); os
+     outros temas anulam-no no seu bloco. */
+  --sigilos-entidade: radial-gradient(
+    ellipse 19vw 40vh at 83% 64%,
+    transparent 0,
+    transparent 52%,
+    rgba(0, 0, 0, .55) 78%,
+    #000 100%
+  );
+
+  /* buraco no bloco do título — só no ecrã inicial (`body.no-inicio`) */
+  --sigilos-topo: linear-gradient(#000, #000);
+
+  /* o véu que escurece a barra do topo — o preto do tema, em RGB */
+  --topbar-rgb: 16, 10, 12;
+
+  /* opacidades da decoração, para o botão de fundo escuro as poder baixar */
+  --roda-opacidade: .10;
+  --brasas-opacidade: 1;
+}
+
+/* ============================================================
+   TEMA: MORTE  —  preto e osso, com verde lodo por acento
+   Só as variáveis de tema mudam (fundo, linhas, texto, acento, mosaico e
+   brasas). As cores de leitura da ficha — vida, sanidade, esforço,
+   determinação, ok e warn — ficam iguais em todos os temas de propósito:
+   são informação, não decoração.
+   ============================================================ */
+[data-tema="morte"] {
+  --topbar-rgb: 12, 13, 10;
+
+  /* nestes temas os sigilos passam por cima da entidade (só o Sangue os corta) */
+  --sigilos-entidade: linear-gradient(#000, #000);
+
+  /* Cinza e papel de jornal — cores amostradas da arte nova que o Rodrigo
+     mandou (a criatura coberta de recortes): preto #060605, escuro #252622,
+     meio #4b4b45, claro #77786d, luz #a5a698. É um cinza com laivo de
+     azeitona frio, não um cinza neutro — é isso que lhe dá o ar de papel
+     velho em vez de betão.
+     Substitui a paleta de "lodo verde-água" anterior, que ele não gostou. */
+  --preto: #060605;
+  --bg: #0f100e;
+  --bg-2: #171815;
+  --bg-3: #1f211d;
+  --bg-4: #2b2d27;
+
+  --linha: #3a3c35;
+  --linha-forte: #57594e;
+  --linha-rgb: 58, 60, 53;
+
+  --txt: #edefe4;
+  --txt-dim: #abada0;
+  --txt-fraco: #7d7f72;
+
+  /* o acento do tema continua a chamar-se --sangue em toda a app: é a
+     variável do "cor da casa", não o elemento Sangue. Aqui é cinza-papel. */
+  --sangue: #6d7368;
+  --sangue-claro: #a8b0a2;
+  --sangue-escuro: #2c2d28;
+  --sangue-vivo: #cdd4c6;
+  --sangue-suave: #878e81;
+  --sangue-rgb: 109, 115, 104;
+  --sangue-claro-rgb: 168, 176, 162;
+  --sangue-vivo-rgb: 205, 212, 198;
+  --sangue-veu: rgba(var(--sangue-rgb), .14);
+
+  --halo-topo: rgba(109, 115, 104, .20);
+  --halo-baixo: rgba(44, 45, 40, .24);
+
+  --sigilos-fundo: url('/img/sigilos-morte.png');
+  --sigilos-tamanho: 620px;
+  --sigilos-opacidade: .17;
+
+  --criatura-opacidade: .46;
+
+  /* o que sobe do chão é cinza de papel queimado */
+  --brasa-nucleo: #dfe4d6;
+  --brasa-orla: #6d7368;
+  --brasa-halo: rgba(168, 176, 162, .40);
+
+  --pulso-1: rgba(109, 115, 104, .34);
+  --pulso-2: rgba(60, 64, 56, .30);
+
+  --btn-borda: #878e81;
+  --btn-borda-suave: #454a41;
+  --acento-fundo: #23261f;
+  --acento-fundo-2: #12140f;
+
+  --chapa-1: #292b25;
+  --chapa-2: #171914;
+  --chapa-hover-1: #5c6357;
+  --chapa-hover-2: #1e211b;
+  --chapa-txt: #e6e8dc;
+  --chapa-borda: #282a24;
+  --chapa-fundo: #0b0c0a;
+  --barra-fundo: #111310;
+}
+
+
+
+
+
+/* ============================================================
+   TEMA: CONHECIMENTO  —  ouro e osso
+   Cores amostradas da arte do anjo: sombra #16120b, escuro #453f32,
+   meio #80775e, claro #c1b189, luz #eee4bf / #ffefb9. Fundo castanho
+   muito escuro (não preto neutro) para o ouro ler como luz e não como
+   amarelo. O acento é ouro, por isso o texto dos botões cheios inverte.
+   ============================================================ */
+[data-tema="conhecimento"] {
+  --topbar-rgb: 18, 15, 8;
+
+  /* nestes temas os sigilos passam por cima da entidade (só o Sangue os corta) */
+  --sigilos-entidade: linear-gradient(#000, #000);
+
+
+  --preto: #0b0904;
+  --bg: #16130d;
+  --bg-2: #201b12;
+  --bg-3: #2a2418;
+  --bg-4: #383021;
+
+  --linha: #4a412c;
+  --linha-forte: #6d5e3d;
+  --linha-rgb: 74, 65, 44;
+
+  --txt: #f5efdd;
+  --txt-dim: #c6ba97;
+  --txt-fraco: #93876a;
+
+  /* o acento do tema continua a chamar-se --sangue em toda a app: é a
+     variável do "cor da casa", não o elemento Sangue. Aqui é ouro. */
+  --sangue: #d9a63a;
+  --sangue-claro: #f2c162;
+  --sangue-escuro: #6b4e14;
+  --sangue-vivo: #feeeb9;
+  --sangue-suave: #b38e4b;
+  --sangue-rgb: 217, 166, 58;
+  --sangue-claro-rgb: 242, 193, 98;
+  --sangue-vivo-rgb: 254, 238, 185;
+  --sangue-veu: rgba(var(--sangue-rgb), .14);
+
+  /* branco sobre ouro não se lê (2.6:1) — o texto dos botões escurece */
+  --btn-txt: #241b05;
+
+  --halo-topo: rgba(217, 166, 58, .26);
+  --halo-baixo: rgba(107, 78, 20, .24);
+  /* sigilos brancos, não dourados: o ouro sobre fundo castanho escuro
+     desaparecia. Brancos leem-se como luz e aguentam mais opacidade. */
+  --sigilos-fundo: url('/img/sigilos-conhecimento.png');
+  --sigilos-tamanho: 620px;
+  --sigilos-opacidade: .34;
+
+  /* o anjo é prateado e ouro claro; sobre este fundo já tem presença */
+  --criatura-opacidade: .38;
+
+  /* o que sobe do chão são fagulhas de luz */
+  --brasa-nucleo: #fff4cf;
+  --brasa-orla: #f2c162;
+  --brasa-halo: rgba(242, 193, 98, .5);
+
+  /* o pulsar do coração passa a ouro */
+  --pulso-1: rgba(217, 166, 58, .40);
+  --pulso-2: rgba(107, 78, 20, .32);
+
+  --btn-borda: #f2c162;
+  --btn-borda-suave: #7d6425;
+  --acento-fundo: #302509;
+  --acento-fundo-2: #191304;
+
+  --chapa-1: #332c1e;
+  --chapa-2: #1e1a11;
+  --chapa-hover-1: #9a7a29;
+  --chapa-hover-2: #2c2411;
+  --chapa-txt: #f0e7cd;
+  --chapa-borda: #332c1c;
+  --chapa-fundo: #0e0b06;
+  --barra-fundo: #14100a;
+}
+
+/* ============================================================
+   TEMA: ENERGIA  —  neon
+   Cores amostradas da arte: fundo #2e0552 -> #4e1a79, corpo #8445b4,
+   brilho #d177f3, neon #ff7dff; e da figura, o azul #46a1ff, o magenta
+   #ff2cfa e o ciano #e0fafc.
+   É o único tema com MAIS DO QUE UMA cor a trabalhar ao mesmo tempo: o
+   acento é violeta, mas as brasas, os halos e o pulsar cruzam magenta,
+   ciano e azul elétrico — é o que faz ler como neon e não como "roxo".
+   ============================================================ */
+[data-tema="energia"] {
+  --topbar-rgb: 16, 8, 22;
+
+  /* nestes temas os sigilos passam por cima da entidade (só o Sangue os corta) */
+  --sigilos-entidade: linear-gradient(#000, #000);
+
+
+  --preto: #0a0413;
+  --bg: #130824;
+  --bg-2: #1d0f33;
+  --bg-3: #271542;
+  --bg-4: #351d57;
+
+  --linha: #48276f;
+  --linha-forte: #6d3ea3;
+  --linha-rgb: 72, 39, 111;
+
+  --txt: #f3eaff;
+  --txt-dim: #c0a9de;
+  --txt-fraco: #8d76b0;
+
+  /* o acento do tema continua a chamar-se --sangue em toda a app: é a
+     variável do "cor da casa", não o elemento Sangue. Aqui é violeta. */
+  --sangue: #8636cf;
+  --sangue-claro: #d177f3;
+  --sangue-escuro: #3a1160;
+  --sangue-vivo: #ff7cff;
+  --sangue-suave: #a45ce0;
+  --sangue-rgb: 134, 54, 207;
+  --sangue-claro-rgb: 209, 119, 243;
+  --sangue-vivo-rgb: 255, 124, 255;
+  --sangue-veu: rgba(var(--sangue-rgb), .16);
+
+  /* halos cruzados: violeta em cima, azul elétrico em baixo */
+  --halo-topo: rgba(134, 54, 207, .30);
+  --halo-baixo: rgba(70, 161, 255, .20);
+
+  --sigilos-fundo: url('/img/sigilos-energia.png');
+  --sigilos-tamanho: 620px;
+  --sigilos-opacidade: .30;
+
+  /* a figura é maior neste tema, por pedido */
+  --criatura-opacidade: .48;
+  --criatura-altura: min(88vh, 870px);
+  --criatura-largura: 36vw;
+
+  /* fagulhas: núcleo ciano, orla magenta — duas cores por partícula */
+  --brasa-nucleo: #c6f6ff;
+  --brasa-orla: #ff2cfa;
+  --brasa-halo: rgba(92, 224, 255, .5);
+
+  /* o pulsar cruza magenta em baixo com azul elétrico em cima */
+  --pulso-1: rgba(255, 44, 250, .34);
+  --pulso-2: rgba(70, 161, 255, .30);
+
+  --btn-borda: #c05cff;
+  --btn-borda-suave: #5c2b8a;
+  --acento-fundo: #2a0f47;
+  --acento-fundo-2: #150822;
+
+  --chapa-1: #2c1a45;
+  --chapa-2: #180d28;
+  --chapa-hover-1: #7a2fb8;
+  --chapa-hover-2: #24123a;
+  --chapa-txt: #ece0ff;
+  --chapa-borda: #2b1a42;
+  --chapa-fundo: #0c0616;
+  --barra-fundo: #150a24;
+}
+
+/* ============================================================
+   TEMA: MEDO  —  preto e branco, sem meios-tons
+   Pedido: "mesmo escuro, tipo preto no branco, pouco cinzento". Os fundos
+   são preto absoluto e o acento é BRANCO — não uma cor. É o único tema em
+   que o acento é mais claro que o texto de fundo, por isso o texto dos
+   botões inverte para preto (ver --btn-txt).
+   O cinzento aparece só onde é estruturalmente preciso (linhas, texto
+   secundário), nunca como cor decorativa.
+   ============================================================ */
+[data-tema="medo"] {
+  --topbar-rgb: 6, 6, 6;
+
+  /* nestes temas os sigilos passam por cima da entidade (só o Sangue os corta) */
+  --sigilos-entidade: linear-gradient(#000, #000);
+
+
+  --preto: #000000;
+  --bg: #000000;
+  --bg-2: #080808;
+  --bg-3: #101010;
+  --bg-4: #1a1a1a;
+
+  --linha: #262626;
+  --linha-forte: #565656;
+  --linha-rgb: 38, 38, 38;
+
+  --txt: #ffffff;
+  --txt-dim: #a8a8a8;
+  --txt-fraco: #6e6e6e;
+
+  /* o acento do tema continua a chamar-se --sangue em toda a app: é a
+     variável do "cor da casa", não o elemento Sangue. Aqui é branco osso. */
+  --sangue: #e6e6ea;
+  --sangue-claro: #ffffff;
+  --sangue-escuro: #9a9aa0;
+  --sangue-vivo: #ffffff;
+  --sangue-suave: #c4c4ca;
+  --sangue-rgb: 230, 230, 234;
+  --sangue-claro-rgb: 255, 255, 255;
+  --sangue-vivo-rgb: 255, 255, 255;
+  --sangue-veu: rgba(var(--sangue-rgb), .10);
+
+  /* botão branco com texto preto — o inverso de todos os outros temas */
+  --btn-txt: #050505;
+
+  --halo-topo: rgba(255, 255, 255, .05);
+  --halo-baixo: rgba(255, 255, 255, .035);
+
+  --sigilos-fundo: url('/img/sigilos-medo.png');
+  --sigilos-tamanho: 620px;
+  --sigilos-opacidade: .15;
+
+  /* a figura é quase toda cabelo escuro: precisa de mais presença sobre
+     preto absoluto (as sombras da arte já foram levantadas no próprio PNG) */
+  /* em linha com os outros temas: a .62 a figura lia-se como um autocolante
+     por cima do preto em vez de sair dele (o esbatimento do PNG também foi
+     reforçado) */
+  --criatura-opacidade: .44;
+  --criatura-altura: min(112vh, 1140px);
+  --criatura-largura: 38vw;
+  /* empurrada para baixo: o novelo de cabelo no rodapé ficava cortado a
+     direito e via-se o corte. Com -190px o novelo sai do ecrã por completo
+     e o que fica é a figura. */
+  --criatura-baixo: -190px;
+
+  /* o que sobe do chão é cinza branca, sem cor nenhuma */
+  --brasa-nucleo: #ffffff;
+  --brasa-orla: #8f8f96;
+  --brasa-halo: rgba(255, 255, 255, .32);
+
+  /* o pulsar do coração é um clarão branco, muito contido */
+  --pulso-1: rgba(255, 255, 255, .10);
+  --pulso-2: rgba(255, 255, 255, .07);
+
+  --btn-borda: #ffffff;
+  --btn-borda-suave: #4a4a4a;
+  --acento-fundo: #1c1c1c;
+  --acento-fundo-2: #0a0a0a;
+
+  --chapa-1: #1e1e1e;
+  --chapa-2: #0c0c0c;
+  --chapa-hover-1: #e6e6ea;
+  --chapa-hover-2: #9a9aa0;
+  --chapa-txt: #e8e8ea;
+  --chapa-borda: #1f1f1f;
+  --chapa-fundo: #000000;
+  --barra-fundo: #060606;
 }
 
 * { box-sizing: border-box; }
@@ -77,26 +503,76 @@ body {
   font-size: 17px;
   line-height: 1.62;
   background:
-    radial-gradient(ellipse 120% 80% at 50% -10%, rgba(140, 12, 20, .22), transparent 60%),
-    radial-gradient(ellipse 90% 60% at 50% 110%, rgba(90, 8, 14, .18), transparent 60%),
+    radial-gradient(ellipse 120% 80% at 50% -10%, var(--halo-topo), transparent 60%),
+    radial-gradient(ellipse 90% 60% at 50% 110%, var(--halo-baixo), transparent 60%),
     var(--bg);
   background-attachment: fixed;
 }
 
-/* sigilos do Outro Lado, muito ténues, por trás de tudo */
+/* sigilos de Sangue espalhados organicamente no fundo com opacidade subtil (sem sobrepor a entidade) */
 body::before {
   content: '';
-  position: fixed; inset: 0; pointer-events: none; z-index: -1;
-  background: url('/img/sigilos.webp') repeat;
-  background-size: 520px;
-  opacity: .05;
+  position: fixed; inset: 0; pointer-events: none; z-index: -2;
+  background: var(--sigilos-fundo) repeat;
+  background-size: var(--sigilos-tamanho);
+  opacity: var(--sigilos-opacidade);
+  /* três máscaras cruzadas (ver as variáveis a seguir): o buraco do token,
+     o corte do lado direito e o buraco do bloco do título. `intersect` faz
+     com que o sigilo só apareça onde as TRÊS deixam. */
+  -webkit-mask-image: var(--sigilos-mascara), var(--sigilos-lado-direito), var(--sigilos-topo), var(--sigilos-entidade);
+  mask-image: var(--sigilos-mascara), var(--sigilos-lado-direito), var(--sigilos-topo), var(--sigilos-entidade);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
 }
 
-/* granulado sobre tudo, para não ficar "liso" */
-body::after {
-  content: '';
-  position: fixed; inset: 0; pointer-events: none; z-index: 1; opacity: .05;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+/* A máscara do mosaico abre um BURACO só à volta do token do agente — não
+   limpa a faixa toda. Os sigilos aparecem em todo o lado, incluindo na
+   margem esquerda e por cima da entidade à direita; a única zona poupada é
+   o contorno do modelo, que é desenho de linha fina e ficava ilegível com o
+   padrão por baixo.
+   O buraco é uma elipse centrada na faixa do token, cuja largura acompanha
+   `(100vw - 1240px) / 2` — a mesma conta do `.espaco-token`, para servir em
+   qualquer largura de janela. Abaixo dos 1550px não há faixa de token
+   nenhuma (ver `.espaco-token`) e o mosaico cobre tudo. */
+/* MODO DE FUNDO ESCURO — botão na barra do topo, para quem tenha
+   dificuldade em ler por cima da decoração. Não muda a paleta nem apaga
+   nada: baixa a decoração toda (mosaico, entidade, roda, brasas, halos) até
+   ao ponto em que o texto fica sozinho no escuro.
+   A classe vai no <body>, e como as variáveis herdam do <html> para baixo,
+   isto ganha ao tema sem precisar de especificidade nenhuma. */
+body.fundo-escuro {
+  --sigilos-opacidade: .04;
+  --criatura-opacidade: .10;
+  --roda-opacidade: .025;
+  --brasas-opacidade: .25;
+  --halo-topo: transparent;
+  --halo-baixo: transparent;
+}
+body.fundo-escuro .pulso { opacity: .05; }
+
+/* No ecrã inicial abre-se um buraco por cima do bloco do título, dos sigilos
+   dos elementos e dos botões — é a zona mais carregada da app e o padrão por
+   trás tornava-a suja. Vale em todos os temas. */
+body.no-inicio {
+  --sigilos-topo: radial-gradient(
+    ellipse 30% 33% at 50% 26%,
+    transparent 0,
+    transparent 60%,
+    #000 100%
+  );
+}
+
+@media (min-width: 1550px) {
+  :root {
+    --sigilos-mascara: radial-gradient(
+      ellipse calc((100vw - 1240px) * 0.46) 34vh
+      at calc((100vw - 1240px) / 4) 54%,
+      transparent 0,
+      transparent 50%,
+      rgba(0, 0, 0, .5) 76%,
+      #000 100%
+    );
+  }
 }
 
 button { font-family: inherit; cursor: pointer; }
@@ -125,8 +601,15 @@ body.sem-scroll { overflow: hidden; }
 /* ---------------------------------------------------------- topo */
 .topbar {
   display: flex; align-items: center; justify-content: space-between; gap: 14px;
-  padding: 10px 20px; border-bottom: 1px solid var(--linha);
-  background: linear-gradient(180deg, #150d0f, #0b0708);
+  padding: 10px 22px 14px;
+  /* Era um castanho-avermelhado fixo (rgba(16,10,12,...)) e lia-se como uma
+     aura vermelha no topo de todos os temas. Agora é o preto do próprio tema,
+     em três passos de opacidade. */
+  background: linear-gradient(180deg,
+    rgba(var(--topbar-rgb), .80) 0%,
+    rgba(var(--topbar-rgb), .38) 65%,
+    rgba(var(--topbar-rgb), 0) 100%);
+  border-bottom: none;
   position: sticky; top: 0; z-index: 40;
 }
 .topbar h1 {
@@ -150,6 +633,9 @@ body.sem-scroll { overflow: hidden; }
   border-color: var(--sangue); color: var(--txt); background: var(--bg-4);
   box-shadow: 0 0 0 3px var(--sangue-veu);
 }
+.btn-fundo-escuro { display: inline-flex; align-items: center; padding: 5px 9px; }
+.btn-fundo-escuro.ativo { border-color: var(--sangue); color: var(--sangue-claro); }
+
 .busca-topbar-icone { flex: none; color: var(--sangue-claro); }
 .busca-topbar-texto { flex: 1; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .busca-topbar-atalho {
@@ -165,18 +651,18 @@ body.sem-scroll { overflow: hidden; }
 /* ---------------------------------------------------------- botões */
 .btn {
   background: linear-gradient(180deg, var(--sangue), var(--sangue-escuro));
-  color: #fff; border: 1px solid #7d1119; border-radius: var(--raio);
+  color: var(--btn-txt); border: 1px solid var(--btn-borda); border-radius: var(--raio);
   padding: 8px 18px; font-weight: 400; font-size: 15px; letter-spacing: .06em;
   text-transform: uppercase; font-family: var(--corpo);
   transition: box-shadow .15s, filter .15s;
 }
-.btn:hover:not(:disabled) { filter: brightness(1.2); box-shadow: 0 0 14px rgba(192, 21, 33, .45); }
+.btn:hover:not(:disabled) { filter: brightness(1.2); box-shadow: 0 0 14px rgba(var(--sangue-rgb), .45); }
 .btn:disabled { opacity: .35; cursor: not-allowed; }
 .btn.ghost { background: transparent; border-color: var(--linha-forte); color: var(--txt); }
 .btn.ghost:hover:not(:disabled) { border-color: var(--sangue); color: var(--sangue-claro); box-shadow: none; filter: none; }
 .btn.sm { padding: 5px 12px; font-size: 14px; }
-.btn.danger { background: transparent; border-color: #5a2126; color: #e0616c; }
-.btn.danger:hover:not(:disabled) { background: rgba(192,21,33,.14); box-shadow: none; }
+.btn.danger { background: transparent; border-color: var(--btn-borda-suave); color: var(--sangue-suave); }
+.btn.danger:hover:not(:disabled) { background: rgba(var(--sangue-rgb),.14); box-shadow: none; }
 .btn.a-transmitir { border-color: var(--ok); color: var(--ok); }
 .btn.a-transmitir:hover:not(:disabled) { border-color: var(--ok); color: var(--ok); box-shadow: 0 0 12px rgba(74,222,128,.35); }
 
@@ -211,7 +697,7 @@ body.sem-scroll { overflow: hidden; }
   transition: color .15s, text-shadow .15s;
 }
 .stepper .passo:hover { color: var(--txt); }
-.stepper .passo.ativo { color: var(--sangue-claro); text-shadow: 0 0 18px rgba(192,21,33,.6); }
+.stepper .passo.ativo { color: var(--sangue-claro); text-shadow: 0 0 18px rgba(var(--sangue-rgb),.6); }
 .stepper .traco { width: 66px; height: 1px; background: linear-gradient(90deg, transparent, var(--linha-forte), transparent); }
 
 /* ---------------------------------------------------------- texto */
@@ -239,7 +725,7 @@ body.sem-scroll { overflow: hidden; }
 .roda {
   display: block; width: 460px; max-width: 100%; height: auto; margin: 0 auto;
   overflow: visible;
-  filter: drop-shadow(0 0 34px rgba(192, 21, 33, .22));
+  filter: drop-shadow(0 0 34px rgba(var(--sangue-rgb), .22));
 }
 .roda .atr-valor {
   fill: var(--txt); font-family: var(--numeros); font-weight: 700; font-size: 104px;
@@ -247,14 +733,14 @@ body.sem-scroll { overflow: hidden; }
 }
 .roda .atr-valor:hover { fill: var(--sangue-claro); }
 .roda .atr-valor.atr-buff { fill: #4ade80; text-shadow: 0 0 10px rgba(74,222,128,.5); }
-.roda .atr-valor.atr-debuff { fill: var(--sangue-claro); text-shadow: 0 0 10px rgba(192,21,33,.5); }
+.roda .atr-valor.atr-debuff { fill: var(--penalidade); text-shadow: 0 0 10px rgba(var(--penalidade-rgb),.5); }
 .roda .atr-botao { cursor: pointer; }
-.roda .atr-botao circle { fill: #1a1214; stroke: var(--linha-forte); stroke-width: 3; transition: stroke .15s, fill .15s; }
+.roda .atr-botao circle { fill: var(--bg-3); stroke: var(--linha-forte); stroke-width: 3; transition: stroke .15s, fill .15s; }
 .roda .atr-botao text { fill: var(--txt-dim); font-family: var(--numeros); font-size: 34px; pointer-events: none; }
-.roda .atr-botao:hover circle { stroke: var(--sangue); fill: #2a1418; }
+.roda .atr-botao:hover circle { stroke: var(--sangue); fill: var(--acento-fundo); }
 .roda .atr-botao:hover text { fill: var(--sangue-claro); }
 .roda .atr-botao.inativo { cursor: not-allowed; opacity: .25; }
-.roda .atr-botao.inativo:hover circle { stroke: var(--linha-forte); fill: #1a1214; }
+.roda .atr-botao.inativo:hover circle { stroke: var(--linha-forte); fill: var(--bg-3); }
 
 /* ---------------------------------------------------------- passo de Atributos: ecrã "registo" (monitor a ligar + VHS)
    Sequência de arranque (uma vez, ~2.9s, tudo CSS puro — animation-delay
@@ -458,7 +944,7 @@ body.sem-scroll { overflow: hidden; }
   cursor: pointer;
   transition: color .15s, border-color .15s, background .15s;
 }
-.crt-fechar:hover { color: var(--sangue-claro); border-color: var(--sangue); background: linear-gradient(180deg, #2c1414, #170a0a); }
+.crt-fechar:hover { color: var(--sangue-claro); border-color: var(--sangue); background: linear-gradient(180deg, var(--acento-fundo), var(--acento-fundo-2)); }
 
 /* --- ambiente VHS permanente (entra só depois do arranque) --- */
 .crt-ambiente {
@@ -552,7 +1038,7 @@ body.sem-scroll { overflow: hidden; }
 }
 .crt-rec-ponto {
   width: 8px; height: 8px; border-radius: 50%; background: var(--sangue);
-  box-shadow: 0 0 8px rgba(192, 21, 33, .8); animation: crt-rec-pulso 1.4s ease-in-out infinite;
+  box-shadow: 0 0 8px rgba(var(--sangue-rgb), .8); animation: crt-rec-pulso 1.4s ease-in-out infinite;
 }
 @keyframes crt-rec-pulso { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
 .crt-timecode { color: var(--txt-fraco); letter-spacing: .1em; font-family: var(--numeros); }
@@ -606,7 +1092,7 @@ body.sem-scroll { overflow: hidden; }
   width: 28px; height: 28px; background: transparent; border: none; color: var(--txt-dim);
   font-size: 16px; border-radius: 4px; transition: background .15s, color .15s;
 }
-.la-caixa button:hover:not(:disabled) { background: rgba(192, 21, 33, .18); color: var(--sangue-claro); }
+.la-caixa button:hover:not(:disabled) { background: rgba(var(--sangue-rgb), .18); color: var(--sangue-claro); }
 .la-caixa button:disabled { opacity: .25; cursor: not-allowed; }
 .la-input {
   width: 46px; text-align: center; background: none; border: none; box-shadow: none; padding: 0;
@@ -628,7 +1114,7 @@ body.sem-scroll { overflow: hidden; }
    sem precisar de JS a medir nada — só a classe `.aberta` muda. */
 .lista-origens-crt { display: flex; flex-direction: column; margin-top: 18px; border-top: 1px solid var(--linha); }
 .linha-origem-crt { border-bottom: 1px solid var(--linha); }
-.linha-origem-crt.selecionada { background: rgba(192, 21, 33, .06); }
+.linha-origem-crt.selecionada { background: rgba(var(--sangue-rgb), .06); }
 
 .origem-cabecalho {
   display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%;
@@ -683,7 +1169,7 @@ body.sem-scroll { overflow: hidden; }
   text-align: center;
 }
 .coluna-classe:first-child { border-left: none; }
-.coluna-classe.selecionada { background: rgba(192, 21, 33, .07); }
+.coluna-classe.selecionada { background: rgba(var(--sangue-rgb), .07); }
 
 .coluna-classe-cabecalho { display: flex; flex-direction: column; align-items: center; gap: 3px; margin-bottom: 10px; }
 .coluna-classe-nome {
@@ -735,7 +1221,7 @@ body.sem-scroll { overflow: hidden; }
   border: 1px solid var(--linha); border-radius: var(--raio);
   padding: 18px; display: flex; flex-direction: column; position: relative;
 }
-.card.selecionado { border-color: var(--sangue); box-shadow: 0 0 0 1px rgba(192,21,33,.35), 0 0 26px rgba(192,21,33,.18) inset; }
+.card.selecionado { border-color: var(--sangue); box-shadow: 0 0 0 1px rgba(var(--sangue-rgb),.35), 0 0 26px rgba(var(--sangue-rgb),.18) inset; }
 .card h3 { margin: 0 0 8px; font-size: 26px; color: var(--txt); }
 .card .barra { height: 1px; background: linear-gradient(90deg, var(--sangue), transparent); margin-bottom: 14px; }
 .card .corpo { color: var(--txt-dim); font-size: 15.5px; flex: 1; max-height: 250px; overflow-y: auto; padding-right: 8px; }
@@ -784,10 +1270,10 @@ select:hover {
   background-repeat: no-repeat !important;
   background-position: right 10px center !important;
 }
-select option { background: #1a1214; color: var(--txt); }
+select option { background: var(--bg-3); color: var(--txt); }
 input::placeholder, textarea::placeholder { color: var(--txt-fraco); }
 input:focus, textarea:focus, select:focus {
-  outline: none; border-color: var(--sangue); box-shadow: 0 0 0 2px rgba(192,21,33,.18);
+  outline: none; border-color: var(--sangue); box-shadow: 0 0 0 2px rgba(var(--sangue-rgb),.18);
 }
 input[readonly] { color: var(--txt-dim); }
 textarea { resize: vertical; min-height: 92px; }
@@ -851,8 +1337,8 @@ textarea { resize: vertical; min-height: 92px; }
   text-align: left;
   transition: all .15s ease;
 }
-.menu-avatar button:hover { border-color: var(--sangue); background: rgba(192, 21, 33, 0.25); color: #fff; }
-.menu-avatar button.remover:hover { border-color: var(--sangue-claro); background: rgba(192, 21, 33, 0.35); }
+.menu-avatar button:hover { border-color: var(--sangue); background: rgba(var(--sangue-rgb), 0.25); color: #fff; }
+.menu-avatar button.remover:hover { border-color: var(--sangue-claro); background: rgba(var(--sangue-rgb), 0.35); }
 
 .campo-linha { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 10px; margin-bottom: 9px; }
 .campo-linha input, .campo-linha select {
@@ -1092,25 +1578,25 @@ textarea { resize: vertical; min-height: 92px; }
 .barra-recurso .linha-barra {
   display: flex; align-items: stretch; border-radius: 0; overflow: hidden;
   height: 34px;
-  border: 1px solid #241a1c;
+  border: 1px solid var(--chapa-borda);
   outline: 1px solid rgba(0,0,0,.75); outline-offset: -3px;
-  background-color: #0a0708;
+  background-color: var(--chapa-fundo);
   background-image: url('/img/veias.png');
   background-size: auto 100%; background-repeat: repeat-x;
   box-shadow: inset 0 0 22px rgba(0,0,0,.95), inset 0 1px 0 rgba(255,255,255,.035);
 }
 .barra-recurso .linha-barra button {
-  background: linear-gradient(180deg, #241619, #150d0f);
-  border: none; border-right: 1px solid #3a2226;
-  color: #e6d9d4; width: 28px; font-size: 20px; line-height: 1; font-family: var(--numeros);
+  background: linear-gradient(180deg, var(--chapa-1), var(--chapa-2));
+  border: none; border-right: 1px solid var(--linha);
+  color: var(--chapa-txt); width: 28px; font-size: 20px; line-height: 1; font-family: var(--numeros);
   text-shadow: 0 1px 2px #000; transition: color .15s, background .15s;
 }
 .barra-recurso .linha-barra button.extremo { width: 22px; font-size: 14px; color: var(--txt-dim); }
 .barra-recurso .linha-barra button:nth-child(3),
-.barra-recurso .linha-barra button:nth-last-child(2) { border-right: 1px solid #3a2226; border-left: 1px solid #3a2226; }
+.barra-recurso .linha-barra button:nth-last-child(2) { border-right: 1px solid var(--linha); border-left: 1px solid var(--linha); }
 .barra-recurso .linha-barra button:last-child { border-right: none; }
 .barra-recurso .linha-barra button:hover {
-  background: linear-gradient(180deg, #47191f, #2a1013); color: #fff;
+  background: linear-gradient(180deg, var(--chapa-hover-1), var(--chapa-hover-2)); color: var(--btn-txt);
 }
 .barra-recurso .valor {
   flex: 1; display: flex; align-items: center; justify-content: center;
@@ -1119,7 +1605,7 @@ textarea { resize: vertical; min-height: 92px; }
 }
 .barra-recurso .preenchido {
   position: absolute; inset: 0 auto 0 0; transition: width .25s ease-out; overflow: hidden;
-  background-color: #150c0e;
+  background-color: var(--barra-fundo);
   background-image:
     radial-gradient(135% 200% at 50% 140%, var(--brilho), transparent 78%),
     linear-gradient(180deg, rgba(255,255,255,.05), transparent 40%);
@@ -1153,7 +1639,7 @@ body.bate-forte .barra-recurso .preenchido::before {
   position: relative; z-index: 1; color: #cfc4bd;
   text-shadow: 0 1px 2px #000, 0 0 10px rgba(0,0,0,.95);
 }
-.barra-vida        .preenchido { --brilho: rgba(214, 44, 55, .78);  --veia: #f04653; }
+.barra-vida        .preenchido { --brilho: rgba(214, 44, 55, .78);  --veia: var(--sangue-vivo); }
 .barra-sanidade    .preenchido { --brilho: rgba(148, 82, 214, .78); --veia: #ad74f0; }
 .barra-esforco     .preenchido { --brilho: rgba(222, 142, 34, .74); --veia: #f5a636; }
 .barra-determinacao .preenchido { --brilho: rgba(40, 176, 158, .74); --veia: #3fd0bb; }
@@ -1172,7 +1658,7 @@ body.bate-forte .barra-recurso .preenchido::before {
   font-family: var(--numeros); font-weight: 700; font-size: 32px; line-height: 1.15; color: var(--txt);
   background: none; border: none; padding: 0; display: block; width: 100%;
 }
-.defesa-caixa button.num:hover { color: var(--sangue-claro); text-shadow: 0 0 14px rgba(232,50,63,.6); }
+.defesa-caixa button.num:hover { color: var(--sangue-claro); text-shadow: 0 0 14px rgba(var(--sangue-claro-rgb),.6); }
 .defesa-caixa input.num {
   text-align: center; background: transparent;
   border: 1px solid transparent; border-radius: var(--raio); /* sem caixa visível em repouso — só ao passar o rato/focar, para não ficar "partido" quando é 0 nem uma caixa escura sempre presente */
@@ -1206,8 +1692,8 @@ body.bate-forte .barra-recurso .preenchido::before {
   font-weight: 400; padding-bottom: 7px; text-align: center; font-family: var(--corpo);
 }
 .tabela-pericias th:first-child { text-align: left; }
-.tabela-pericias td { padding: 2px 3px; border-bottom: 1px solid rgba(58,34,38,.55); }
-.tabela-pericias tr:hover td { background: rgba(192,21,33,.06); }
+.tabela-pericias td { padding: 2px 3px; border-bottom: 1px solid rgba(var(--linha-rgb),.55); }
+.tabela-pericias tr:hover td { background: rgba(var(--sangue-rgb),.06); }
 .tabela-pericias .nome-pericia { display: flex; align-items: center; gap: 7px; white-space: nowrap; }
 .tabela-pericias .marca { color: var(--txt-fraco); font-size: 12px; }
 .tabela-pericias .nome-pericia { color: var(--txt); }
@@ -1263,7 +1749,7 @@ body.bate-forte .barra-recurso .preenchido::before {
   color: var(--txt-fraco); display: grid; place-items: center; flex: 0 0 auto;
   transition: color .15s, filter .15s, transform .15s;
 }
-.dado-btn:hover { color: var(--sangue-claro); filter: drop-shadow(0 0 6px rgba(232,50,63,.8)); transform: rotate(-18deg); }
+.dado-btn:hover { color: var(--sangue-claro); filter: drop-shadow(0 0 6px rgba(var(--sangue-claro-rgb),.8)); transform: rotate(-18deg); }
 .dado-btn svg { width: 100%; height: 100%; }
 
 /* ---------------------------------------------------------- abas */
@@ -1335,7 +1821,7 @@ body.bate-forte .barra-recurso .preenchido::before {
 .seletor-crt-gatilho[aria-expanded="true"] .seletor-crt-seta { color: var(--sangue-claro); transform: rotate(180deg); }
 .seletor-crt-lista {
   position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 40;
-  background: #1a1214; border: 1px solid var(--linha-forte); border-radius: var(--raio);
+  background: var(--bg-3); border: 1px solid var(--linha-forte); border-radius: var(--raio);
   box-shadow: 0 12px 26px rgba(0, 0, 0, .55); max-height: 240px; overflow-y: auto;
   list-style: none; margin: 0; padding: 4px;
 }
@@ -1344,8 +1830,8 @@ body.bate-forte .barra-recurso .preenchido::before {
   display: block; width: 100%; text-align: left; padding: 7px 10px; border-radius: 4px;
   color: var(--txt-dim); font-size: 13.5px; background: none;
 }
-.seletor-crt-opcao:hover { background: rgba(192, 21, 33, .18); color: var(--txt); }
-.seletor-crt-opcao.ativa { color: var(--sangue-claro); background: rgba(192, 21, 33, .12); }
+.seletor-crt-opcao:hover { background: rgba(var(--sangue-rgb), .18); color: var(--txt); }
+.seletor-crt-opcao.ativa { color: var(--sangue-claro); background: rgba(var(--sangue-rgb), .12); }
 .escolhido {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   border-left: 2px solid var(--sangue); background: var(--sangue-veu);
@@ -1431,7 +1917,7 @@ body.bate-forte .barra-recurso .preenchido::before {
 .rolagem-cartao .conta { font-size: 14.5px; color: var(--txt-dim); font-family: var(--corpo); }
 .rolagem-cartao .conta .melhor { color: var(--txt); font-weight: 700; }
 .notas-rolagem { font-size: 12px; color: var(--txt-fraco); margin-top: 3px; font-family: var(--corpo); }
-.notas-rolagem.mau { color: var(--sangue-claro); }
+.notas-rolagem.mau { color: var(--penalidade); }
 .rolagem-cartao .igual { color: var(--txt-fraco); font-size: 20px; }
 .rolagem-cartao .total { font-family: var(--numeros); font-weight: 700; font-size: 40px; line-height: 1; color: var(--txt); }
 .rolagem-cartao.critico .total, .rolagem-cartao.critico .res { color: var(--ok); text-shadow: 0 0 18px rgba(74,222,128,.55); }
@@ -1463,7 +1949,8 @@ body.bate-forte .barra-recurso .preenchido::before {
 }
 
 /* ---------------------------------------------------------- ecrã inicial */
-.inicio { width: 100%; max-width: 1000px; margin: 0 auto; padding: 56px 18px 90px; text-align: center; }
+.inicio { width: 100%; max-width: 1000px; margin: 0 auto; padding: 56px 18px 90px; text-align: center; position: relative; }
+.inicio .assinatura, .inicio .marca, .inicio .sub, .inicio .elementos { position: relative; z-index: 1; }
 .inicio .marca {
   font-family: var(--marca); font-size: 60px; letter-spacing: .06em; margin: 0;
   text-transform: uppercase; line-height: 1;
@@ -1471,15 +1958,32 @@ body.bate-forte .barra-recurso .preenchido::before {
 .inicio .marca em { color: var(--sangue); font-style: normal; display: block; }
 .inicio .sub { color: var(--txt-dim); letter-spacing: .3em; text-transform: uppercase; font-size: 12px; margin: 16px 0 10px; }
 .elementos { display: flex; gap: 26px; justify-content: center; margin: 18px 0 4px; }
-.elementos span {
+.elementos span, .elementos button {
   width: 40px; height: 40px; display: block;
   -webkit-mask: var(--sigilo) center/contain no-repeat;
   mask: var(--sigilo) center/contain no-repeat;
   background: currentColor; opacity: .75;
+  border: none; padding: 0;
   transition: opacity .2s, transform .2s, filter .2s;
 }
-.elementos span:hover { opacity: 1; transform: scale(1.12); filter: drop-shadow(0 0 10px currentColor); }
-@media (max-width: 600px) { .elementos { gap: 16px; } .elementos span { width: 32px; height: 32px; } }
+.elementos span:hover, .elementos button:hover { opacity: 1; transform: scale(1.12); filter: drop-shadow(0 0 10px currentColor); }
+
+/* sigilo que troca a pele da app: clicável, e o do tema atual fica aceso */
+.elementos .sigilo-tema { cursor: pointer; }
+.elementos .sigilo-tema.ativo {
+  opacity: 1;
+  filter: drop-shadow(0 0 12px currentColor) drop-shadow(0 0 22px currentColor);
+}
+.elementos .sigilo-tema:focus-visible { outline: none; opacity: 1; filter: drop-shadow(0 0 12px currentColor); }
+
+/* elemento ainda sem pele feita: continua decorativo, sem convidar ao clique */
+.elementos .sigilo-por-fazer { opacity: .32; cursor: default; }
+.elementos .sigilo-por-fazer:hover { opacity: .45; transform: none; filter: none; }
+
+@media (max-width: 600px) {
+  .elementos { gap: 16px; }
+  .elementos span, .elementos button { width: 32px; height: 32px; }
+}
 
 .agentes { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top: 30px; text-align: left; }
 .agente-cartao {
@@ -1526,7 +2030,7 @@ body.bate-forte .barra-recurso .preenchido::before {
 .btn-cartao-acao:hover {
   border-color: var(--sangue);
   color: var(--sangue-claro);
-  background: rgba(192, 21, 33, 0.12);
+  background: rgba(var(--sangue-rgb), 0.12);
 }
 .btn-cartao-acao.btn-cartao-icone {
   padding: 4px 8px;
@@ -1535,12 +2039,12 @@ body.bate-forte .barra-recurso .preenchido::before {
   justify-content: center;
 }
 .btn-cartao-acao.danger {
-  border-color: rgba(224, 97, 108, 0.25);
-  color: #e0616c;
+  border-color: rgba(var(--sangue-claro-rgb), 0.25);
+  color: var(--sangue-suave);
 }
 .btn-cartao-acao.danger:hover {
-  border-color: #e0616c;
-  background: rgba(192, 21, 33, 0.18);
+  border-color: var(--sangue-suave);
+  background: rgba(var(--sangue-rgb), 0.18);
   color: #fff;
 }
 
@@ -1566,7 +2070,7 @@ body.bate-forte .barra-recurso .preenchido::before {
 }
 .barra-pesquisa-home input:focus {
   border-color: var(--sangue-claro);
-  box-shadow: 0 0 12px rgba(240, 70, 83, 0.25);
+  box-shadow: 0 0 12px rgba(var(--sangue-vivo-rgb), 0.25);
   outline: none;
 }
 .barra-pesquisa-home .limpar-pesquisa {
@@ -1631,7 +2135,7 @@ body.bate-forte .barra-recurso .preenchido::before {
   border-color: var(--sangue-claro);
   color: #fff;
   font-weight: bold;
-  box-shadow: 0 0 10px rgba(192, 21, 33, 0.4);
+  box-shadow: 0 0 10px rgba(var(--sangue-rgb), 0.4);
 }
 .btn-tag-filtro .contagem-tag {
   font-size: 11px;
@@ -1648,7 +2152,7 @@ body.bate-forte .barra-recurso .preenchido::before {
   transition: all 0.15s;
 }
 .btn-limpar-tag:hover {
-  background: rgba(192, 21, 33, 0.2);
+  background: rgba(var(--sangue-rgb), 0.2);
 }
 
 /* Tags no Cartão do Agente */
@@ -1671,7 +2175,7 @@ body.bate-forte .barra-recurso .preenchido::before {
 }
 .cartao-tag-chip:hover {
   border-color: var(--sangue);
-  background: rgba(192, 21, 33, 0.15);
+  background: rgba(var(--sangue-rgb), 0.15);
   color: #fff;
 }
 .cartao-tag-chip.ativo {
@@ -1710,13 +2214,13 @@ body.bate-forte .barra-recurso .preenchido::before {
 }
 .editor-tags-caixa:focus-within {
   border-color: var(--sangue-claro);
-  box-shadow: 0 0 10px rgba(240, 70, 83, 0.25);
+  box-shadow: 0 0 10px rgba(var(--sangue-vivo-rgb), 0.25);
 }
 .chip-tag {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(192, 21, 33, 0.2);
+  background: rgba(var(--sangue-rgb), 0.2);
   border: 1px solid var(--sangue-escuro);
   border-radius: 999px;
   padding: 2px 8px 2px 10px;
@@ -1821,7 +2325,7 @@ body.bate-forte .barra-recurso .preenchido::before {
 }
 .sugestao-tag-item:hover {
   border-color: var(--sangue);
-  background: rgba(192, 21, 33, 0.25);
+  background: rgba(var(--sangue-rgb), 0.25);
   color: #fff;
 }
 .barra-massa {
@@ -1869,7 +2373,25 @@ body.bate-forte .barra-recurso .preenchido::before {
   display: flex; justify-content: flex-end; gap: 10px;
   padding: 14px 20px; border-top: 1px solid var(--linha);
 }
-.grelha-editor { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; }
+.grelha-editor {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+.grelha-editor .campo {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  margin-bottom: 0;
+}
+.grelha-editor .campo label {
+  min-height: 28px;
+  display: flex;
+  align-items: flex-end;
+  margin-bottom: 4px;
+  line-height: 1.2;
+}
 .resumo-mods { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 
 /* ---------------------------------------------------------- armas */
@@ -1979,8 +2501,8 @@ body.bate-forte .barra-recurso .preenchido::before {
 .pulso {
   position: fixed; inset: 0; pointer-events: none; z-index: -1;
   background:
-    radial-gradient(ellipse 70% 55% at 50% 100%, rgba(176, 14, 26, .38), transparent 70%),
-    radial-gradient(ellipse 90% 60% at 50% 0%, rgba(140, 12, 20, .30), transparent 68%);
+    radial-gradient(ellipse 70% 55% at 50% 100%, var(--pulso-1), transparent 70%),
+    radial-gradient(ellipse 90% 60% at 50% 0%, var(--pulso-2), transparent 68%);
   opacity: .16;
 }
 .pulso.bate-forte { animation: bater-forte .6s ease-out; }
@@ -1997,11 +2519,11 @@ body.bate-forte .barra-recurso .preenchido::before {
 }
 
 /* brasas a subir */
-.brasas { position: fixed; inset: 0; pointer-events: none; z-index: -1; overflow: hidden; }
+.brasas { position: fixed; inset: 0; pointer-events: none; z-index: -1; overflow: hidden; opacity: var(--brasas-opacidade, 1); }
 .brasas span {
   position: absolute; bottom: -12px; border-radius: 50%;
-  background: radial-gradient(circle, #ff7b3d 0%, #c01521 55%, transparent 72%);
-  box-shadow: 0 0 6px rgba(232, 90, 40, .55);
+  background: radial-gradient(circle, var(--brasa-nucleo) 0%, var(--brasa-orla) 55%, transparent 72%);
+  box-shadow: 0 0 6px var(--brasa-halo);
   animation-name: subir; animation-timing-function: linear; animation-iteration-count: infinite;
 }
 @keyframes subir {
@@ -2016,21 +2538,54 @@ body.bate-forte .barra-recurso .preenchido::before {
   .brasas { display: none; }
 }
 
-/* botão do coração: pisca ao ritmo do fundo */
-.btn.a-bater { color: var(--sangue-claro); border-color: var(--sangue-escuro); }
+/* Botão e Símbolo animado do coração / batimento */
+.btn-coracao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 10px;
+  min-width: 34px;
+  height: 31px;
+  transition: all .2s ease;
+}
+.btn-coracao.a-bater {
+  border-color: var(--sangue);
+  color: var(--sangue-claro);
+  background: rgba(var(--sangue-rgb), 0.15);
+}
+.btn-coracao.a-bater .icone-coracao-svg {
+  animation: coracao-pulsa 1.3s ease-in-out infinite;
+}
+.btn-coracao.desligado {
+  opacity: 0.45;
+  color: var(--txt-fraco);
+}
+.btn-coracao:hover {
+  opacity: 1;
+}
+
+@keyframes coracao-pulsa {
+  0%   { transform: scale(1); filter: drop-shadow(0 0 1px rgba(var(--sangue-claro-rgb), 0.4)); }
+  14%  { transform: scale(1.24); filter: drop-shadow(0 0 8px rgba(var(--sangue-claro-rgb), 0.85)); }
+  28%  { transform: scale(1.04); filter: drop-shadow(0 0 3px rgba(var(--sangue-claro-rgb), 0.4)); }
+  42%  { transform: scale(1.18); filter: drop-shadow(0 0 6px rgba(var(--sangue-claro-rgb), 0.7)); }
+  60%  { transform: scale(1); filter: drop-shadow(0 0 1px rgba(var(--sangue-claro-rgb), 0.3)); }
+  100% { transform: scale(1); }
+}
 
 /* ---------------------------------------------------------- Aniquilação */
 /* a criatura do capítulo 7 (Livro Base, p. 184) a espreitar da margem */
 /* o Enraizado (Livro Base, p. 214) — figura inteira: limitamos pela altura da
    janela e deixamos a largura seguir, para nunca aparecer cortado */
 .criatura {
-  position: fixed; right: 0; bottom: 0; z-index: -1; pointer-events: none;
-  height: min(88vh, 820px); width: auto; max-width: 34vw; object-fit: contain; object-position: right bottom;
-  opacity: .35; filter: saturate(.95) contrast(1.02);
+  position: fixed; right: 0; bottom: var(--criatura-baixo, 0); z-index: -1; pointer-events: none;
+  height: var(--criatura-altura, min(88vh, 820px)); width: auto; max-width: var(--criatura-largura, 34vw);
+  object-fit: contain; object-position: right bottom;
+  opacity: var(--criatura-opacidade, .35); filter: saturate(.95) contrast(1.02);
   /* o esbatimento das bordas está gravado no alfa do próprio ficheiro
      (public/img/diabo.webp), por isso não há retângulo nenhum à vista */
 }
-@media (max-width: 1500px) { .criatura { opacity: .3; height: min(70vh, 600px); } }
+@media (max-width: 1500px) { .criatura { opacity: calc(var(--criatura-opacidade, .35) * .85); height: min(70vh, 600px); } }
 @media (max-width: 1150px) { .criatura { display: none; } }
 
 /* ------------------------------------------------- espaço do token */
@@ -2210,7 +2765,7 @@ body.bate-forte .barra-recurso .preenchido::before {
 .resumo-historico { display: flex; gap: 22px; flex-wrap: wrap; margin-bottom: 12px; color: var(--txt-dim); font-size: 13px; }
 .resumo-historico b { font-family: var(--numeros); font-size: 21px; color: var(--txt); margin-right: 5px; }
 .tabela-historico { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-.tabela-historico td { padding: 6px 8px; border-bottom: 1px solid rgba(58,34,38,.5); vertical-align: middle; }
+.tabela-historico td { padding: 6px 8px; border-bottom: 1px solid rgba(var(--linha-rgb),.5); vertical-align: middle; }
 .tabela-historico .h-hora { color: var(--txt-fraco); font-family: var(--numeros); white-space: nowrap; font-size: 12px; }
 .tabela-historico .h-icone { width: 22px; color: var(--txt-fraco); }
 .tabela-historico .h-icone svg { width: 17px; height: 17px; }
@@ -2218,7 +2773,7 @@ body.bate-forte .barra-recurso .preenchido::before {
 .tabela-historico .h-conta { color: var(--txt-dim); font-family: var(--numeros); font-size: 12.5px; }
 .tabela-historico .h-total { text-align: right; font-family: var(--numeros); font-weight: 700; font-size: 19px; white-space: nowrap; }
 .tabela-historico tr.critico .h-total, .tabela-historico tr.critico .h-icone { color: var(--ok); }
-.tabela-historico tr.falha .h-total, .tabela-historico tr.falha .h-icone { color: var(--sangue-claro); }
+.tabela-historico tr.falha .h-total, .tabela-historico tr.falha .h-icone { color: var(--penalidade); }
 
 /* ---------------------------------------------------------- ameaça */
 .ameaca { max-width: 900px; margin: 0 auto; border: 1px solid var(--linha-forte); border-radius: var(--raio); background: var(--bg-2); padding: 22px; }
@@ -2252,17 +2807,21 @@ body.bate-forte .barra-recurso .preenchido::before {
   color: var(--txt-fraco); text-transform: none;
 }
 
-/* a roda de sigilos por trás da marca, a rodar devagar */
+/* a roda de sigilos por trás da marca, a rodar devagar com opacidade subtil */
 .roda-sigilos {
   position: absolute; left: 50%; top: 150px; transform: translate(-50%, -50%);
   width: 420px; height: 420px; pointer-events: none; z-index: -1;
-  background: url('/img/roda-sigilos.png') center/contain no-repeat;
-  opacity: .07; animation: girar 240s linear infinite;
+  /* A arte é vermelha (#e9363e) e ficava vermelha em todos os temas — era a
+     "aura" que sobrava no fundo. Passa a máscara e é o acento do tema que a
+     pinta. */
+  background: var(--roda-cor, var(--sangue-claro));
+  -webkit-mask: url('/img/roda-sigilos.png') center/contain no-repeat;
+  mask: url('/img/roda-sigilos.png') center/contain no-repeat;
+  opacity: var(--roda-opacidade, .10); animation: girar 240s linear infinite;
 }
 @keyframes girar { to { transform: translate(-50%, -50%) rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .roda-sigilos { animation: none; } }
 @media (max-width: 700px) { .roda-sigilos { width: 300px; height: 300px; } }
-.inicio { position: relative; }
 
 /* Linha de trilha personalizada com botão Monstruoso */
 .linha-trilha-flex {
@@ -2292,12 +2851,12 @@ body.bate-forte .barra-recurso .preenchido::before {
 }
 .btn-limpar-condicoes:hover { color: var(--warn); }
 .btn-add-condicao {
-  background: rgba(192,21,33,.12); border: 1px solid var(--linha-forte); border-radius: 4px;
+  background: rgba(var(--sangue-rgb),.12); border: 1px solid var(--linha-forte); border-radius: 4px;
   color: var(--txt); font-size: 12px; font-family: var(--corpo); padding: 3px 10px; cursor: pointer;
   transition: all .15s;
 }
 .btn-add-condicao:hover {
-  border-color: var(--sangue); color: var(--sangue-claro); background: rgba(192,21,33,.22);
+  border-color: var(--sangue); color: var(--sangue-claro); background: rgba(var(--sangue-rgb),.22);
 }
 .condicoes-vazia { font-size: 12px; color: var(--txt-fraco); font-style: italic; }
 .chips-condicoes { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -2353,8 +2912,8 @@ body.bate-forte .barra-recurso .preenchido::before {
 
 /* Pop-up central de aviso — PV chegou a 0 */
 @keyframes brilho-popup-morrendo {
-  0%, 100% { box-shadow: 0 24px 70px rgba(0,0,0,.8), 0 0 0 1px var(--sangue), 0 0 26px rgba(192,21,33,.35); }
-  50% { box-shadow: 0 24px 70px rgba(0,0,0,.8), 0 0 0 1px var(--sangue-claro), 0 0 40px rgba(192,21,33,.6); }
+  0%, 100% { box-shadow: 0 24px 70px rgba(0,0,0,.8), 0 0 0 1px var(--sangue), 0 0 26px rgba(var(--sangue-rgb),.35); }
+  50% { box-shadow: 0 24px 70px rgba(0,0,0,.8), 0 0 0 1px var(--sangue-claro), 0 0 40px rgba(var(--sangue-rgb),.6); }
 }
 .modal-popup-morrendo {
   width: min(420px, 100%);
@@ -2395,7 +2954,7 @@ body.bate-forte .barra-recurso .preenchido::before {
   font-size: 12px; padding: 4px 10px; cursor: pointer; white-space: nowrap; transition: all .15s;
 }
 .aba-cat.ativa, .aba-cat:hover {
-  border-color: var(--sangue); color: var(--sangue-claro); background: rgba(192,21,33,.15);
+  border-color: var(--sangue); color: var(--sangue-claro); background: rgba(var(--sangue-rgb),.15);
 }
 .lista-selecao-condicoes {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px;
@@ -2408,7 +2967,7 @@ body.bate-forte .barra-recurso .preenchido::before {
 }
 .card-selecao-condicao:hover { border-color: var(--linha-forte); transform: translateY(-1px); }
 .card-selecao-condicao.selecionada {
-  border-color: var(--sangue); background: rgba(192,21,33,.12); box-shadow: 0 0 12px rgba(192,21,33,.2);
+  border-color: var(--sangue); background: rgba(var(--sangue-rgb),.12); box-shadow: 0 0 12px rgba(var(--sangue-rgb),.2);
 }
 .cabecalho-card-condicao { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 .cabecalho-card-condicao .nome { font-family: var(--display); font-size: 15px; font-weight: bold; color: var(--txt); }
@@ -2452,7 +3011,7 @@ body.bate-forte .barra-recurso .preenchido::before {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 10px rgba(192, 21, 33, 0.2) inset;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 10px rgba(var(--sangue-rgb), 0.2) inset;
 }
 .rotulo-edicao {
   font-family: var(--display);
@@ -2510,7 +3069,7 @@ body.bate-forte .barra-recurso .preenchido::before {
   position: relative;
 }
 .widget-container.modo-edicao-ativo {
-  border: 1px dashed rgba(192, 21, 33, 0.6);
+  border: 1px dashed rgba(var(--sangue-rgb), 0.6);
   border-radius: 6px;
   padding: 8px;
   background: rgba(255, 255, 255, 0.015);
@@ -2522,20 +3081,20 @@ body.bate-forte .barra-recurso .preenchido::before {
 }
 .widget-container.modo-edicao-ativo:hover {
   border-color: var(--sangue-claro);
-  background: rgba(192, 21, 33, 0.04);
+  background: rgba(var(--sangue-rgb), 0.04);
 }
 .widget-container.drag-sobre {
   transition: all 0.1s ease;
 }
 .widget-container.drag-sobre-antes {
-  border-top: 3px solid #f04653 !important;
-  box-shadow: 0 -4px 14px rgba(240, 70, 83, 0.4) !important;
-  background: rgba(240, 70, 83, 0.08) !important;
+  border-top: 3px solid var(--sangue-vivo) !important;
+  box-shadow: 0 -4px 14px rgba(var(--sangue-vivo-rgb), 0.4) !important;
+  background: rgba(var(--sangue-vivo-rgb), 0.08) !important;
 }
 .widget-container.drag-sobre-depois {
-  border-bottom: 3px solid #f04653 !important;
-  box-shadow: 0 4px 14px rgba(240, 70, 83, 0.4) !important;
-  background: rgba(240, 70, 83, 0.08) !important;
+  border-bottom: 3px solid var(--sangue-vivo) !important;
+  box-shadow: 0 4px 14px rgba(var(--sangue-vivo-rgb), 0.4) !important;
+  background: rgba(var(--sangue-vivo-rgb), 0.08) !important;
 }
 .widget-container.esta-arrastando {
   opacity: 0.35;
@@ -2604,8 +3163,8 @@ body.bate-forte .barra-recurso .preenchido::before {
   background: var(--sangue);
 }
 .btn-widget-pos.danger:hover {
-  border-color: #e0616c;
-  background: #e0616c;
+  border-color: var(--sangue-suave);
+  background: var(--sangue-suave);
 }
 
 .coluna-vazia-edicao {
@@ -2702,9 +3261,9 @@ body.bate-forte .barra-recurso .preenchido::before {
 /* Botão Trigger Levar Dano */
 .btn-receber-dano-trigger {
   width: 100%;
-  border-color: rgba(240, 70, 83, 0.4);
+  border-color: rgba(var(--sangue-vivo-rgb), 0.4);
   color: var(--sangue-claro);
-  background: rgba(192, 21, 33, 0.08);
+  background: rgba(var(--sangue-rgb), 0.08);
   font-weight: bold;
   font-size: 13px;
   padding: 6px 12px;
@@ -2718,7 +3277,7 @@ body.bate-forte .barra-recurso .preenchido::before {
   background: var(--sangue);
   border-color: var(--sangue);
   color: #fff;
-  box-shadow: 0 0 12px rgba(240, 70, 83, 0.35);
+  box-shadow: 0 0 12px rgba(var(--sangue-vivo-rgb), 0.35);
 }
 
 /* Modal Receber Dano */
@@ -2983,7 +3542,7 @@ body.bate-forte .barra-recurso .preenchido::before {
 .num-total-dano {
   font-family: var(--numeros);
   font-size: 16px;
-  color: #f04653;
+  color: var(--sangue-vivo);
 }
 .linha-absorcao-temp {
   font-size: 12px;
@@ -3010,7 +3569,7 @@ body.bate-forte .barra-recurso .preenchido::before {
 }
 .btn-aplicar-dano:hover:not(:disabled) {
   background: var(--sangue-escuro);
-  box-shadow: 0 0 12px rgba(240, 70, 83, 0.5);
+  box-shadow: 0 0 12px rgba(var(--sangue-vivo-rgb), 0.5);
 }
 
 /* Botão Trigger Descanso */
@@ -3103,8 +3662,8 @@ body.bate-forte .barra-recurso .preenchido::before {
 }
 .card-condicao-descanso.ativo {
   border-color: var(--sangue);
-  background: rgba(192, 21, 33, 0.12);
-  box-shadow: 0 0 8px rgba(192, 21, 33, 0.3);
+  background: rgba(var(--sangue-rgb), 0.12);
+  box-shadow: 0 0 8px rgba(var(--sangue-rgb), 0.3);
 }
 .nome-condicao-descanso {
   font-family: var(--display);
@@ -3147,7 +3706,7 @@ body.bate-forte .barra-recurso .preenchido::before {
 }
 .item-acao-interludio.ativa {
   border-color: var(--sangue-claro);
-  background: rgba(192, 21, 33, 0.08);
+  background: rgba(var(--sangue-rgb), 0.08);
 }
 .titulo-acao-interludio {
   font-family: var(--display);

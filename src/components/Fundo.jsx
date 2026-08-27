@@ -1,11 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { iniciarCoracao } from '../engine/som.js';
+import { TEMAS_POR_ID, TEMA_PADRAO } from '../data/temas.js';
 
 /**
  * Camada de fundo: o pulsar do coração (cada pulso é disparado pelo mesmo
  * relógio que toca o som, por isso imagem e som andam juntos) e brasas a subir.
  */
-export default function Fundo({ brasas = 34 }) {
+export default function Fundo({ brasas = 34, tema = TEMA_PADRAO }) {
+  // A entidade à direita muda com o tema. Se o ficheiro ainda não existir
+  // (tema por vestir), esconde-se sozinha em vez de deixar o ícone partido.
+  const [entidadeFalhou, setEntidadeFalhou] = useState(false);
+  const entidade = TEMAS_POR_ID[tema] || TEMAS_POR_ID[TEMA_PADRAO];
+  useEffect(() => { setEntidadeFalhou(false); }, [tema]);
+
   const [batida, setBatida] = useState(null);   // 'forte' | 'fraca' | null
   const limpar = useRef(null);
 
@@ -51,7 +58,15 @@ export default function Fundo({ brasas = 34 }) {
   return (
     <>
       <div className={'pulso' + (batida ? ` bate-${batida}` : '')} aria-hidden="true" />
-      <img className="criatura" src="/img/diabo.webp" alt="" aria-hidden="true" />
+      {entidade?.entidade && !entidadeFalhou && (
+        <img
+          className="criatura"
+          src={entidade.entidade}
+          alt=""
+          aria-hidden="true"
+          onError={() => setEntidadeFalhou(true)}
+        />
+      )}
       <div className="brasas" aria-hidden="true">
         {particulas.map((p) => (
           <span

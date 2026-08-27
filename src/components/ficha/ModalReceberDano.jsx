@@ -87,7 +87,7 @@ export default function ModalReceberDano({
           <h3 style={{ margin: 0, fontFamily: 'var(--display)', fontSize: 20 }}>
             Recetor de Ataques & Dano
           </h3>
-          <button className="fechar" onClick={aoFechar} aria-label="Fechar">✕</button>
+          <button className="fechar" onClick={aoFechar} aria-label="Fechar"></button>
         </div>
 
         <div className="modal-corpo" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

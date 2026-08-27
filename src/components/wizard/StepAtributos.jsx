@@ -55,6 +55,7 @@ function CaixaAtributo({ valor, onChange, podeSubir, podeDescer }) {
     const el = ref.current;
     if (!el) return;
     const handleWheel = (e) => {
+      if (document.activeElement !== el) return;
       e.preventDefault();
       e.stopPropagation();
       if (e.deltaY < 0) onChange(valor + 1);

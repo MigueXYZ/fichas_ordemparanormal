@@ -64,6 +64,15 @@ export const PERICIAS_TEXTO = {
           'Você pode atravessar um espaço ocupado por um inimigo como parte de seu movimento. Faça um teste de Acrobacia oposto ao teste de Acrobacia, Iniciativa ou Luta do oponente (o que for melhor). Se você passar, atravessa o espaço; se falhar, não atravessa e sua ação de movimento termina. Um espaço ocupado por um inimigo conta como terreno difícil.',
       },
     ],
+    suplementos: [
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Perseguições — Cortar Caminho / Manobra Acrobática',
+        treino: '',
+        dt: '20',
+        texto: 'Em cenas de perseguição, você pode usar Acrobacia (1x por perseguição) no lugar de Atletismo caso justifique uma rota acrobática (como correr pelas paredes ou saltar por corrimões). Também é usada para superar pisos escorregadios (DT 20) como evento de obstáculo.',
+      },
+    ],
   },
 
   adestramento: {
@@ -98,6 +107,15 @@ export const PERICIAS_TEXTO = {
           'Você faz um animal realizar uma tarefa para a qual foi treinado. Isso permite usar Adestramento como Pilotagem para veículos de tração animal, como carroças. Este uso gasta uma ação de movimento.',
       },
     ],
+    suplementos: [
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Perseguições Motorizadas ou Montadas',
+        treino: '',
+        dt: 'Variável',
+        texto: 'As regras padrão de perseguição presumem que os personagens estão a pé. Se estiverem montados em animais (como cavalos), substitua todos os testes de Atletismo da perseguição por testes de Adestramento.',
+      },
+    ],
   },
 
   artes: {
@@ -114,6 +132,15 @@ export const PERICIAS_TEXTO = {
         dt: 'Oposto',
         texto:
           'Faça um teste de Artes oposto pelo teste de Vontade de quem você está tentando impressionar. Se você passar, recebe +2 em testes de perícia baseadas em Presença contra essa pessoa na mesma cena. Se falhar, sofre –2 nesses testes, e não pode tentar de novo na mesma cena. Se estiver tentando impressionar mais de uma pessoa, o mestre faz apenas um teste pela plateia toda, usando o melhor bônus. Este uso leva de alguns minutos (música ou dança) até algumas horas (apresentação de teatro).',
+      },
+    ],
+    suplementos: [
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Trabalho e Lazer em Folgas da Ordem',
+        treino: '',
+        dt: '20',
+        texto: 'Durante folgas da Ordem, personagens com carreira artística podem fazer dois testes de Artes (DT 20). Dois sucessos concedem um item adicional de Categoria I na próxima missão (ou Categoria II com 20 natural). Como lazer, pode ser usado para relaxar e aumentar PE temporário/máximo.',
       },
     ],
   },
@@ -157,6 +184,22 @@ export const PERICIAS_TEXTO = {
           'Você pode pular sobre buracos ou obstáculos ou alcançar algo elevado. Para um salto longo, a DT é 5 por quadrado de 1,5m (DT 10 para 3m, 15 para 4,5m, 20 para 6m e assim por diante). Para um salto em altura, a DT é 15 por quadrado de 1,5m (30 para 3m). Você deve ter pelo menos 6m para correr e pegar impulso (sem esse espaço, a DT aumenta em +5). Saltar é parte de seu movimento e não exige uma ação.',
       },
     ],
+    suplementos: [
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Ações Especiais em Perseguição',
+        treino: '',
+        dt: 'Variável',
+        texto: 'Perseguições são resolvidas com testes estendidos de Atletismo (3 sucessos antes de 3 falhas). As ações especiais incluem:\n\n• Cortar Caminho: Sofre –2O no teste de Atletismo; se passar, acumula 2 sucessos na perseguição.\n\n• Esforço Extra: Recebe +O no teste de Atletismo, mas perde 1d4 PV cumulativo por uso na cena (1d4 na 1ª vez, 2d4 na 2ª, etc.).\n\n• Criar Obstáculo: Se for presa, sofre –O em Atletismo e faz teste de Força (DT 15) para criar barreira, diminuindo a DT do teste de Atletismo da rodada em –5 para todos.\n\n• Sacrifício: Falha automaticamente no teste de Atletismo da rodada para atrapalhar perseguidores e conceder +O no teste de todos os aliados.',
+      },
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Lazer e Exercício Físico (Folga)',
+        treino: '',
+        dt: '20',
+        texto: 'Durante folgas da Ordem, praticar esportes/musculação exige dois testes de Atletismo (DT 20). Dois sucessos aumentam o PE máximo em +2 pela próxima missão (+5 se obtiver pelo menos um 20 natural).',
+      },
+    ],
   },
 
   atualidades: {
@@ -166,6 +209,15 @@ export const PERICIAS_TEXTO = {
     texto:
       'Você é um conhecedor de assuntos gerais, como política, esporte e entretenimento, e pode responder dúvidas relativas a esses assuntos. A DT é 15 para informações comuns, como o nome do autor de um livro, 20 para informações específicas, como a história do fundador de uma empresa, e 25 para informações quase desconhecidas, como uma lenda urbana já esquecida.',
     usos: [],
+    suplementos: [
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Cuidar de Relacionamento (Folga)',
+        treino: '',
+        dt: '20',
+        texto: 'Em folgas da Ordem, passar tempo com um ente querido ou amigo (por exemplo, ir ao cinema e colocar os assuntos em dia) exige testes de perícia (como Atualidades e Diplomacia, ambos DT 20). Dois sucessos concedem 1d6 bônus em um teste de perícia na próxima missão (ou 3d6 com 20 natural).',
+      },
+    ],
   },
 
   ciencias: {
@@ -175,6 +227,15 @@ export const PERICIAS_TEXTO = {
     texto:
       'Você estudou diversos campos científicos, como matemática, física, química e biologia, e pode responder dúvidas relativas a esses assuntos. Questões simples, como a composição química de uma substância conhecida, não exigem teste. Questões complexas, como detalhes sobre o funcionamento de um procedimento científico específico, exigem um teste contra DT 20. Por fim, questões envolvendo campos experimentais, como avaliar a capacidade de proteção de uma liga metálica recém-criada, exigem um teste contra DT 30.',
     usos: [],
+    suplementos: [
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Exames Forenses e Laboratoriais de Campo',
+        treino: 'Treinado',
+        dt: 'Variável',
+        texto: 'Em investigações detalhadas, permite análises laboratoriais e químicas para decifrar composições de substâncias, compostos estranhos, venenos e alterações no ambiente.',
+      },
+    ],
     box: {
       titulo: 'Interpretando a Perícia Ciências',
       texto:
@@ -222,6 +283,15 @@ export const PERICIAS_TEXTO = {
           'Você desabilita um dispositivo. Uma ação simples, como desativar um alarme, tem DT 20. Uma ação complexa, como sabotar uma pistola para que exploda quando disparada, tem DT 30. Se você falhar por 5 ou mais, algo sai errado (o alarme dispara, você acha que a arma está sabotada, mas na verdade ainda funciona…). Este uso gasta 1d4+1 ações completas. Você pode sofrer uma penalidade de –O em seu teste para fazê-lo como uma ação completa.',
       },
     ],
+    suplementos: [
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Atalho em Perseguição — Arrombamento Rápido',
+        treino: 'Treinado',
+        dt: '25',
+        texto: 'Durante uma cena de perseguição, ao surgir o evento de uma porta trancada levando a um atalho, o personagem pode fazer um teste de Crime (DT 25) no início da rodada para destrancá-la rapidamente e conceder +2O no teste de Atletismo daquela rodada.',
+      },
+    ],
   },
 
   diplomacia: {
@@ -253,6 +323,22 @@ export const PERICIAS_TEXTO = {
         dt: '20',
         texto:
           'Você convence uma pessoa a fazer alguma coisa, como responder a uma pergunta ou prestar um favor. Se essa coisa for custosa (como emprestar um carro) você sofre –5 em seu teste. Se for perigosa (como cometer um crime) você sofre –10 ou falha automaticamente. De acordo com o mestre, seu teste pode ser oposto ao teste de Vontade da pessoa. Este uso gasta um minuto ou mais, de acordo com o mestre.',
+      },
+    ],
+    suplementos: [
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Acalmar contra o Medo',
+        treino: 'Treinado',
+        dt: '20',
+        texto: 'Se você for treinado em Diplomacia, Profissão (psicólogo) ou Religião, pode gastar uma ação padrão e fazer um teste (DT 20) para acalmar um personagem adjacente que esteja com Sanidade 0. Esse personagem recupera 1 ponto de Sanidade. A DT deste teste aumenta em +5 para cada vez que o personagem tiver sido acalmado na mesma cena.',
+      },
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Relacionamentos e Negociações em Folgas',
+        treino: '',
+        dt: '20',
+        texto: 'Usada para manter laços afetivos e resolver atritos em folgas da Ordem, garantindo dados de suporte moral para as próximas missões.',
       },
     ],
     box: {
@@ -322,6 +408,22 @@ export const PERICIAS_TEXTO = {
           'Você faz uma pessoa acreditar em algo que não é verdade. Seu teste é oposto pelo teste de Intuição da vítima. Mentiras muito implausíveis impõem uma penalidade de –OO em seu teste (“Por que estou com o crachá do chefe de segurança? Ora, porque ele deixou cair e estou indo devolver!”).',
       },
     ],
+    suplementos: [
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Furtividade — Distrair Algozes',
+        treino: '',
+        dt: '15',
+        texto: 'Em cenas de furtividade e visibilidade, o personagem distrai seus algozes (por exemplo, atirando uma pedra longe). Faça um teste de Enganação (DT 15). Se passar, diminui sua visibilidade ou a de um aliado próximo em –1. Se falhar, aumenta sua visibilidade em +1. Apenas um personagem pode fazer esta ação por rodada, e cada uso na mesma cena aumenta a DT em +5 (DT 20 na segunda, 25 na terceira, etc.).',
+      },
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Perseguições — Finta / Mudança de Direção',
+        treino: '',
+        dt: 'Variável',
+        texto: 'Em perseguições, pode ser usada 1x para dar a entender que vai por um caminho e, no último momento, mudar de direção, substituindo o teste de Atletismo da rodada.',
+      },
+    ],
   },
 
   fortitude: {
@@ -331,6 +433,15 @@ export const PERICIAS_TEXTO = {
     texto:
       'Você usa esta perícia para testes de resistência contra efeitos que exigem vitalidade, como doenças e venenos. A DT é determina pelo efeito. Você também usa Fortitude para manter seu fôlego quando está correndo ou sem respirar. A DT é 5 +5 por teste anterior (veja a perícia Atletismo para mais detalhes).',
     usos: [],
+    suplementos: [
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Resistir a Choque e Traumas Físicos do Medo',
+        treino: '',
+        dt: 'Variável',
+        texto: 'Utilizada para resistir a condições extremas e choques biológicos decorrentes da exposição ao pânico ou ambientes letais.',
+      },
+    ],
   },
 
   furtividade: {
@@ -356,6 +467,22 @@ export const PERICIAS_TEXTO = {
           'Faça um teste de Furtividade oposto ao teste de Percepção da pessoa sendo seguida. Você sofre –5 se estiver em um lugar sem esconderijos ou sem movimento, como um descampado ou rua deserta. A vítima recebe +5 em seu teste de Percepção se estiver tomando precauções para não ser seguida (como olhar para trás de vez em quando). Se você passar, segue a pessoa até ela chegar ao seu destino. Se falhar, a pessoa o percebe na metade do caminho.',
       },
     ],
+    suplementos: [
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Regras de Visibilidade em Cenas de Furtividade',
+        treino: '',
+        dt: '15',
+        texto: 'Em cenas de furtividade importantes, a visibilidade começa em 0 (completamente escondido) e vai até 3+ (completamente exposto):\n\n• Ação Comum: Investigar normal, andar normal: Visibilidade +1.\n\n• Ação Discreta: Anda metade do deslocamento, sofre –O em testes: Visibilidade +0.\n\n• Ação Chamativa: Correr, gritar, atacar, conjurar ritual: Visibilidade +2.\n\n• Esconder-se: Concentra-se em se ocultar (Furtividade DT 15). Se passar, diminui sua visibilidade em –1.\n\n• Chamar Atenção: Chama a atenção de propósito para proteger aliados; sua visibilidade aumenta em +2, mas a de um aliado diminui em –1.',
+      },
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Perseguições — Despistar',
+        treino: '',
+        dt: 'Variável',
+        texto: 'Se a presa tiver pelo menos 1 sucesso na perseguição, pode substituir o teste de Atletismo por Furtividade para se esconder. Se passar, ganha 2 sucessos imediatos (podendo escapar). Se falhar, recebe 2 falhas.',
+      },
+    ],
   },
 
   iniciativa: {
@@ -364,6 +491,15 @@ export const PERICIAS_TEXTO = {
     texto:
       'Esta perícia determina sua velocidade de reação. Quando uma cena de ação começa, cada personagem envolvido faz um teste de Iniciativa. Eles então agem em ordem decrescente dos resultados.',
     usos: [],
+    suplementos: [
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Ordem de Ação em Cenas Tensas e Perseguições',
+        treino: '',
+        dt: '',
+        texto: 'Determina a ordem de turnos nas rodadas de perseguições, infiltrações e eventos com contagem de tempo de Sobrevivendo ao Horror.',
+      },
+    ],
   },
 
   intimidacao: {
@@ -389,6 +525,15 @@ export const PERICIAS_TEXTO = {
           'Faça um teste de Intimidação oposto pelo teste de Vontade de uma pessoa adjacente. Se você passar, ela obedece uma ordem sua (como fazer uma pequena tarefa, deixar que você passe por um lugar que ele estava protegendo etc.). Se você mandar a pessoa fazer algo perigoso ou que vá contra a natureza dela, ela recebe +5 no teste ou passa automaticamente. Este uso gasta um minuto ou mais, de acordo com o mestre, e deixa a pessoa hostil contra você.',
       },
     ],
+    suplementos: [
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Perseguições — Abrir Passagem na Multidão',
+        treino: '',
+        dt: '20',
+        texto: 'Ao deparar-se com uma multidão bloqueando o caminho em uma perseguição urbana, faça um teste de Intimidação (DT 20) no início da rodada para abrir espaço e evitar a penalidade de –2O em Atletismo.',
+      },
+    ],
   },
 
   intuicao: {
@@ -411,6 +556,15 @@ export const PERICIAS_TEXTO = {
         dt: '20',
         texto:
           'Você analisa uma pessoa, para ter uma ideia de sua índole ou caráter, ou uma situação, para perceber qualquer fato estranho (por exemplo, se os habitantes de uma cidadezinha estão agindo de forma esquisita). Este uso apenas indica se há algo anormal; para descobrir a causa, veja a perícia Investigação.',
+      },
+    ],
+    suplementos: [
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Perceber Comportamentos Alterados pelo Medo',
+        treino: '',
+        dt: 'Variável',
+        texto: 'Avaliar o estado mental e o nível de estresse de testemunhas e aliados para detectar surtos, pânico contido ou manipulações.',
       },
     ],
   },
@@ -438,6 +592,15 @@ export const PERICIAS_TEXTO = {
           'Você examina um local. A DT varia: 15 para um item discreto ou no meio de uma bagunça, mas não necessariamente escondido; 20 para um item escondido (cofre atrás de um quadro, documento no fundo falso de uma gaveta); 30 para um item muito bem escondido (passagem secreta ativada por um botão, documento escrito com tinta invisível). Este uso gasta desde uma ação completa (examinar uma escrivaninha) até um dia (pesquisar uma biblioteca).',
       },
     ],
+    suplementos: [
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Novas Ações de Investigação',
+        treino: '',
+        dt: '15',
+        texto: 'Três novas ações especiais para cenas de investigação:\n\n• Busca Obstinada: Analisa cada detalhe obsessivamente. Funciona como procurar pistas recebendo +O no teste. Porém, perde 1d4 pontos de Sanidade por vez que já fez esta ação na mesma cena (1d4 na 1ª vez, 2d4 na 2ª, 3d4 na 3ª, etc.).\n\n• Recapitular: O jogador recapitula as pistas em voz alta interpretando seu personagem e faz um teste de Intelecto (DT 15). Se passar, descobre uma nova pista a critério do mestre (1x por grupo por cena).\n\n• Compartilhar: O jogador explica uma pista para outro personagem, e o interlocutor faz um teste de Intelecto (DT 15) como ação livre. Se passar, o mestre destaca a informação mais crucial daquela pista (1x por grupo por cena).',
+      },
+    ],
   },
 
   luta: {
@@ -446,6 +609,15 @@ export const PERICIAS_TEXTO = {
     texto:
       'Você usa Luta para fazer ataques corpo a corpo. A DT é a Defesa do alvo. Se você acertar, causa dano de acordo com a arma utilizada. Veja o Capítulo 4 para as regras completas de ataque.',
     usos: [],
+    suplementos: [
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Perseguições — Atrapalhar Outra Presa',
+        treino: '',
+        dt: 'Oposto',
+        texto: 'Se for uma presa, o personagem pode atrapalhar outra presa com o mesmo número de sucessos para aumentar sua própria chance de fuga. Sofre –O no seu teste de Atletismo e faz um teste de Luta oposto a Luta ou Reflexos da vítima. Se vencer, impõe –2O no teste de Atletismo dela.',
+      },
+    ],
   },
 
   medicina: {
@@ -486,6 +658,15 @@ export const PERICIAS_TEXTO = {
         dt: 'Variável',
         texto:
           'Você ajuda a vítima de uma doença ou veneno com efeito contínuo. Gaste uma ação completa e faça um teste contra a DT da doença ou veneno. Se você passar, o paciente recebe +5 em seu próximo teste de Fortitude contra esse efeito.',
+      },
+    ],
+    suplementos: [
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Trabalho e Manutenção Médica (Folga / Interlúdio)',
+        treino: 'Treinado',
+        dt: '20',
+        texto: 'Médicos podem exercer sua profissão fora da Ordem em folgas (dois testes de Medicina DT 20), rendendo itens de apoio de Categoria I ou II na próxima missão. Em campo, supervisiona a estabilização e recuperação de ferimentos graves.',
       },
     ],
   },
@@ -529,6 +710,15 @@ export const PERICIAS_TEXTO = {
           'Você responde dúvidas relativas ao Outro Lado, objetos amaldiçoados, fenômenos paranormais, runas, profecias etc. Questões simples não exigem teste. Questões complexas exigem um teste contra DT 20. Por fim, mistérios e enigmas exigem um teste contra DT 30.',
       },
     ],
+    suplementos: [
+      {
+        fonte: 'Arquivos Secretos',
+        nome: 'Blindar a Mente (Arquivos Secretos 01, p. 43)',
+        treino: 'Veterano',
+        dt: '20',
+        texto: 'Você pode gastar uma ação completa e 1 PE para focar no que sabe do paranormal e, assim, proteger sua sanidade contra futuras ameaças do Outro Lado. Se passar, recebe +5 em seu próximo teste de Vontade até o fim desta cena. Você pode fazer o mesmo com um aliado adjacente, mas o teste é mais difícil (DT 25) e o aliado também precisa fazer um teste de Vontade (DT 20) para não ficar assustado com seus conhecimentos e perder 1d4 SAN, além de não receber o bônus.',
+      },
+    ],
     box: {
       titulo: 'Interpretando a Perícia Ocultismo',
       texto:
@@ -559,6 +749,15 @@ export const PERICIAS_TEXTO = {
           'Você escuta barulhos sutis. Uma conversa casual próxima tem DT 0 — ou seja, a menos que exista alguma penalidade, você passa automaticamente. Ouvir pessoas sussurrando tem DT 15. Ouvir do outro lado de uma porta aumenta a DT em +5. Você pode fazer testes de Percepção para ouvir mesmo que esteja dormindo, mas sofre –OO no teste; um sucesso faz você acordar. Perceber seres que não possam ser vistos tem DT 20, ou +10 no teste de Furtividade do ser, o que for maior. Mesmo que você passe no teste, ainda sofre penalidades normais por lutar sem ver o inimigo.',
       },
     ],
+    suplementos: [
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Perseguições — Localizar Atalhos e Vias Labirínticas',
+        treino: '',
+        dt: '20',
+        texto: 'Em cenas de perseguição com atalhos labirínticos, um teste de Percepção (DT 20) no início da rodada concede +2O no teste de Atletismo daquela rodada caso passe (mas impõe –2O se falhar).',
+      },
+    ],
   },
 
   pilotagem: {
@@ -567,6 +766,15 @@ export const PERICIAS_TEXTO = {
     texto:
       'Você sabe operar veículos terrestres e aquáticos, como motos, carros e lanchas. Pilotar um veículo gasta uma ação de movimento por turno. Situações comuns (dirigir em uma estrada, velejar em clima tranquilo) não exigem teste. Situações ruins (dirigir em uma estrada de chão e sem iluminação, velejar em chuva ou ventania) exigem um teste por turno contra DT 15. Situações terríveis (dirigir em terreno acidentado, velejar durante uma tempestade) exigem um teste por turno contra DT 25. Se você possuir grau de treinamento veterano nesta perícia, pode pilotar veículos aéreos, como aviões e helicópteros.',
     usos: [],
+    suplementos: [
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Perseguições Motorizadas',
+        treino: '',
+        dt: 'Variável',
+        texto: 'Em perseguições a bordo de veículos terrestres, aquáticos ou aéreos, substitua todos os testes de Atletismo da cena por testes de Pilotagem, aplicando manobras arriscadas para acumular sucessos de fuga ou captura.',
+      },
+    ],
   },
 
   pontaria: {
@@ -575,6 +783,15 @@ export const PERICIAS_TEXTO = {
     texto:
       'Você usa Pontaria para fazer ataques à distância. A DT é a Defesa do alvo. Se você acertar, causa dano de acordo com a arma utilizada. Veja o Capítulo 4 para as regras completas de ataque.',
     usos: [],
+    suplementos: [
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Disparos de Cobertura e Ataques em Perseguição',
+        treino: '',
+        dt: 'Variável',
+        texto: 'Permite disparar contra perseguidores ou veículos em fuga durante perseguições ou cenas de ação rápida.',
+      },
+    ],
   },
 
   profissao: {
@@ -585,6 +802,29 @@ export const PERICIAS_TEXTO = {
       'Você sabe exercer uma profissão específica, como advogado, engenheiro, jornalista ou publicitário. Converse com o mestre para definir os detalhes de sua profissão e que tipos de testes você pode fazer com ela. Por exemplo, um advogado pode fazer um teste de Profissão para argumentar com a polícia, enquanto um administrador pode usar esta perícia para investigar os documentos de uma corporação.\n\n' +
       'Um personagem treinado nesta perícia possui seus próprios rendimentos ou, caso não trabalhe mais, uma reserva de capital. Isso permite que você comece cada missão com um item adicional, além daqueles fornecidos pela Ordem. O item é de categoria I se você for treinado, de categoria II se você for veterano e de categoria III se você for expert.',
     usos: [],
+    suplementos: [
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Fabricação em Campo (Interlúdio)',
+        treino: 'Treinado',
+        dt: 'Variável',
+        texto: 'Um personagem treinado em uma Profissão específica pode usar ações de manutenção em cenas de interlúdio para fabricar itens (1 ação para munições/explosivos/consumíveis; 2 ações para armas/proteções/gerais). Exige kit de perícia (sem kit sofre –5):\n\n• Armeiro: Armas, munições e proteções.\n• Químico: Explosivos, munições e consumíveis (cicatrizante, spray de pimenta).\n• Engenheiro: Demais equipamentos gerais.\n\nDTs de Fabricação por Categoria:\nCategoria 0: DT 15 | Categoria I: DT 20 | Categoria II: DT 25 | Categoria III: DT 30 | Categoria IV: DT 35.\n\n• Itens Improvisados: Reduz a DT em –5. O item quebra e fica inutilizável após uma cena de uso.',
+      },
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Acalmar contra o Medo (Psicólogo)',
+        treino: 'Treinado',
+        dt: '20',
+        texto: 'Personagem treinado em Profissão (psicólogo) pode gastar uma ação padrão para acalmar um aliado adjacente com Sanidade 0, recuperando 1 ponto de Sanidade. A DT aumenta em +5 por uso subsequente no mesmo alvo.',
+      },
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Trabalho fora da Ordem em Folgas',
+        treino: 'Treinado',
+        dt: '20',
+        texto: 'Dois testes de Profissão (DT 20) em uma folga concedem 1 item de Categoria I extra na próxima missão (ou Categoria II com pelo menos um 20 natural).',
+      },
+    ],
   },
 
   reflexos: {
@@ -594,6 +834,15 @@ export const PERICIAS_TEXTO = {
     texto:
       'Você usa esta perícia para testes de resistência contra efeitos que exigem reação rápida, como armadilhas e explosões. A DT é determina pelo efeito. Você também usa Reflexos para evitar fintas (veja Enganação).',
     usos: [],
+    suplementos: [
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Perseguições — Desviar de Entulhos e Obstáculos',
+        treino: '',
+        dt: '20',
+        texto: 'Ao rolar o evento de um entulho móvel ou desmoronamento no meio de uma perseguição, faça um teste de Reflexos (DT 20) no início da rodada para não sofrer –2O em Atletismo.',
+      },
+    ],
   },
 
   religiao: {
@@ -624,6 +873,22 @@ export const PERICIAS_TEXTO = {
         treino: 'Veterano',
         dt: '20',
         texto: 'Você realiza uma cerimônia religiosa (batizado, casamento, funeral…).',
+      },
+    ],
+    suplementos: [
+      {
+        fonte: 'Arquivos Secretos',
+        nome: 'Resguardar Espírito (Arquivos Secretos 07, p. 80)',
+        treino: 'Treinado',
+        dt: '20',
+        texto: 'Você pode gastar uma ação completa e fazer um teste de Religião (DT 20) para dedicar um breve rito religioso de proteção (rezas, oferendas, mantras etc.) a você ou uma pessoa adjacente. Se passar, o alvo recebe +2 em testes de Vontade até o final da cena. Se falhar, não pode tentar novamente na mesma pessoa até o final da cena. O bônus é fruto de como a fé pode motivar o ser humano, não tendo qualquer efeito paranormal.',
+      },
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Acalmar contra o Medo',
+        treino: 'Treinado',
+        dt: '20',
+        texto: 'Personagem treinado em Religião pode gastar uma ação padrão para proferir orações ou palavras de conforto a um aliado adjacente com Sanidade 0, restaurando 1 ponto de Sanidade (DT 20, +5 por uso subsequente).',
       },
     ],
   },
@@ -668,6 +933,15 @@ export const PERICIAS_TEXTO = {
           'Você pode identificar e seguir rastros. A DT varia: 15 para rastrear um grupo grande, ou um único ser em solo macio, como lama ou neve; 20 para um ser em solo comum (grama, terra); 25 para um ser em solo duro (estrada, piso de interiores). Visibilidade precária ou clima ruim (noite, chuva, neblina) impõem –O no teste. Você precisa fazer um teste por dia de perseguição. Enquanto rastreia, seu deslocamento é reduzido à metade. Se falhar, pode tentar novamente gastando mais um dia. Porém, a cada dia desde a criação dos rastros, a DT aumenta em +1.',
       },
     ],
+    suplementos: [
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Perseguições — Atalho por Vegetação',
+        treino: '',
+        dt: '20',
+        texto: 'Em ambientes externos e perseguições na natureza, um teste de Sobrevivência (DT 20) permite identificar caminhos ocultos pela vegetação, concedendo +2O em Atletismo naquela rodada.',
+      },
+    ],
   },
 
   tatica: {
@@ -691,6 +965,15 @@ export const PERICIAS_TEXTO = {
         dt: '20',
         texto:
           'Com uma ação padrão, você orienta um aliado em alcance médio. Se passar, fornece +5 na Iniciativa dele. Se isso fizer com que um aliado que ainda não tenha agido nesta rodada fique com uma Iniciativa maior do que a sua, ele age imediatamente após seu turno. Nas próximas rodadas, ele age de acordo com a nova ordem.',
+      },
+    ],
+    suplementos: [
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Perseguições — Escolha da Rota Ideal',
+        treino: '',
+        dt: 'Variável',
+        texto: 'Pode ser usada 1x por perseguição para analisar o terreno e coordenar a melhor rota de fuga ou cerco, substituindo o teste de Atletismo da rodada.',
       },
     ],
   },
@@ -734,6 +1017,29 @@ export const PERICIAS_TEXTO = {
           'Você opera um dispositivo eletrônico complexo. Isso permite que você acesse câmeras remotamente, destrave fechaduras eletrônicas, ative ou desative alarmes etc. A DT é 15 para aparelhos comuns, 20 para equipamento profissional e 25 para sistemas protegidos. Este uso gasta 1d4+1 ações completas e exige um kit. Você pode sofrer uma penalidade de –O em seu teste para fazê-lo como uma ação completa. Sem o kit, você sofre –5 nos testes de operar dispositivo.',
       },
     ],
+    suplementos: [
+      {
+        fonte: 'Arquivos Secretos',
+        nome: 'Obter Informações (Arquivos Secretos 04, p. 64)',
+        treino: '',
+        dt: '5',
+        texto: 'Você pode gastar uma ação completa para fazer uma rápida pesquisa na internet sobre um local ou pessoa. Faça um teste de Tecnologia (DT 5). Se passar, você adquire 1 informação +1 para cada 5 pontos acima da DT.',
+      },
+      {
+        fonte: 'Arquivos Secretos',
+        nome: 'Rastrear Trilha Digital (Arquivos Secretos 05, p. 54)',
+        treino: 'Veterano',
+        dt: '20 / 25 / 30',
+        texto: 'Você pode gastar 1d4+1 ações completas para conseguir fazer uso de um complexo algoritmo capaz de interpretar a movimentação de aparelhos eletrônicos através de suas partículas de radiação. Com isso, você pode rastrear o caminho do aparelho refazendo o trajeto pelo qual a pessoa portando ele passou. A dificuldade do teste depende da complexidade do caminho: trajeto simples (DT 20); trajeto tortuoso (DT 25); trajeto enigmático (DT 30).',
+      },
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Trabalho e Lazer Tecnológico (Folga)',
+        treino: '',
+        dt: '20',
+        texto: 'Programadores e engenheiros podem realizar projetos durante folgas da Ordem (dois testes de Tecnologia DT 20) para obter itens adicionais de suporte na missão seguinte, ou desfrutar de jogos para regeneração de esforço.',
+      },
+    ],
   },
 
   vontade: {
@@ -743,6 +1049,15 @@ export const PERICIAS_TEXTO = {
     texto:
       'Você usa esta perícia para testes de resistência contra efeitos que exigem determinação, como intimidação e rituais que afetam a mente. A DT é determinada pelo efeito. Você também usa Vontade para conjurar rituais em condições adversas (veja o Capítulo 5).',
     usos: [],
+    suplementos: [
+      {
+        fonte: 'Sobrevivendo ao Horror',
+        nome: 'Resistir a Efeitos e Surtos de Medo',
+        treino: '',
+        dt: '20',
+        texto: 'Ao sofrer abalos mentais severos ou surtos de adrenalina incontroláveis sob efeito do medo, testes de Vontade (DT 20) são exigidos para manter o foco e evitar perder o controle das ações ou hesitar na rodada.',
+      },
+    ],
   },
 };
 

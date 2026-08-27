@@ -1,4 +1,5 @@
 import { calcPericias, calcPenalidadesCondicoes, nexEfetivo } from './calc.js';
+import { efeitosRituaisNaArma } from './rituaisEfeitos.js';
 import { aplicarModificacoes, ALCANCES } from '../data/modificacoesArma.js';
 import { aplicarMaldicoesArma } from '../data/maldicoes.js';
 import { atributosEfetivos } from './monstruoso.js';
@@ -70,6 +71,13 @@ export function estatisticasArma(personagem, arma) {
   // conjurar/terminar a transformação em RituaisEmCombate (Abas.jsx).
   const bonusFormaMonstruosa = personagem.formaMonstruosaAtiva && corpoACorpo ? 5 : 0;
 
+  // Rituais ativos: Martírio de Sangue soma a TODOS os ataques corpo a
+  // corpo; Arma Atroz soma só à arma escolhida na conjuração.
+  const efRit = conds.rituais || { ataqueCorpoACorpo: { ataque: 0, dano: 0 } };
+  const bonusRitualCaC = corpoACorpo ? (efRit.ataqueCorpoACorpo?.ataque || 0) : 0;
+  const bonusRitualDano = corpoACorpo ? (efRit.ataqueCorpoACorpo?.dano || 0) : 0;
+  const naArma = efeitosRituaisNaArma(personagem, nexEfetivo(personagem), arma);
+
   const alcanceBase = ALCANCES.indexOf(arma.alcance);
   const saltosAlcance = (mods.lista.reduce((t, m) => t + (m.efeitos.alcanceCategoria || 0), 0)) + maldicoes.alcanceCategoria;
   const alcanceFinal = alcanceBase >= 0 && saltosAlcance
@@ -90,11 +98,11 @@ export function estatisticasArma(personagem, arma) {
     atributoTeste,
     atributoDano,
     agilAtiva,
-    bonusAtaque: p.bonus + (Number(arma.bonus) || 0) + mods.ataque + bonusFormaMonstruosa,
+    bonusAtaque: p.bonus + (Number(arma.bonus) || 0) + mods.ataque + bonusFormaMonstruosa + bonusRitualCaC + naArma.ataque,
     dadosExtraAtaque,
     dano: somarDados(arma.dano, mods.dadosDano + maldicoes.dadosDano),
-    bonusDano: bonusAtributoDano + mods.dano + bonusFormaMonstruosa,
-    margem: Math.max(2, critico.margem - mods.margem - maldicoes.margemExtra),
+    bonusDano: bonusAtributoDano + mods.dano + bonusFormaMonstruosa + bonusRitualDano,
+    margem: Math.max(2, critico.margem - mods.margem - maldicoes.margemExtra - naArma.margem),
     multiplicador: critico.multiplicador,
     extras,
     alcance: alcanceFinal,
@@ -133,7 +141,14 @@ export function armaDoItem(item) {
 
 /** Uma arma é do catálogo de armas, ou um item amaldiçoado que é arma. */
 export function ehArma(item) {
-  return item?.tipo === 'arma' || (item?.tipo === 'amaldicoado' && /arma/i.test(item?.subtipo || ''));
+  return (
+    item?.tipo === 'arma' ||
+    item?.grupo === 'Explosivo' ||
+    item?.subgrupo === 'Explosivos' ||
+    item?.pericia === 'pontaria' ||
+    item?.pericia === 'luta' ||
+    (item?.tipo === 'amaldicoado' && /arma|explosivo|granada/i.test(item?.subtipo || item?.tipoDano || item?.nome || ''))
+  );
 }
 
 /** A tabela de armas marca as ágeis em `propriedades`; a descrição também o diz. */
