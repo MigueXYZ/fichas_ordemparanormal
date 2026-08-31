@@ -12,6 +12,7 @@ import EditorOverlay from './components/EditorOverlay.jsx';
 import FichaAmeaca from './components/ficha/FichaAmeaca.jsx';
 import ModoMestre from './components/mestre/ModoMestre.jsx';
 import ModalDefinicoes from './components/ModalDefinicoes.jsx';
+import ModalDefinicoesInicio from './components/ModalDefinicoesInicio.jsx';
 import BuscaGlobal from './components/ficha/BuscaGlobal.jsx';
 import { IconeOBS, IconeHistorico, IconeEngrenagem, IconeBusca } from './components/Icones.jsx';
 import { personagemVazio, personagemEhRascunhoVazio } from './engine/character.js';
@@ -84,6 +85,11 @@ export default function App() {
   const [coracao, setCoracao] = useState(coracaoLigado);
   const [verHistorico, setVerHistorico] = useState(false);
   const [verDefinicoes, setVerDefinicoes] = useState(false);
+  // Definições do ecrã inicial (cópias de segurança, importar, som). O
+  // contador força o <Inicio> a remontar depois de repor uma cópia, para a
+  // lista de agentes voltar a ser lida do armazenamento.
+  const [verDefinicoesInicio, setVerDefinicoesInicio] = useState(false);
+  const [recargaInicio, setRecargaInicio] = useState(0);
   const [verBusca, setVerBusca] = useState(false);
 
   // Busca Rápida Global (Ctrl+K / Cmd+K) — disponível em qualquer lado da
@@ -220,7 +226,7 @@ export default function App() {
       <div className="topbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <h1 onClick={voltarAoInicio} title="Voltar ao início">
-            Claudio <span className="marca-sub">· Ordem Paranormal</span>
+            Ordo <span className="marca-sub">· Ordem Paranormal</span>
           </h1>
           {vista !== 'inicio' && (
             <button className="btn ghost sm btn-nav-agentes" onClick={voltarAoInicio} title="Voltar à lista de agentes">
@@ -302,42 +308,24 @@ export default function App() {
               </button>
             </>
           ) : (
-            <>
-              <button
-                className="btn ghost sm"
-                title={som ? 'Desligar som dos dados' : 'Ligar som dos dados'}
-                onClick={() => setSom(alternarSom())}
-              >
-                {som ? 'Som ligado' : 'Som mudo'}
-              </button>
-              <button
-                className={'btn ghost sm btn-coracao' + (coracao ? ' a-bater' : ' desligado')}
-                title={coracao ? 'Desligar o batimento cardíaco (som e pulso)' : 'Ligar o batimento cardíaco (som e pulso)'}
-                onClick={() => setCoracao(alternarCoracao())}
-                aria-label="Batimento cardíaco"
-              >
-                <svg
-                  width="15"
-                  height="15"
-                  viewBox="0 0 24 24"
-                  fill={coracao ? 'var(--sangue-claro)' : 'none'}
-                  stroke={coracao ? 'var(--sangue-claro)' : 'currentColor'}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="icone-coracao-svg"
-                >
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                </svg>
-              </button>
-            </>
+            /* Roda dentada do ecrã inicial: cópias de segurança, importar
+               .json e as opções de som, tudo no mesmo sítio (antes andavam
+               soltos por baixo do título e na própria barra). */
+            <button
+              className="btn ghost sm btn-def-topbar"
+              onClick={() => setVerDefinicoesInicio(true)}
+              title="Definições — cópias de segurança, importar ficha, som"
+              aria-label="Definições"
+            >
+              <IconeEngrenagem size={17} />
+            </button>
           )}
         </div>
       </div>
 
       {erro && <div className="container" style={{ paddingBottom: 0 }}><div className="aviso"><strong>Erro:</strong> {erro}</div></div>}
 
-      {vista === 'inicio' && <Inicio aoCriar={criar} aoAbrir={abrir} aoAbrirMestre={abrirMestre} tema={tema} aoTrocarTema={trocarTema} />}
+      {vista === 'inicio' && <Inicio key={recargaInicio} aoCriar={criar} aoAbrir={abrir} aoAbrirMestre={abrirMestre} tema={tema} aoTrocarTema={trocarTema} />}
       {vista === 'wizard' && personagem && (
         <Wizard personagem={personagem} setPersonagem={setPersonagem} onRolar={rolar} onFinalizar={() => setVista('ficha')} onSair={sairDoWizard} />
       )}
@@ -349,6 +337,18 @@ export default function App() {
       )}
 
       {vista === 'mestre' && <ModoMestre aoAbrir={abrir} />}
+
+      {verDefinicoesInicio && (
+        <ModalDefinicoesInicio
+          som={som}
+          aoAlternarSom={() => setSom(alternarSom())}
+          coracao={coracao}
+          aoAlternarCoracao={() => setCoracao(alternarCoracao())}
+          aoRecarregar={() => setRecargaInicio((n) => n + 1)}
+          aoAbrirAgente={abrir}
+          aoFechar={() => setVerDefinicoesInicio(false)}
+        />
+      )}
 
       {verDefinicoes && (
         <ModalDefinicoes

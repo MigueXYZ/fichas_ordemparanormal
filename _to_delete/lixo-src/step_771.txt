@@ -1,0 +1,179 @@
+Created At: 2026-08-25T22:33:41Z
+Completed At: 2026-08-25T22:33:41Z
+File Path: `file:///d:/Claudio/claudio/src/components/ficha/Abas.jsx`
+Total Lines: 1483
+Total Bytes: 79045
+Showing lines 680 to 850
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+680:             <div className="modal-topo">
+681:               <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>Teste de Vontade — Forma Monstruosa</h3>
+682:               <button className="fechar" onClick={() => setModalVontade(null)}>×</button>
+683:             </div>
+684:             <div className="modal-corpo">
+685:               <p style={{ color: 'var(--txt-dim)', fontSize: 14.5, marginBottom: 20 }}>
+686:                 Quanto dano sofreste agora? A DT do teste de Vontade é 10 + esse dano — se falhares, o ritual é conjurado automaticamente.
+687:               </p>
+688:               <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center', marginBottom: 22 }}>
+689:                 <button type="button" className="btn ghost sm" onClick={() => setDanoRascunho((v) => Math.max(0, (Number(v) || 0) - 1))}>−</button>
+690:                 <strong style={{ fontSize: 22, minWidth: 48, textAlign: 'center', fontFamily: 'var(--numeros)' }}>{danoRascunho}</strong>
+691:                 <button type="button" className="btn ghost sm" onClick={() => setDanoRascunho((v) => (Number(v) || 0) + 1)}>+</button>
+692:               </div>
+693:               <div style={{ display: 'flex', gap: 14, justifyContent: 'center' }}>
+694:                 <button className="btn ghost" onClick={() => setModalVontade(null)}>Cancelar</button>
+695:                 <button className="btn" style={{ borderColor: 'var(--sangue)', background: 'var(--sangue)' }} onClick={confirmarTesteVontade}>Confirmar</button>
+696:               </div>
+697:             </div>
+698:           </div>
+699:         </div>
+700:       )}
+701:     </div>
+702:   );
+703: }
+704: 
+705: // ----------------------------------------------------------- HABILIDADES
+706: 
+707: export function AbaHabilidades({ personagem, setPersonagem }) {
+708:   const { lista, adicionar, editar, remover } = useLista(personagem, setPersonagem, 'habilidades');
+709:   const [aEscolher, setAEscolher] = useState(false);
+710: 
+711:   const classe = CLASSES_POR_ID[personagem.classeId];
+712:   const trilha = personagem.trilhaId ? TRILHAS_POR_ID[personagem.trilhaId] : null;
+713:   const origem = personagem.origemId === '__custom__' ? personagem.origemCustom : ORIGENS_POR_ID[personagem.origemId];
+714:   const nex = nexEfetivo(personagem);
+715: 
+716:   const automaticas = [
+717:     origem?.poder?.nome && { nome: origem.poder.nome, descricao: origem.poder.descricao, fonte: 'Origem' },
+718:     ...(classe?.habilidades || []).filter((h) => !h.nex || Number(h.nex) <= nex).map((h) => ({ ...h, fonte: classe.nome })),
+719:     ...(trilha?.poderes || []).filter((p) => !p.nex || Number(p.nex) <= nex).map((p) => ({ ...p, fonte: trilha.nome })),
+720:     // Poderes concedidos por dentro da trilha (ex.: Tatuagem Ritualística ao
+721:     // Ocultista Monstruoso aos 40%) — só enquanto a etapa do dia está ativa.
+722:     // Nunca duplica: o livro diz que quem já tem o poder apenas "altera a
+723:     // maneira como ele funciona" — se já estiver na lista à mão, não repete.
+724:     ...poderesAtivos(personagem, nex)
+725:       .filter((p) => !(lista || []).some((h) => String(h?.nome || '').toLowerCase() === String(p.nome).toLowerCase()))
+726:       .map((p) => ({ nome: p.nome, descricao: p.descricao, nex: p.patamar, fonte: trilha?.nome || 'Trilha' })),
+727:   ].filter(Boolean);
+728: 
+729:   const catalogo = [
+730:     ...PODERES,
+731:     ...(classe?.poderes || []).map((p) => ({ ...p, tipo: 'classe', classe: classe.nome })),
+732:   ];
+733: 
+734:   return (
+735:     <div>
+736:       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 14 }}>
+737:         <button className="btn ghost" onClick={() => setAEscolher((v) => !v)}>Do catálogo</button>
+738:         <button className="btn" onClick={() => adicionar(novaHabilidade())}>Nova Habilidade</button>
+739:       </div>
+740: 
+741:       {aEscolher && (
+742:         <Seletor
+743:           titulo={`Poderes (${catalogo.length})`}
+744:           itens={catalogo}
+745:           filtros={[{ id: 'tipo', label: 'Todos os tipos', valorDe: (i) => i.tipo, opcoes: [...new Set(catalogo.map((p) => p.tipo))].map((t) => ({ valor: t, label: t })) }]}
+746:           aoProcurar={(i, t) => i.nome.toLowerCase().includes(t) || (i.descricao || '').toLowerCase().includes(t)}
+747:           render={(p) => (
+748:             <>
+749:               <b style={{ fontSize: '18px' }}>{p.nome}</b>
+750:               <span className="meta">{[p.tipo, p.classe, p.elemento, p.prerequisito].filter(Boolean).join(' · ')}</span>
+751:               <span className="corte">{p.descricao}</span>
+752:             </>
+753:           )}
+754:           onEscolher={(p) => { adicionar({ nome: p.nome, descricao: p.descricao, origem: p.tipo }); setAEscolher(false); }}
+755:           onFechar={() => setAEscolher(false)}
+756:         />
+757:       )}
+758: 
+759:       {automaticas.length > 0 && (
+760:         <div className="lista-blocos" style={{ marginBottom: 14 }}>
+761:           {automaticas.map((h, i) => (
+762:             <div className="bloco" key={'auto' + i}>
+763:               <div className="topo"><b style={{ fontSize: '18px' }}>{h.nome}</b><span className="pill">{h.fonte}{h.nex ? ` · NEX ${h.nex}%` : ''}</span></div>
+764:               <TextoExpandivel texto={h.descricao} />
+765:             </div>
+766:           ))}
+767:         </div>
+768:       )}
+769: 
+770:       {lista.length === 0 && automaticas.length === 0 ? (
+771:         <div className="painel-vazio">Ainda não possuis habilidades</div>
+772:       ) : (
+773:         <div className="lista-blocos">
+774:           {lista.map((h, i) => (
+775:             <div className="bloco" key={i}>
+776:               <div className="topo">
+777:                 <input type="text" placeholder="Nome da habilidade" value={h.nome} onChange={(e) => editar(i, { nome: e.target.value })} style={{ fontSize: '18px', fontWeight: 'bold' }} />
+778:                 <button className="btn sm danger" onClick={() => remover(i)}>Remover</button>
+779:               </div>
+780:               <div className="campo" style={{ marginTop: 10, marginBottom: 0 }}>
+781:                 <textarea placeholder="Descrição" value={h.descricao} onChange={(e) => editar(i, { descricao: e.target.value })} style={{ fontSize: '14px' }} />
+782:               </div>
+783:             </div>
+784:           ))}
+785:         </div>
+786:       )}
+787:     </div>
+788:   );
+789: }
+790: 
+791: // --------------------------------------------------------------- RITUAIS
+792: 
+793: /**
+794:  * Interruptor "marcado na pele" de um ritual — a Tatuagem Ritualística só
+795:  * atua sobre rituais marcados (o poder base dá −1 PE aos de alcance Pessoal
+796:  * com você como alvo; a Trilha do Monstruoso, aos 40%, alarga isso a todos
+797:  * os rituais do elemento escolhido e junta +5 nos testes de concentração).
+798:  */
+799: function BotaoMarcarNaPele({ personagem, setPersonagem, ritual, indice, elegivel = true }) {
+800:   const marcado = marcadoDoRitual(personagem, ritual);
+801:   // Um ritual que deixou de ser elegível (mudou de elemento, por exemplo) mas
+802:   // continua marcado ainda mostra o botão — para dar para desmarcar.
+803:   return (
+804:     <button
+805:       type="button"
+806:       className={'btn sm' + (marcado ? '' : ' ghost')}
+807:       style={marcado ? { borderColor: 'var(--sangue)', background: 'var(--sangue)' } : undefined}
+808:       title={marcado
+809:         ? (elegivel ? 'Marcado na pele — clica para desmarcar' : 'Marcado na pele, mas o poder já não se aplica a este ritual — clica para desmarcar')
+810:         : 'Marcar na pele (Tatuagem Ritualística): −1 PE onde o poder se aplica e +5 em testes de concentração'}
+811:       onClick={() => setPersonagem({ ...personagem, ...patchEstadoRitual(personagem, ritual, indice, 'marcado', !marcado) })}
+812:     >
+813:       {marcado ? '✦ Na pele' : 'Marcar na pele'}
+814:     </button>
+815:   );
+816: }
+817: 
+818: export function AbaRituais({ personagem, setPersonagem }) {
+819:   const { lista: listaPropria, adicionar, editar, remover } = useLista(personagem, setPersonagem, 'rituais');
+820:   // Rituais concedidos pela Trilha do Monstruoso só existem enquanto a
+821:   // etapa de hoje está ativa — mostram-se aqui, mas não são editáveis (a
+822:   // ficha deriva-os sozinha, não há nada para guardar à mão).
+823:   const nex = nexEfetivo(personagem);
+824:   const concedidos = rituaisAtivos(personagem, nex);
+825:   const lista = [...listaPropria, ...concedidos];
+826:   const [aEscolher, setAEscolher] = useState(false);
+827:   const circuloMax = circuloMaximoPorNex(nex);
+828:   // O interruptor "marcado na pele" (Tatuagem Ritualística) só faz sentido a
+829:   // quem tem o poder — por escolha própria, ou concedido pela Trilha do
+830:   // Monstruoso aos 40%. Aqui NÃO se exige a etapa do dia ativa: senão o
+831:   // jogador perdia a forma de marcar rituais sempre que a desligasse.
+832:   const podeMarcarNaPele = temTatuagemRitualistica(personagem, nex)
+833:     || (classeMonstruosa(personagem) === 'ocultista' && patamarAtual(nex) >= 40);
+834:   const dtDetalhe = detalheDtRitual(personagem);
+835:   const dt = dtDetalhe.total;
+836:   // Um ritual trazido do catálogo já vem com tudo certo (é conteúdo oficial)
+837:   // — por isso aparece normal, só de consulta, com um botão "Editar" ao
+838:   // lado para quem quiser mesmo assim ajustar algo. Um ritual em branco
+839:   // ("Novo Ritual") não tem nada para mostrar, por isso esse sim começa
+840:   // logo aberto no formulário. `emEdicao` guarda os índices (em
+841:   // `listaPropria`) que estão neste momento no modo de edição.
+842:   const [emEdicao, setEmEdicao] = useState(() => new Set());
+843:   function alternarEdicao(i) {
+844:     setEmEdicao((prev) => {
+845:       const novo = new Set(prev);
+846:       if (novo.has(i)) novo.delete(i); else novo.add(i);
+847:       return novo;
+848:     });
+849:   }
+850:   function novoRitualEmBranco() {
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

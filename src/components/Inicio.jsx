@@ -1,7 +1,7 @@
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { CLASSES_POR_ID, TRILHAS_POR_ID } from '../data/classes.js';
 import { ORIGENS_POR_ID } from '../data/origens.js';
-import { listarAgentes, apagarAgente, apagarVariosAgentes, duplicarAgente, importarJson, guardarAgente } from '../engine/armazenamento.js';
+import { listarAgentes, apagarAgente, apagarVariosAgentes, duplicarAgente, guardarAgente, exportarTudo, precisaDeCopia, ultimaCopia, marcarCopiaFeita } from '../engine/armazenamento.js';
 import EditorTags from './EditorTags.jsx';
 import { IconeCopiar, IconeLixo, IconeTag } from './Icones.jsx';
 import { ELEMENTOS, ORDEM_ELEMENTOS } from '../data/rituais.js';
@@ -27,10 +27,16 @@ export default function Inicio({ aoCriar, aoAbrir, aoAbrirMestre, tema = TEMA_PA
   const [tagSelecionada, setTagSelecionada] = useState(null);
   const [editarTagsAgente, setEditarTagsAgente] = useState(null);
   const [erro, setErro] = useState(null);
+  // Cópia de segurança: os agentes vivem só neste browser, por isso há um
+  // lembrete quando nunca se fez cópia (ou já vai com mais de 14 dias). Os
+  // botões de guardar/repor e o importar .json vivem agora na roda dentada
+  // da barra do topo (components/ModalDefinicoesInicio.jsx); aqui fica só o
+  // atalho do lembrete.
+  const [aviso, setAviso] = useState(null);
+  const [lembrete, setLembrete] = useState(() => precisaDeCopia());
   const [modoSelecao, setModoSelecao] = useState(false);
   const [selecionados, setSelecionados] = useState(new Set());
   const [confirmarApagar, setConfirmarApagar] = useState(null); // { tipo: 'individual', agente } | { tipo: 'massa', agentes }
-  const ficheiro = useRef(null);
 
   function recarregar() {
     setLista(listarAgentes());
@@ -83,19 +89,11 @@ export default function Inicio({ aoCriar, aoAbrir, aoAbrirMestre, tema = TEMA_PA
     );
   });
 
-  async function importar(e) {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setErro(null);
-    try {
-      const novo = await importarJson(f);
-      recarregar();
-      aoAbrir(novo);
-    } catch (err) {
-      setErro(err.message);
-    } finally {
-      e.target.value = '';
-    }
+  function guardarCopia() {
+    const n = exportarTudo();
+    marcarCopiaFeita();
+    setLembrete(false);
+    setAviso(n === 1 ? '1 agente guardado no ficheiro.' : `${n} agentes guardados no ficheiro.`);
   }
 
   function alternarSelecao(id) {
@@ -152,7 +150,7 @@ export default function Inicio({ aoCriar, aoAbrir, aoAbrirMestre, tema = TEMA_PA
   return (
     <div className="inicio">
       <div className="roda-sigilos" aria-hidden="true" />
-      <div className="assinatura">Claudio</div>
+      <div className="assinatura">Ordo</div>
       <h1 className="marca">Ordem<em>Paranormal</em></h1>
       <div className="sub">Ordo Realitas · Ficha de Agente</div>
       {/* Os sigilos trocam a pele da app. Só os elementos com tema feito é
@@ -180,10 +178,20 @@ export default function Inicio({ aoCriar, aoAbrir, aoAbrirMestre, tema = TEMA_PA
       </div>
 
       {erro && <div className="aviso"><strong>Erro:</strong> {erro}</div>}
+      {aviso && <div className="aviso ok-aviso">{aviso}</div>}
+
+      {lembrete && (
+        <div className="aviso lembrete-copia">
+          <strong>As tuas fichas vivem só neste browser.</strong> Limpar os dados do site, trocar de
+          computador ou abrir numa janela privada faz desaparecer tudo — não há servidor nenhum a
+          segurar. {ultimaCopia() ? 'A última cópia já vai com algum tempo.' : 'Ainda não fizeste nenhuma cópia.'}
+          <button className="btn sm" style={{ marginLeft: 10 }} onClick={guardarCopia}>Guardar cópia agora</button>
+          <button className="btn ghost sm" style={{ marginLeft: 6 }} onClick={() => setLembrete(false)}>Agora não</button>
+        </div>
+      )}
 
       <div className="barra-acoes" style={{ marginTop: 30 }}>
         <button className="btn ghost" onClick={aoAbrirMestre}>Modo Mestre</button>
-        <button className="btn ghost" onClick={() => ficheiro.current?.click()}>Importar .json</button>
         {lista.length > 0 && (
           <button
             className={'btn ghost' + (modoSelecao ? ' ativo' : '')}
@@ -195,7 +203,6 @@ export default function Inicio({ aoCriar, aoAbrir, aoAbrirMestre, tema = TEMA_PA
             {modoSelecao ? 'Sair da Seleção' : 'Selecionar'}
           </button>
         )}
-        <input ref={ficheiro} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={importar} />
       </div>
 
       {/* Barra de Pesquisa */}
