@@ -26,6 +26,7 @@ class MuralSync {
   public isConnecting = false;
   public roomCode = '';
   public lastError: string | null = null;
+  private currentSessionId = 0;
 
   // Áudio e estado de reprodução
   private audio: HTMLAudioElement | null = null;
@@ -151,17 +152,25 @@ class MuralSync {
 
     const cleanCode = roomCode.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
     const targetPeerId = `mural-ordo-${cleanCode}`;
+    const sessionId = ++this.currentSessionId;
+
     this.roomCode = roomCode.trim().toUpperCase();
     this.lastError = null;
     this.isConnecting = true;
     this.notifyListeners();
 
     if (this.conn) {
-      try { this.conn.close(); } catch {}
+      try {
+        (this.conn as any).removeAllListeners?.();
+        this.conn.close();
+      } catch {}
       this.conn = null;
     }
     if (this.peer) {
-      try { this.peer.destroy(); } catch {}
+      try {
+        (this.peer as any).removeAllListeners?.();
+        this.peer.destroy();
+      } catch {}
       this.peer = null;
     }
 
@@ -169,10 +178,11 @@ class MuralSync {
       this.peer = new Peer();
 
       this.peer.on('open', () => {
-        if (!this.peer) return;
+        if (this.currentSessionId !== sessionId || !this.peer) return;
         this.conn = this.peer.connect(targetPeerId);
 
         this.conn.on('open', () => {
+          if (this.currentSessionId !== sessionId) return;
           this.isConnected = true;
           this.isConnecting = false;
           this.lastError = null;
@@ -183,6 +193,7 @@ class MuralSync {
 
         // 2. Escuta comandos do Mestre (ex: Música e ficheiros)
         this.conn.on('data', (msg: any) => {
+          if (this.currentSessionId !== sessionId) return;
           if (msg?.type === 'AUDIO_SYNC') {
             this.handleAudioSync(msg.payload || msg);
           } else if (msg?.type === 'AUDIO_TRACK_DATA') {
@@ -193,12 +204,14 @@ class MuralSync {
         });
 
         this.conn.on('close', () => {
+          if (this.currentSessionId !== sessionId) return;
           this.isConnected = false;
           this.isConnecting = false;
           this.notifyListeners();
         });
 
         this.conn.on('error', (err: any) => {
+          if (this.currentSessionId !== sessionId) return;
           this.isConnected = false;
           this.isConnecting = false;
           this.lastError = err?.message || 'Erro na ligação P2P';
@@ -208,9 +221,11 @@ class MuralSync {
 
       // Suporte a chamada de Streaming WebRTC (MediaStream direto via peer.call)
       this.peer.on('call', (mediaConn) => {
+        if (this.currentSessionId !== sessionId) return;
         log.info('[MuralSync Audio] Recebida transmissão de áudio em tempo real (MediaStream)');
         mediaConn.answer(); // atende o stream de áudio
         mediaConn.on('stream', (remoteStream) => {
+          if (this.currentSessionId !== sessionId) return;
           if (this.audio) {
             this.audio.srcObject = remoteStream;
             this.audioState.title = 'Transmissão ao Vivo do Mestre';
@@ -225,6 +240,7 @@ class MuralSync {
       });
 
       this.peer.on('error', (err: any) => {
+        if (this.currentSessionId !== sessionId) return;
         log.warn('[MuralSync] Erro do Peer:', err);
         this.isConnected = false;
         this.isConnecting = false;
@@ -234,6 +250,7 @@ class MuralSync {
         this.notifyListeners();
       });
     } catch (e: any) {
+      if (this.currentSessionId !== sessionId) return;
       this.isConnected = false;
       this.isConnecting = false;
       this.lastError = e?.message || 'Falha ao iniciar PeerJS';
@@ -541,26 +558,45 @@ class MuralSync {
   }
 
   disconnect() {
+    this.currentSessionId++;
+    this.roomCode = '';
+    this.isConnected = false;
+    this.isConnecting = false;
+    this.lastError = null;
+
     if (this.conn) {
-      try { this.conn.close(); } catch {}
+      try {
+        (this.conn as any).removeAllListeners?.();
+        this.conn.close();
+      } catch {}
       this.conn = null;
     }
     if (this.peer) {
-      try { this.peer.destroy(); } catch {}
+      try {
+        (this.peer as any).removeAllListeners?.();
+        this.peer.destroy();
+      } catch {}
       this.peer = null;
     }
+
+    this.trackCache.clear();
+    this.chunkBuffers.clear();
+
     if (this.audio) {
       try {
         this.audio.pause();
-        this.audio.src = '';
+        this.audio.removeAttribute('src');
+        this.audio.load();
       } catch {}
       this.audioState.isPlaying = false;
       this.audioState.url = null;
       this.audioState.title = null;
+      this.audioState.currentTime = 0;
+      this.audioState.duration = 0;
+      this.audioState.autoplayBlocked = false;
       this.notifyAudioListeners();
     }
-    this.isConnected = false;
-    this.isConnecting = false;
+
     this.notifyListeners();
   }
 }

@@ -44,7 +44,11 @@ export default function PainelMural({ personagem, aoFechar }) {
   }
 
   function handleDesconectar() {
+    try {
+      localStorage.removeItem('mural_room_code');
+    } catch {}
     muralSync.disconnect();
+    setCodigoSala('');
     setConectado(false);
     setConectando(false);
     setErro(null);
