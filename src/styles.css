@@ -3798,6 +3798,288 @@ body.bate-forte .barra-recurso .preenchido::before {
   gap: 16px;
 }
 
+/* ============================================================
+   Player de Música do Mural P2P (Ordo Sync)
+   ============================================================ */
+
+.mural-player-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 340px;
+  width: calc(100vw - 40px);
+  animation: slideInPlayer 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideInPlayer {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.mural-player-aviso-autoplay {
+  background: linear-gradient(135deg, var(--sangue), #a8101a);
+  color: #fff;
+  border-radius: 6px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(192, 21, 33, 0.4);
+  animation: pulsoAutoplay 2s infinite;
+}
+
+@keyframes pulsoAutoplay {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+.mural-player-card {
+  background: rgba(18, 12, 14, 0.95);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--linha-forte);
+  border-left: 3px solid var(--sangue);
+  border-radius: 8px;
+  padding: 12px 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+
+.mural-player-container.minimizado .mural-player-card {
+  padding: 8px 12px;
+}
+
+.mural-player-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mural-player-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.mural-player-icone-onda {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  background: var(--bg-3);
+  border: 1px solid var(--linha);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sangue-claro);
+  flex-shrink: 0;
+}
+
+.mural-player-icone-onda .a-tocar {
+  animation: giraNota 6s linear infinite;
+}
+
+@keyframes giraNota {
+  0% { transform: rotate(0deg); }
+  50% { transform: rotate(15deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.equalizador-barras {
+  position: absolute;
+  bottom: 3px;
+  display: flex;
+  align-items: flex-end;
+  gap: 1.5px;
+  height: 8px;
+}
+
+.equalizador-barras span {
+  width: 2px;
+  background: var(--sangue-claro);
+  border-radius: 1px;
+  animation: equalizador 0.8s ease-in-out infinite alternate;
+}
+.equalizador-barras .b1 { height: 4px; animation-delay: 0.1s; }
+.equalizador-barras .b2 { height: 8px; animation-delay: 0.3s; }
+.equalizador-barras .b3 { height: 5px; animation-delay: 0.2s; }
+
+@keyframes equalizador {
+  0% { height: 2px; }
+  100% { height: 8px; }
+}
+
+.mural-player-texto {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.mural-player-tag {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--sangue-claro);
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.mural-player-titulo {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--txt);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mural-player-acoes-topo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.btn-icone-player {
+  background: transparent;
+  border: none;
+  color: var(--txt-dim);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background 0.15s;
+}
+
+.btn-icone-player:hover {
+  color: var(--txt);
+  background: var(--bg-3);
+}
+
+.mural-player-barra-tempo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mural-player-progresso-fundo {
+  height: 4px;
+  background: var(--bg-4);
+  border-radius: 2px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.mural-player-progresso-preenchido {
+  height: 100%;
+  background: linear-gradient(90deg, var(--sangue), var(--sangue-claro));
+  border-radius: 2px;
+  transition: width 0.1s linear;
+}
+
+.mural-player-tempos {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  font-family: var(--numeros);
+  color: var(--txt-fraco);
+}
+
+.mural-player-controlos {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.btn-player-play {
+  background: var(--sangue);
+  border: none;
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.1s, background 0.15s, box-shadow 0.15s;
+  box-shadow: 0 2px 8px rgba(192, 21, 33, 0.4);
+}
+
+.btn-player-play:hover {
+  background: var(--sangue-claro);
+  transform: scale(1.06);
+}
+
+.btn-player-play:active {
+  transform: scale(0.96);
+}
+
+.mural-player-volume {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  max-width: 170px;
+}
+
+.mural-player-slider-volume {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--bg-4);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.mural-player-slider-volume::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--txt);
+  cursor: pointer;
+  transition: transform 0.1s, background 0.15s;
+}
+
+.mural-player-slider-volume::-webkit-slider-thumb:hover {
+  background: var(--sangue-claro);
+  transform: scale(1.2);
+}
+
+.mural-player-volume-valor {
+  font-size: 11px;
+  font-family: var(--numeros);
+  color: var(--txt-dim);
+  min-width: 28px;
+  text-align: right;
+}
+
+
 
 
 

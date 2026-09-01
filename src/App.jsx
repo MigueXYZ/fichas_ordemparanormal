@@ -14,7 +14,9 @@ import ModoMestre from './components/mestre/ModoMestre.jsx';
 import ModalDefinicoes from './components/ModalDefinicoes.jsx';
 import ModalDefinicoesInicio from './components/ModalDefinicoesInicio.jsx';
 import BuscaGlobal from './components/ficha/BuscaGlobal.jsx';
-import { IconeOBS, IconeHistorico, IconeEngrenagem, IconeBusca } from './components/Icones.jsx';
+import PainelMural from './components/PainelMural.jsx';
+import PlayerMusica from './components/PlayerMusica.jsx';
+import { IconeOBS, IconeHistorico, IconeEngrenagem, IconeBusca, IconeMural } from './components/Icones.jsx';
 import { personagemVazio, personagemEhRascunhoVazio } from './engine/character.js';
 import { descarregarPdf } from './export/pdf.js';
 import { guardarAgente, obterAgente, exportarJson, novoId } from './engine/armazenamento.js';
@@ -22,6 +24,7 @@ import { tocarRolagem, alternarSom, somLigado, alternarCoracao, coracaoLigado } 
 import { calcMaximos } from './engine/calc.js';
 import { lerConfig, guardarConfig, publicar } from './overlay/transporte.js';
 import { lerLayout, guardarLayout } from './overlay/layoutConfig.js';
+import { muralSync } from './lib/services/muralSync.ts';
 
 export default function App() {
   const [vista, setVista] = useState('inicio'); // inicio | wizard | ficha | mestre
@@ -91,6 +94,25 @@ export default function App() {
   const [verDefinicoesInicio, setVerDefinicoesInicio] = useState(false);
   const [recargaInicio, setRecargaInicio] = useState(0);
   const [verBusca, setVerBusca] = useState(false);
+  const [verMural, setVerMural] = useState(false);
+  const [muralConectado, setMuralConectado] = useState(muralSync.isConnected);
+
+  // Ouve alterações no estado da ligação ao Mural P2P
+  useEffect(() => {
+    return muralSync.onStatusChange(setMuralConectado);
+  }, []);
+
+  // Sincroniza dados da ficha com o Mural sempre que o personagem for atualizado
+  useEffect(() => {
+    if (!personagem || !muralConectado) return;
+    const max = calcMaximos(personagem);
+    muralSync.sendCharacter({
+      ...personagem,
+      pvMax: max.pv,
+      sanMax: max.san,
+      peMax: max.pe,
+    });
+  }, [personagem, muralConectado]);
 
   // Busca Rápida Global (Ctrl+K / Cmd+K) — disponível em qualquer lado da
   // criação ou da ficha, para consultar rituais, poderes, perícias, itens e
@@ -165,6 +187,19 @@ export default function App() {
       critico: resultado.critico,
       falhaCritica: resultado.falhaCritica,
     });
+
+    // Envia a rolagem para o feed do Mestre no Mural
+    if (muralSync.isConnected) {
+      const formula = resultado.expressao || `${resultado.dados || resultado.rolagens?.length || 1}d${resultado.faces || 20}${resultado.bonus ? (resultado.bonus > 0 ? `+${resultado.bonus}` : resultado.bonus) : ''}`;
+      muralSync.sendDiceRoll({
+        label: resultado.nome || 'Rolagem',
+        diceFormula: formula,
+        diceResults: resultado.rolagens || [resultado.total],
+        total: resultado.total || 0,
+        isCritical: Boolean(resultado.critico),
+        isFumble: Boolean(resultado.falhaCritica),
+      });
+    }
   }, []);
 
   function criar() {
@@ -276,6 +311,17 @@ export default function App() {
                 </span>
               )}
 
+              {/* Botão Mural P2P */}
+              <button
+                className={'btn ghost sm btn-mural-topbar' + (muralConectado ? ' a-transmitir' : '')}
+                onClick={() => setVerMural(true)}
+                title={muralConectado ? `Conectado ao Mural (${muralSync.roomCode})` : 'Conectar ao Mural do Mestre'}
+              >
+                <IconeMural size={16} />
+                <span>Mural</span>
+                {muralConectado && <span className="ponto-live" />}
+              </button>
+
               {/* Botão Overlay com símbolo OBS */}
               <button
                 className={'btn ghost sm btn-overlay-topbar' + (configOverlay.ligado ? ' a-transmitir' : '')}
@@ -365,7 +411,18 @@ export default function App() {
             setVerDefinicoes(false);
             setVista('wizard');
           }}
+          aoAbrirMural={() => {
+            setVerDefinicoes(false);
+            setVerMural(true);
+          }}
           aoFechar={() => setVerDefinicoes(false)}
+        />
+      )}
+
+      {verMural && (
+        <PainelMural
+          personagem={personagem}
+          aoFechar={() => setVerMural(false)}
         />
       )}
 
@@ -404,6 +461,8 @@ export default function App() {
           aoFechar={() => setVerEditorOverlay(false)}
         />
       )}
+
+      <PlayerMusica />
 
       <PainelRolagem
         rolagens={rolagens}
