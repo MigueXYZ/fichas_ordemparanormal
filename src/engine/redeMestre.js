@@ -4,8 +4,15 @@ import { normalizarCodigo } from '../overlay/transporte.js';
 
 export const CHAVE_CODIGOS_MESTRE = 'op-ficha:mestre:codigos:v1';
 
+const isDev = typeof import.meta !== 'undefined' && Boolean(import.meta.env?.DEV);
+const log = {
+  info: (...args) => { if (isDev) console.log(...args); },
+  warn: (...args) => { if (isDev) console.warn(...args); },
+  error: (...args) => { if (isDev) console.error(...args); },
+};
+
 const CONFIG_PEER = {
-  debug: 1,
+  debug: isDev ? 1 : 0,
   config: {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
@@ -120,15 +127,15 @@ export class SubscritorMestre {
       this.peer = new Peer(null, CONFIG_PEER);
 
       this.peer.on('open', () => {
-        console.log('[Mestre P2P] Peer central do Mestre pronto:', this.peer.id);
+        log.info('[Mestre P2P] Peer central do Mestre pronto:', this.peer.id);
         this.conectarTodos();
       });
 
       this.peer.on('error', (err) => {
-        console.warn('[Mestre P2P] Erro no Peer central:', err?.type || err);
+        log.warn('[Mestre P2P] Erro no Peer central:', err?.type || err);
       });
     } catch (e) {
-      console.error('[Mestre P2P] Falha ao criar Peer central do Mestre:', e);
+      log.error('[Mestre P2P] Falha ao criar Peer central do Mestre:', e);
     }
   }
 
@@ -160,7 +167,7 @@ export class SubscritorMestre {
 
       conn.on('open', () => {
         if (this.destruido) return;
-        console.log(`[Mestre P2P] Conectado ao agente: ${codigo}`);
+        log.info(`[Mestre P2P] Conectado ao agente: ${codigo}`);
         this.status.set(codigo, 'ligado');
         this.notificar();
         try {

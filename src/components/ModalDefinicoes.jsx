@@ -1,7 +1,8 @@
 import React from 'react';
-import { IconePDF, IconeJSON, IconeCriacao, IconeSom, IconeEngrenagem } from './Icones.jsx';
+import { IconePDF, IconeJSON, IconeCriacao, IconeSom, IconeEngrenagem, IconeMural } from './Icones.jsx';
 import EditorTags from './EditorTags.jsx';
 import { resetarLayoutFicha } from '../engine/sheetLayout.js';
+import { muralSync } from '../lib/services/muralSync.ts';
 
 export default function ModalDefinicoes({
   personagem,
@@ -14,6 +15,7 @@ export default function ModalDefinicoes({
   aExportar,
   aoExportarJson,
   aoAbrirCriacao,
+  aoAbrirMural,
   aoFechar,
 }) {
   return (
@@ -83,6 +85,35 @@ export default function ModalDefinicoes({
                   Exportar JSON
                 </button>
               </div>
+
+              {aoAbrirMural && (
+                <div className="card-opcao-def">
+                  <div>
+                    <b style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15 }}>
+                      <IconeMural size={16} style={{ color: muralSync.isConnected ? '#86efac' : 'var(--sangue-claro)' }} />
+                      Mural P2P
+                      {muralSync.isConnected && (
+                        <span style={{ fontSize: 11, color: '#86efac', fontWeight: 'normal' }}>
+                          (Conectado: {muralSync.roomCode})
+                        </span>
+                      )}
+                    </b>
+                    <span className="dica" style={{ display: 'block', marginTop: 2 }}>
+                      Conecta esta ficha ao Mural do Mestre para sincronização em tempo real.
+                    </span>
+                  </div>
+                  <button
+                    className="btn ghost sm"
+                    onClick={() => {
+                      aoFechar();
+                      aoAbrirMural();
+                    }}
+                    style={{ minWidth: 120 }}
+                  >
+                    {muralSync.isConnected ? 'Gerir Conexão' : 'Conectar ao Mural'}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

@@ -3,8 +3,11 @@ const Peer = PeerPkg?.Peer || PeerPkg;
 
 export const CHAVE_CONFIG = 'op-ficha:overlay:v1';
 
+const isDev = typeof import.meta !== 'undefined' && Boolean(import.meta.env?.DEV);
+const log = isDev ? console.log : () => {};
+
 const CONFIG_PEER = {
-  debug: 1,
+  debug: isDev ? 1 : 0,
   config: {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
@@ -91,18 +94,18 @@ class HostP2P {
     this.codigoAtual = codigoLimpo;
 
     try {
-      console.log('[Host P2P] A criar sala:', codigoLimpo);
+      log('[Host P2P] A criar sala:', codigoLimpo);
       this.peer = new Peer(codigoLimpo, CONFIG_PEER);
 
       this.peer.on('open', (id) => {
-        console.log('[Host P2P] Sala registada com sucesso:', id);
+        log('[Host P2P] Sala registada com sucesso:', id);
       });
 
       this.peer.on('connection', (conn) => {
-        console.log('[Host P2P] Novo espectador a conectar...');
+        log('[Host P2P] Novo espectador a conectar...');
 
         conn.on('open', () => {
-          console.log('[Host P2P] Espectador conectado com sucesso!');
+          log('[Host P2P] Espectador conectado com sucesso!');
           this.conexoes.add(conn);
           this.notificarOuvintes();
           if (this.ultimoEstado) {
@@ -118,7 +121,7 @@ class HostP2P {
 
         const remover = () => {
           if (this.conexoes.has(conn)) {
-            console.log('[Host P2P] Espectador desconectou.');
+            log('[Host P2P] Espectador desconectou.');
             this.conexoes.delete(conn);
             this.notificarOuvintes();
           }
@@ -241,24 +244,24 @@ export function subscrever(config, aoEstado, aoLigacao = () => {}) {
       conexao = null;
     }
 
-    console.log('[Overlay P2P] A ligar à sala:', codigoAlvo);
+    log('[Overlay P2P] A ligar à sala:', codigoAlvo);
     conexao = peer.connect(codigoAlvo, { reliable: true });
 
     conexao.on('open', () => {
       if (cancelado) return;
-      console.log('[Overlay P2P] Conectado com sucesso ao Host!');
+      log('[Overlay P2P] Conectado com sucesso ao Host!');
       aoLigacao('ligado');
       try { conexao.send({ tipo: 'pedir_estado' }); } catch { /* ignora */ }
     });
 
     conexao.on('data', (dados) => {
       if (cancelado) return;
-      console.log('[Overlay P2P] Dados recebidos do jogador!');
+      log('[Overlay P2P] Dados recebidos do jogador!');
       try {
         const obj = typeof dados === 'string' ? JSON.parse(dados) : dados;
         aoEstado(obj);
       } catch (e) {
-        console.error('Falha ao processar dados recebidos:', e);
+        log('Falha ao processar dados recebidos:', e);
       }
     });
 
