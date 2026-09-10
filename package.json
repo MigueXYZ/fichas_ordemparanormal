@@ -1,22 +1,27 @@
 {
   "name": "ordo",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0-beta",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node tests/calc.test.js",
-    "verificar-roda": "node tests/roda.visual.mjs"
+    "test": "node tests/calc.test.js && node tests/campanhas.test.js",
+    "verificar-roda": "node tests/roda.visual.mjs",
+    "tauri": "tauri"
   },
   "dependencies": {
+    "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/plugin-process": "^2.3.1",
+    "@tauri-apps/plugin-updater": "^2.11.0",
     "pdf-lib": "^1.17.1",
     "peerjs": "^1.5.5",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.11.4",
     "@vitejs/plugin-react": "^6.0.5",
     "vite": "^8.2.1"
   },

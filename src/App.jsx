@@ -25,6 +25,7 @@ import { calcMaximos } from './engine/calc.js';
 import { lerConfig, guardarConfig, publicar } from './overlay/transporte.js';
 import { lerLayout, guardarLayout } from './overlay/layoutConfig.js';
 import { muralSync } from './lib/services/muralSync.ts';
+import UpdateModal from './components/UpdateModal.jsx';
 
 export default function App() {
   const [vista, setVista] = useState('inicio'); // inicio | wizard | ficha | mestre
@@ -469,6 +470,8 @@ export default function App() {
         aoFechar={(id) => setRolagens((r) => r.filter((x) => x.id !== id))}
         aoLimpar={() => setRolagens([])}
       />
+
+      <UpdateModal />
     </div>
   );
 }
