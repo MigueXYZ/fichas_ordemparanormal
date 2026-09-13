@@ -36,9 +36,21 @@ export default function Seletor({ titulo, itens, filtros = [], render, onEscolhe
       </div>
       <div className="seletor-lista">
         {lista.slice(0, 200).map((i) => (
-          <button key={i.chave || i.id} type="button" className="seletor-item" onClick={() => onEscolher(i)}>
+          <div
+            key={i.chave || i.id}
+            role="button"
+            tabIndex={0}
+            className="seletor-item"
+            onClick={() => onEscolher(i)}
+            onKeyDown={(e) => {
+              if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
+                e.preventDefault();
+                onEscolher(i);
+              }
+            }}
+          >
             {render(i)}
-          </button>
+          </div>
         ))}
         {lista.length === 0 && <div className="painel-vazio" style={{ padding: 24 }}>Sem resultados</div>}
         {lista.length > 200 && <div className="rodape-pericias">A mostrar os primeiros 200 de {lista.length}. Refina a procura.</div>}

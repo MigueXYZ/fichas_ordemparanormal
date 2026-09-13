@@ -1851,10 +1851,11 @@ body.bate-forte .barra-recurso .preenchido::before {
 .seletor-topo strong { font-family: var(--display); font-size: 18px; letter-spacing: .06em; }
 .seletor-lista { max-height: 430px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 .seletor-item {
+  cursor: pointer;
   text-align: left; background: var(--bg-3); border: 1px solid var(--linha); border-radius: var(--raio);
   padding: 8px 12px; color: var(--txt); display: flex; flex-direction: column; gap: 2px;
 }
-.seletor-item:hover { border-color: var(--sangue); background: var(--bg-4); }
+.seletor-item:hover, .seletor-item:focus-visible { border-color: var(--sangue); background: var(--bg-4); outline: none; }
 .seletor-item b { font-size: 15px; font-family: var(--display); font-weight: 400; }
 .seletor-item .meta { font-size: 12px; color: var(--sangue-claro); letter-spacing: .04em; }
 .seletor-item .corte { font-size: 13px; color: var(--txt-dim); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

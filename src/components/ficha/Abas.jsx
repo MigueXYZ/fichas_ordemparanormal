@@ -86,21 +86,24 @@ function SeletorQuantidade({ valor, onChange, min = 1, max = 99 }) {
   );
 }
 
-function TextoExpandivel({ texto }) {
+function TextoExpandivel({ texto, limite = 180 }) {
   const [expandido, setExpandido] = useState(false);
   if (!texto) return null;
-  const longo = texto.length > 180;
+  const longo = texto.length > limite;
   return (
     <div className="texto-expandivel">
       <p style={{ margin: 0, whiteSpace: 'pre-line', fontSize: '13.5px', color: 'var(--txt-suave, #ccc)' }}>
-        {expandido || !longo ? texto : `${texto.slice(0, 180)}…`}
+        {expandido || !longo ? texto : `${texto.slice(0, limite)}…`}
       </p>
       {longo && (
         <button
           type="button"
           className="btn-link"
-          style={{ fontSize: 12, marginTop: 4, padding: 0, background: 'none', border: 'none', color: 'var(--sangue-claro)', cursor: 'pointer' }}
-          onClick={() => setExpandido((v) => !v)}
+          style={{ fontSize: 12, marginTop: 4, padding: 0, background: 'none', border: 'none', color: 'var(--sangue-claro)', cursor: 'pointer', textAlign: 'left', alignSelf: 'flex-start' }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpandido((v) => !v);
+          }}
         >
           {expandido ? 'Ver menos' : 'Ver mais'}
         </button>
@@ -702,7 +705,7 @@ export function AbaHabilidades({ personagem, setPersonagem }) {
               <span className="meta">
                 {[p.tipo, p.classe, p.trilha, p.origem, p.elemento, p.prerequisito].filter(Boolean).join(' · ')}
               </span>
-              <span className="corte">{p.descricao}</span>
+              <TextoExpandivel texto={p.descricao} />
             </>
           )}
           onEscolher={(p) => {
