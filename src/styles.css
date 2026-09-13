@@ -2807,13 +2807,23 @@ body.bate-forte .barra-recurso .preenchido::before {
 .ameaca-bloco { border: 1px solid var(--linha); border-radius: var(--raio); padding: 12px 14px; background: var(--bg); }
 .ameaca-bloco.largo { margin-top: 14px; }
 .ameaca-bloco h4 { margin: 0 0 8px; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--sangue-claro); }
+/* O rótulo fica com a largura do seu próprio texto (não disputa espaço com o
+   campo), e o campo é que cresce/encolhe para preencher o resto da linha —
+   antes ambos tinham `flex:1`/`width:100%` a competir, o que espremia
+   valores mais longos ("2d20+10 (Percepção às cegas)") num input minúsculo. */
 .linha-stat { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--txt-dim); padding: 2px 0; }
-.linha-stat span { flex: 1; }
+.linha-stat span { flex: 0 0 auto; }
+.linha-stat input { flex: 1 1 auto; width: auto; min-width: 0; }
 .linha-stat b { font-family: var(--numeros); color: var(--txt); font-size: 15px; }
 .ameaca-pv { display: flex; align-items: baseline; gap: 8px; }
 .ameaca-pv input { width: 88px; font-family: var(--numeros); font-size: 22px; font-weight: 700; text-align: center; }
 .ameaca-pv span { color: var(--txt-dim); font-family: var(--numeros); }
-.ameaca-pericias { display: flex; gap: 8px; flex-wrap: wrap; }
+/* Cada perícia é uma linha (nome + dados + bónus), não um chip — o `.pill`
+   redondo e minúsculo não tinha espaço para 3 campos editáveis e ainda
+   mostrava o nome duas vezes (uma no botão de rolar, outra no input). */
+.ameaca-pericias { display: flex; flex-direction: column; gap: 6px; }
+.ameaca-pericia-linha input[type="number"] { text-align: center; }
+.ameaca-pericia-linha span { flex: 0 0 auto; color: var(--txt-dim); }
 .pill.clicavel { cursor: pointer; }
 .pill.clicavel:hover { border-color: var(--sangue); color: var(--sangue-claro); }
 
@@ -4215,3 +4225,45 @@ body.bate-forte .barra-recurso .preenchido::before {
   color: var(--txt-dim);
   white-space: pre-line;
 }
+
+/* ── Ficha de Ameaça — edição de listas (resistências, ações, habilidades) ── */
+.ameaca-fonte-badge {
+  display: inline-block; margin-top: 4px; font-size: 11.5px; letter-spacing: .04em;
+  color: var(--sangue-claro); border: 1px solid var(--linha-forte); border-radius: 999px;
+  padding: 2px 10px; background: var(--bg-3);
+}
+.ameaca-linha-editavel { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.ameaca-linha-editavel input { flex: 1; }
+.ameaca-linha-nova input { opacity: .85; }
+.btn-remover-linha {
+  background: none; border: 1px solid var(--linha-forte); border-radius: 4px; color: var(--txt-dim);
+  width: 24px; height: 24px; flex: 0 0 auto; cursor: pointer; font-size: 14px; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.btn-remover-linha:hover { border-color: var(--sangue); color: var(--sangue-claro); }
+.btn-adicionar-linha { color: var(--ok); border-color: var(--ok); }
+.ameaca-enigma { border-color: var(--sangue-claro) !important; background: var(--sangue-veu); }
+.ameaca-enigma textarea { width: 100%; min-height: 120px; background: transparent; }
+
+/* Botão "Concluir" no fim da ficha — guarda de imediato (sem esperar pelo
+   auto-guardar) e volta para o Modo Mestre (ou para a lista de agentes,
+   consoante quem chamou `aoConcluir`), para haver sempre um destino claro
+   ao acabar de editar. */
+.ameaca-rodape { display: flex; justify-content: flex-end; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--linha); }
+.ameaca-btn-concluir { min-width: 160px; }
+
+/* ── Compêndio Oficial ─────────────────────────────────────────────────── */
+.compendio-filtros { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0 18px; align-items: center; }
+.compendio-filtros select { min-width: 160px; }
+.compendio-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.compendio-cartao {
+  border: 1px solid var(--linha); border-radius: var(--raio); background: var(--bg-2);
+  padding: 14px; display: flex; flex-direction: column; gap: 6px;
+}
+.compendio-cartao .nome { font-family: var(--display); font-size: 18px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.compendio-cartao .nome .vd { font-family: var(--numeros); color: var(--sangue-claro); font-size: 14px; white-space: nowrap; }
+.compendio-cartao .det { font-size: 12.5px; color: var(--txt-dim); text-transform: uppercase; letter-spacing: .06em; }
+.compendio-cartao .flavor { font-size: 13px; color: var(--txt-dim); line-height: 1.5; flex: 1; }
+.compendio-cartao .acoes-cartao { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.compendio-cartao .acoes-cartao .btn { flex: 1; min-width: 120px; }
+.compendio-adicionado { color: var(--ok); font-size: 12.5px; font-weight: 600; }

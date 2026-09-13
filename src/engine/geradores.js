@@ -379,27 +379,256 @@ function escalaAmeaca(vd) {
   return { defesa, pv, bonusTeste, dadosTeste, dadosDano, bonusDano, dt };
 }
 
-export function gerarAmeaca({ vd = 20, arquetipo = null, tamanho = null } = {}) {
-  const arq = ARQUETIPOS_AMEACA.find((a) => a.id === arquetipo) || ao(ARQUETIPOS_AMEACA);
-  const e = escalaAmeaca(vd);
-  const humano = arq.descritores.includes('Humano');
-  const { nome } = nomePortugues();
-  const nomeAmeaca = humano
-    ? `${nome} — ${arq.nome}`
-    : arq.id === 'animal'
-      ? `${ao(ANIMAIS)} ${ao(SITIOS)}`
-      : `${arq.nome} ${ao(SITIOS)}`;
+/** Remove acentos e baixa para minúsculas, para comparar palavras-chave em PT-BR. */
+function normalizarTexto(txt) {
+  return String(txt || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ');
+}
 
-  const pericias = arq.pericias.map((id) => ({
+/**
+ * Temas usados para transformar um conceito livre (texto escrito pelo
+ * utilizador, ex.: "aranha gigante que se alimenta de medo") em descritores,
+ * ataque, resistências e habilidades temáticas para gerarAmeaca(). Cada tema
+ * tem palavras-chave em português (sem acento) que pontuam a favor dele
+ * quando aparecem no conceito. Os valores numéricos das habilidades (dano,
+ * DT, bónus) são sempre preenchidos a partir de escalaAmeaca(vd) — o texto
+ * livre nunca decide a matemática, só o sabor.
+ */
+const TEMAS_CONCEITO = [
+  {
+    id: 'sangue', descritores: ['Criatura', 'Sangue'], pericias: ['luta', 'fortitude', 'atletismo'],
+    palavras: ['sangue', 'carne', 'dilacera', 'viscera', 'entranha', 'mutila', 'canibal', 'devora', 'garra', 'presa', 'visceral', 'carnificina'],
+    ataque: { nome: 'Garras Ensanguentadas', tipo: 'Corte', dado: 10 },
+    resistencias: ['Sangue 10'],
+    habilidades: [
+      { nome: 'Fome de Sangue', descricao: 'Ao causar dano com o ataque corpo a corpo, recupera {DANO_METADE} pontos de vida.' },
+      { nome: 'Frenesi Sanguinário', descricao: 'Quando fica Machucada, ganha +{BONUS_TESTE} em testes de dano até ao fim do combate.' },
+      { nome: 'Rastro de Sangue', descricao: 'Alvos feridos por esta criatura sofrem −2 em testes de Furtividade enquanto sangrarem.' },
+      { nome: 'Regeneração Visceral', descricao: 'Recupera {DADO_CURA} pontos de vida no início de cada turno, a menos que tenha sofrido dano de Fogo ou Energia na rodada anterior.' },
+    ],
+  },
+  {
+    id: 'morte', descritores: ['Criatura', 'Morte'], pericias: ['furtividade', 'vontade', 'percepcao'],
+    palavras: ['morte', 'morto', 'cadaver', 'necro', 'tumulo', 'decomp', 'putrefa', 'zumbi', 'cemiterio', 'sepultura', 'apodrecid', 'podre'],
+    ataque: { nome: 'Toque Necrótico', tipo: 'Morte', dado: 8 },
+    resistencias: ['Morte 10', 'Imune a doenças e venenos'],
+    habilidades: [
+      { nome: 'Hálito da Tumba', descricao: 'Criaturas a até 3 metros fazem um teste de Fortitude (DT {DT}) ou ficam Enjoadas por 1 rodada.' },
+      { nome: 'Não-Morta', descricao: 'Não precisa de respirar, comer ou dormir. Imune a efeitos que dependam de processos biológicos vivos.' },
+      { nome: 'Decomposição Acelerada', descricao: 'Objetos orgânicos tocados por esta criatura apodrecem; comida e bebida estragam-se instantaneamente.' },
+      { nome: 'Última Vontade', descricao: 'Ao morrer, explode em matéria pútrida: criaturas a até 3 metros fazem Reflexos (DT {DT}) ou sofrem {DANO} de dano de Morte.' },
+    ],
+  },
+  {
+    id: 'agua', descritores: ['Criatura', 'Água'], pericias: ['atletismo', 'furtividade', 'fortitude'],
+    palavras: ['agua', 'afoga', 'lodo', 'pantano', 'umid', 'mofo', 'chuva', 'rio', 'lago', 'oceano', 'mar', 'submers', 'molhad'],
+    ataque: { nome: 'Aperto Afogante', tipo: 'Impacto', dado: 8 },
+    resistencias: ['Impacto 5'],
+    habilidades: [
+      { nome: 'Anfíbia', descricao: 'Move-se na água à mesma velocidade que em terra e pode respirar debaixo de água indefinidamente.' },
+      { nome: 'Afogar', descricao: 'Se acertar dois ataques corpo a corpo seguidos no mesmo alvo, pode tentar afogá-lo: o alvo faz Fortitude (DT {DT}) ou começa a sufocar.' },
+      { nome: 'Corrente Traiçoeira', descricao: 'Criaturas na água a até 9 metros fazem Força (DT {DT}) ou são puxadas 3 metros em direção a ela.' },
+      { nome: 'Dissolver-se', descricao: 'Quando sofreria dano que a reduziria a 0 PV, pode em vez disso dissolver-se em água e reaparecer a até 9 metros, com {DADO_CURA} pontos de vida.' },
+    ],
+  },
+  {
+    id: 'fogo', descritores: ['Criatura', 'Energia'], pericias: ['reflexos', 'iniciativa', 'atletismo'],
+    palavras: ['fogo', 'chama', 'queima', 'brasa', 'cinza', 'incendio', 'ardente', 'calor', 'fumaca', 'fumo'],
+    ataque: { nome: 'Investida Flamejante', tipo: 'Energia', dado: 8 },
+    resistencias: ['Energia 10', 'Imune a Fogo'],
+    habilidades: [
+      { nome: 'Aura Ardente', descricao: 'Criaturas que a atacam corpo a corpo sofrem {DANO_METADE} de dano de Energia (fogo).' },
+      { nome: 'Rastro de Cinzas', descricao: 'Deixa um rasto de fogo ao mover-se: quem passar pelo espaço percorrido sofre {DANO_METADE} de dano de Energia.' },
+      { nome: 'Combustão', descricao: 'Uma vez por combate, pode explodir em chamas: todas as criaturas a até 6 metros fazem Reflexos (DT {DT}) ou sofrem {DANO} de dano de Energia.' },
+      { nome: 'Imune ao Calor', descricao: 'Não sofre dano de Fogo nem de ambientes extremamente quentes.' },
+    ],
+  },
+  {
+    id: 'gelo', descritores: ['Criatura', 'Energia'], pericias: ['fortitude', 'reflexos', 'percepcao'],
+    palavras: ['gelo', 'frio', 'congela', 'neve', 'inverno', 'glacial', 'gelido'],
+    ataque: { nome: 'Garras Geladas', tipo: 'Energia', dado: 6 },
+    resistencias: ['Energia 10', 'Imune a Frio'],
+    habilidades: [
+      { nome: 'Toque Gélido', descricao: 'Alvos atingidos pelo ataque fazem Fortitude (DT {DT}) ou têm o deslocamento reduzido a metade por 1 rodada.' },
+      { nome: 'Congelar no Lugar', descricao: 'Uma vez por combate, pode tentar imobilizar um alvo a até 9 metros: Fortitude (DT {DT}) ou fica Paralisado por 1 rodada.' },
+      { nome: 'Ar Gélido', descricao: 'A temperatura em volta desta criatura cai drasticamente; criaturas desprotegidas do frio sofrem −2 em todos os testes.' },
+    ],
+  },
+  {
+    id: 'sombra', descritores: ['Criatura', 'Conhecimento'], pericias: ['furtividade', 'intuicao', 'percepcao'],
+    palavras: ['sombra', 'escurid', 'trevas', 'breu', 'noite', 'negrume', 'penumbra'],
+    ataque: { nome: 'Garras Sombrias', tipo: 'Mental', dado: 8 },
+    resistencias: ['Conhecimento 5', 'Mental 5'],
+    habilidades: [
+      { nome: 'Um com as Trevas', descricao: 'Em áreas escuras ou sem iluminação, esta criatura fica praticamente invisível — quem tentar percebê-la sofre −5 em Percepção.' },
+      { nome: 'Deslizar nas Sombras', descricao: 'Pode mover-se entre quaisquer duas sombras a até 9 metros uma da outra como ação de movimento, sem provocar ataques de oportunidade.' },
+      { nome: 'Terror na Escuridão', descricao: 'Criaturas que a vejam pela primeira vez em ambiente escuro fazem Vontade (DT {DT}) ou ficam Apavoradas por 1 rodada.' },
+    ],
+  },
+  {
+    id: 'inseto', descritores: ['Animal'], pericias: ['percepcao', 'furtividade', 'atletismo'],
+    palavras: ['inseto', 'aranha', 'enxame', 'larva', 'verme', 'formiga', 'barata', 'gafanhoto', 'lacraia', 'centopeia', 'abelha', 'vespa'],
+    ataque: { nome: 'Ferroada Venenosa', tipo: 'Perfuração', dado: 6 },
+    resistencias: [],
+    habilidades: [
+      { nome: 'Enxame', descricao: 'Ataques de área contra ela causam apenas metade do dano; ataques corpo a corpo únicos têm 50% de chance de acertar só uma parte do enxame, sem efeito.' },
+      { nome: 'Veneno Paralisante', descricao: 'Alvos atingidos pelo ataque fazem Fortitude (DT {DT}) ou ficam Vulneráveis por 1 rodada.' },
+      { nome: 'Multiplicação', descricao: 'No início de cada turno seu, se estiver Machucada, pode gerar mais um enxame idêntico com {DADO_CURA} pontos de vida.' },
+      { nome: 'Sentidos Compostos', descricao: 'Não pode ser Surpreendida e ignora penalidades de Percepção causadas por escuridão.' },
+    ],
+  },
+  {
+    id: 'mente', descritores: ['Criatura', 'Conhecimento'], pericias: ['intuicao', 'enganacao', 'vontade'],
+    palavras: ['mente', 'loucura', 'sussurro', 'pesadelo', 'insania', 'delirio', 'alucina', 'psique', 'sonho'],
+    ataque: { nome: 'Sussurro Dilacerante', tipo: 'Mental', dado: 8 },
+    resistencias: ['Conhecimento 10', 'Mental 10'],
+    habilidades: [
+      { nome: 'Voz na Cabeça', descricao: 'Uma vez por turno, pode sussurrar algo perturbador na mente de um alvo a até 18 metros: Vontade (DT {DT}) ou o alvo fica Abalado por 1 rodada.' },
+      { nome: 'Alimenta-se do Medo', descricao: 'Recupera {DANO_METADE} pontos de vida sempre que um Agente a até 9 metros falha um teste de Vontade.' },
+      { nome: 'Ilusão Perfeita', descricao: 'Pode criar uma ilusão sensorial que só se desfaz com um teste de Vontade (DT {DT}) bem-sucedido.' },
+      { nome: 'Presença Insana', descricao: 'Agentes que terminem o turno adjacentes a esta criatura fazem Vontade (DT {DT}) ou ganham 1 ponto de Sanidade Insana.' },
+    ],
+  },
+  {
+    id: 'infancia', descritores: ['Criatura'], pericias: ['enganacao', 'intuicao', 'furtividade'],
+    palavras: ['crianca', 'infantil', 'boneca', 'brinquedo', 'berco', 'bebe', 'menina', 'menino'],
+    ataque: { nome: 'Golpe Inesperado', tipo: 'Impacto', dado: 6 },
+    resistencias: [],
+    habilidades: [
+      { nome: 'Aparência Inofensiva', descricao: 'Agentes que a vejam pela primeira vez precisam ser bem-sucedidos num teste de Intuição (DT {DT}) para reconhecê-la como ameaça antes de agir.' },
+      { nome: 'Cântico Perturbador', descricao: 'Ao cantarolar, criaturas a até 9 metros fazem Vontade (DT {DT}) ou ficam Abaladas por 1 rodada.' },
+      { nome: 'Brincadeira Cruel', descricao: 'Contra um alvo Surpreendido ou Desprevenido, o ataque desta criatura causa dano dobrado.' },
+    ],
+  },
+  {
+    id: 'ritual', descritores: ['Humano', 'Conhecimento'], pericias: ['ocultismo', 'religiao', 'vontade'],
+    palavras: ['ritual', 'religiao', 'seita', 'altar', 'sacrificio', 'profeta', 'culto', 'oraculo'],
+    ataque: { nome: 'Adaga Ritual', tipo: 'Perfuração', dado: 6 },
+    resistencias: ['Conhecimento 5'],
+    habilidades: [
+      { nome: 'Bênção Profana', descricao: 'Uma vez por combate, pode conceder a si mesma ou a um aliado próximo +{BONUS_TESTE} num teste, invocando o nome de sua entidade.' },
+      { nome: 'Marca do Sacrifício', descricao: 'Se um Agente morrer a até 9 metros desta criatura, ela recupera {DANO} pontos de vida.' },
+      { nome: 'Fanatismo', descricao: 'Imune a efeitos que causem Medo ou Apavoramento, e a testes de Vontade contra Conhecimento.' },
+    ],
+  },
+  {
+    id: 'maquina', descritores: ['Criatura', 'Energia'], pericias: ['fortitude', 'percepcao', 'luta'],
+    palavras: ['maquina', 'metal', 'engrenagem', 'ferrugem', 'robo', 'automato', 'mecanico', 'peca', 'parafuso'],
+    ataque: { nome: 'Lâmina Mecânica', tipo: 'Corte', dado: 8 },
+    resistencias: ['Balístico, corte, impacto e perfuração 5'],
+    habilidades: [
+      { nome: 'Construto', descricao: 'Imune a venenos, doenças, sono, medo e efeitos mentais. Não precisa de respirar.' },
+      { nome: 'Blindagem', descricao: 'Reduz em {BONUS_DANO} todo o dano físico recebido, antes de aplicar resistências.' },
+      { nome: 'Sobrecarga', descricao: 'Uma vez por combate, pode gastar o turno para disparar um raio de energia contra um alvo a até 18 metros: Reflexos (DT {DT}) ou {DANO} de dano de Energia.' },
+    ],
+  },
+  {
+    id: 'planta', descritores: ['Animal'], pericias: ['furtividade', 'fortitude', 'percepcao'],
+    palavras: ['planta', 'raiz', 'floresta', 'espinho', 'flor', 'fungo', 'vinha', 'musgo', 'esporo'],
+    ataque: { nome: 'Vinhas Constritoras', tipo: 'Impacto', dado: 8 },
+    resistencias: [],
+    habilidades: [
+      { nome: 'Enraizada', descricao: 'Ao ficar imóvel por 1 rodada inteira, ganha +{BONUS_TESTE} na Defesa até se mover novamente.' },
+      { nome: 'Esporos Tóxicos', descricao: 'Uma vez por combate, liberta uma nuvem de esporos num raio de 6 metros: Fortitude (DT {DT}) ou Enjoado por 1 rodada.' },
+      { nome: 'Camuflagem Natural', descricao: 'Em ambientes com vegetação, ganha +5 em Furtividade e não pode ser Surpreendida.' },
+    ],
+  },
+  {
+    id: 'espirito', descritores: ['Criatura', 'Morte'], pericias: ['furtividade', 'intuicao', 'vontade'],
+    palavras: ['fantasma', 'espirito', 'alma', 'assombra', 'eterea', 'etereo', 'poltergeist', 'aparicao'],
+    ataque: { nome: 'Toque Espectral', tipo: 'Mental', dado: 8 },
+    resistencias: ['Morte 10', 'Balístico, corte, impacto e perfuração 10'],
+    habilidades: [
+      { nome: 'Incorpórea', descricao: 'Pode atravessar objetos e criaturas sólidas, e só pode ser afetada por ataques ou efeitos paranormais.' },
+      { nome: 'Assombração', descricao: 'Está presa a um local ou objeto: não pode afastar-se dele mais do que 90 metros.' },
+      { nome: 'Manifestação Aterradora', descricao: 'Uma vez por combate, pode manifestar-se visivelmente: criaturas a até 9 metros fazem Vontade (DT {DT}) ou ficam Apavoradas por 1 rodada.' },
+    ],
+  },
+];
+
+/** Pontua os temas contra o texto do conceito e devolve os 1-2 mais fortes. */
+function analisarConceito(texto) {
+  // Ignora palavras curtas (artigos, preposições, etc.) para não gerar falsos positivos
+  // — ex.: "na" não pode contar como se tivesse acertado a palavra-chave "insania".
+  const tokens = normalizarTexto(texto).split(/\s+/).filter((t) => t.length >= 3);
+  if (!tokens.length) return [];
+  const pontuadas = TEMAS_CONCEITO
+    .map((tema) => ({
+      tema,
+      // O token precisa CONTER a palavra-chave (ex.: "apodrecida" contém "apodrecid"),
+      // nunca o inverso — assim um token curto não "acerta" por ser substring de uma
+      // palavra-chave longa e não relacionada.
+      pontos: tema.palavras.reduce((soma, palavra) => soma + (tokens.some((t) => t.includes(palavra)) ? 1 : 0), 0),
+    }))
+    .filter((x) => x.pontos > 0)
+    .sort((a, b) => b.pontos - a.pontos);
+  return pontuadas.slice(0, 2).map((x) => x.tema);
+}
+
+/** Preenche os marcadores {DANO}, {DT}, etc. de uma habilidade temática com os valores já escalados pelo VD. */
+function formatarHabilidadeConceito(hab, e) {
+  const danoTexto = `${e.dadosDano}d6+${e.bonusDano}`;
+  const danoMetade = Math.max(1, Math.round((e.dadosDano * 3.5 + e.bonusDano) / 2));
+  return {
+    nome: hab.nome,
+    descricao: hab.descricao
+      .replace(/\{DANO_METADE\}/g, String(danoMetade))
+      .replace(/\{DANO\}/g, danoTexto)
+      .replace(/\{DT\}/g, String(e.dt))
+      .replace(/\{BONUS_TESTE\}/g, String(e.bonusTeste))
+      .replace(/\{BONUS_DANO\}/g, String(e.bonusDano))
+      .replace(/\{DADO_CURA\}/g, `1d${Math.max(4, e.dadosDano * 2)}`),
+  };
+}
+
+export function gerarAmeaca({ vd = 20, arquetipo = null, tamanho = null, conceito = '' } = {}) {
+  const conceitoLimpo = String(conceito || '').trim();
+  const temasConceito = conceitoLimpo ? analisarConceito(conceitoLimpo) : [];
+  const usaConceito = temasConceito.length > 0;
+
+  const arq = usaConceito ? null : (ARQUETIPOS_AMEACA.find((a) => a.id === arquetipo) || ao(ARQUETIPOS_AMEACA));
+  const e = escalaAmeaca(vd);
+
+  const descritores = usaConceito
+    ? [...new Set(temasConceito.flatMap((t) => t.descritores))].slice(0, 4)
+    : arq.descritores;
+  const ataqueFlavor = usaConceito ? temasConceito[0].ataque : arq.ataque;
+  const resistenciasFlavor = usaConceito ? [...new Set(temasConceito.flatMap((t) => t.resistencias))] : arq.resistencias();
+  const periciasIds = usaConceito ? [...new Set(temasConceito.flatMap((t) => t.pericias))].slice(0, 4) : arq.pericias;
+  const humano = descritores.includes('Humano');
+
+  const { nome } = nomePortugues();
+  let nomeAmeaca;
+  if (conceitoLimpo) {
+    nomeAmeaca = conceitoLimpo.charAt(0).toUpperCase() + conceitoLimpo.slice(1);
+  } else if (humano) {
+    nomeAmeaca = `${nome} — ${arq.nome}`;
+  } else if (arq.id === 'animal') {
+    nomeAmeaca = `${ao(ANIMAIS)} ${ao(SITIOS)}`;
+  } else {
+    nomeAmeaca = `${arq.nome} ${ao(SITIOS)}`;
+  }
+
+  const pericias = periciasIds.map((id) => ({
     nome: PERICIAS_POR_ID[id]?.nome || id,
     dados: e.dadosTeste,
     bonus: e.bonusTeste,
   }));
 
-  // Habilidades aleatórias de criatura conforme o VD
+  // Habilidades conforme o VD — temáticas (do conceito) ou aleatórias genéricas.
   const qtdHabilidades = Number(vd) >= 160 ? 3 : Number(vd) >= 60 ? 2 : 1;
-  const habilidadesBaralhadas = [...HABILIDADES_CRIATURAS].sort(() => Math.random() - 0.5);
-  const habilidades = habilidadesBaralhadas.slice(0, qtdHabilidades);
+  let habilidades;
+  if (usaConceito) {
+    const poolTemas = [...new Map(temasConceito.flatMap((t) => t.habilidades).map((h) => [h.nome, h])).values()];
+    const baralhadas = poolTemas.sort(() => Math.random() - 0.5);
+    habilidades = baralhadas.slice(0, qtdHabilidades).map((h) => formatarHabilidadeConceito(h, e));
+  } else {
+    const habilidadesBaralhadas = [...HABILIDADES_CRIATURAS].sort(() => Math.random() - 0.5);
+    habilidades = habilidadesBaralhadas.slice(0, qtdHabilidades);
+  }
 
   // Comportamento, Aparência e Dicas de Narração / RP
   const comportamento = ao(COMPORTAMENTOS_CRIATURAS);
@@ -410,9 +639,10 @@ export function gerarAmeaca({ vd = 20, arquetipo = null, tamanho = null } = {}) 
     tipo: 'ameaca',
     nome: nomeAmeaca,
     tags: [],
-    arquetipo: arq.id,
+    arquetipo: usaConceito ? temasConceito.map((t) => t.id).join('+') : arq.id,
+    conceito: conceitoLimpo || null,
     vd: Number(vd),
-    descritores: arq.descritores,
+    descritores,
     tamanho: tamanho || (Number(vd) >= 300 ? 'Enorme' : Number(vd) >= 160 ? 'Grande' : 'Médio'),
     ocupacao: humano ? ao(OCUPACOES) : null,
     defesa: e.defesa,
@@ -421,7 +651,7 @@ export function gerarAmeaca({ vd = 20, arquetipo = null, tamanho = null } = {}) 
     dt: e.dt,
     deslocamento: Number(vd) >= 200 ? 12 : 9,
     sentidos: { percepcao: `${e.dadosTeste}d20+${e.bonusTeste}`, iniciativa: `${e.dadosTeste}d20+${e.bonusTeste}` },
-    resistencias: arq.resistencias(),
+    resistencias: resistenciasFlavor,
     testes: {
       fortitude: `${e.dadosTeste}d20+${e.bonusTeste}`,
       reflexos: `${e.dadosTeste}d20+${Math.max(0, e.bonusTeste - 5)}`,
@@ -433,15 +663,17 @@ export function gerarAmeaca({ vd = 20, arquetipo = null, tamanho = null } = {}) 
     aparencia,
     dicaRp,
     ataque: {
-      nome: arq.ataque.nome,
+      nome: ataqueFlavor.nome,
       teste: `${e.dadosTeste}d20+${e.bonusTeste}`,
       dados: e.dadosTeste,
       bonus: e.bonusTeste,
-      dano: `${e.dadosDano}d${arq.ataque.dado}+${e.bonusDano}`,
-      tipo: arq.ataque.tipo,
+      dano: `${e.dadosDano}d${ataqueFlavor.dado}+${e.bonusDano}`,
+      tipo: ataqueFlavor.tipo,
       critico: 'x2',
     },
-    notas: `${comportamento} ${dicaRp}`,
+    notas: conceitoLimpo
+      ? `Conceito: "${conceitoLimpo}". ${comportamento} ${dicaRp}`
+      : `${comportamento} ${dicaRp}`,
   };
 }
 

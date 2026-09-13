@@ -21,8 +21,16 @@ function normalizar(texto) {
     .replace(/[\u0300-\u036f]/g, '');
 }
 
+/**
+ * As amea\u00e7as/criaturas vivem no Besti\u00e1rio do Modo Mestre, n\u00e3o aqui \u2014 este
+ * ecr\u00e3 \u00e9 s\u00f3 para os agentes (personagens dos jogadores e NPCs "normais").
+ */
+function listarSoAgentes() {
+  return listarAgentes().filter((a) => a.tipo !== 'ameaca');
+}
+
 export default function Inicio({ aoCriar, aoAbrir, aoAbrirMestre, tema = TEMA_PADRAO, aoTrocarTema }) {
-  const [lista, setLista] = useState(listarAgentes);
+  const [lista, setLista] = useState(listarSoAgentes);
   const [busca, setBusca] = useState('');
   const [tagSelecionada, setTagSelecionada] = useState(null);
   const [editarTagsAgente, setEditarTagsAgente] = useState(null);
@@ -39,7 +47,7 @@ export default function Inicio({ aoCriar, aoAbrir, aoAbrirMestre, tema = TEMA_PA
   const [confirmarApagar, setConfirmarApagar] = useState(null); // { tipo: 'individual', agente } | { tipo: 'massa', agentes }
 
   function recarregar() {
-    setLista(listarAgentes());
+    setLista(listarSoAgentes());
   }
 
   const todasAsTagsComContagem = useMemo(() => {
