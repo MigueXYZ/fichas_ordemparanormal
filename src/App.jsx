@@ -217,12 +217,28 @@ export default function App() {
     setVista('mestre');
   }
 
-  function voltarAoInicio() {
+  function guardarSeNecessario() {
     if (personagem && !(!obterAgente(personagem.id) && personagemEhRascunhoVazio(personagem))) {
       guardarAgente(personagem);
     }
+  }
+
+  function voltarAoInicio() {
+    guardarSeNecessario();
     setPersonagem(null);
     setVista('inicio');
+  }
+
+  // Botão "← Voltar" da barra do topo: uma ameaça só é aberta a partir do
+  // Modo Mestre (Bestiário, Combate ou Encontro), por isso ao fechar a sua
+  // ficha o destino natural é voltar para lá — nunca para a lista de agentes,
+  // onde ela nem sequer aparece. A alteração já fica guardada sozinha (o
+  // auto-guardar de cima trata disso); isto só decide para onde navegar.
+  function fecharFicha() {
+    guardarSeNecessario();
+    const paraMestre = personagem?.tipo === 'ameaca';
+    setPersonagem(null);
+    setVista(paraMestre ? 'mestre' : 'inicio');
   }
 
   // a cruz da TV (ver Wizard.jsx) já decide sozinha se guarda ou apaga o
@@ -265,8 +281,12 @@ export default function App() {
             Ordo <span className="marca-sub">· Ordem Paranormal</span>
           </h1>
           {vista !== 'inicio' && (
-            <button className="btn ghost sm btn-nav-agentes" onClick={voltarAoInicio} title="Voltar à lista de agentes">
-              ← Agentes
+            <button
+              className="btn ghost sm btn-nav-agentes"
+              onClick={fecharFicha}
+              title={personagem?.tipo === 'ameaca' ? 'Voltar ao Modo Mestre' : 'Voltar à lista de agentes'}
+            >
+              {personagem?.tipo === 'ameaca' ? '← Mestre' : '← Agentes'}
             </button>
           )}
           {vista === 'wizard' && personagem?.classeId && (
@@ -377,7 +397,7 @@ export default function App() {
         <Wizard personagem={personagem} setPersonagem={setPersonagem} onRolar={rolar} onFinalizar={() => setVista('ficha')} onSair={sairDoWizard} />
       )}
       {vista === 'ficha' && personagem && personagem.tipo === 'ameaca' && (
-        <FichaAmeaca ameaca={personagem} setAmeaca={setPersonagem} onRolar={rolar} />
+        <FichaAmeaca ameaca={personagem} setAmeaca={setPersonagem} onRolar={rolar} aoConcluir={fecharFicha} />
       )}
       {vista === 'ficha' && personagem && personagem.tipo !== 'ameaca' && (
         <Ficha personagem={personagem} setPersonagem={setPersonagem} onRolar={rolar} />

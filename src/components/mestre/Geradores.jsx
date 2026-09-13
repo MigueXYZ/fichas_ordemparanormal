@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { CLASSES, TRILHAS } from '../../data/classes.js';
 import { ORIGENS } from '../../data/origens.js';
 import { PERICIAS_TEXTO } from '../../data/periciasTexto.js';
@@ -10,6 +10,9 @@ import {
   gerarFicha, gerarNpcAgente, gerarAmeaca, gerarOcultista, vdParaGrupo,
 } from '../../engine/geradores.js';
 import ModalDetalheGenerico from './ModalDetalheGenerico.jsx';
+import Ficha from '../ficha/Ficha.jsx';
+import FichaAmeaca from '../ficha/FichaAmeaca.jsx';
+import PainelRolagem from '../PainelRolagem.jsx';
 
 const SEPARADORES = [
   { id: 'ficha', nome: 'Ficha aleatória' },
@@ -632,12 +635,23 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
   const [vd, setVd] = useState(20);
   const [arquetipo, setArquetipo] = useState('');
   const [tamanho, setTamanho] = useState('');
+  const [conceitoAmeaca, setConceitoAmeaca] = useState('');
   const [elementoCultista, setElementoCultista] = useState('');
   const [patenteCultista, setPatenteCultista] = useState('');
   const [nexGrupo, setNexGrupo] = useState(20);
   const [resultado, setResultado] = useState(null);
   const [editando, setEditando] = useState(false);
   const [itemDetalhe, setItemDetalhe] = useState(null);
+  const [rolagens, setRolagens] = useState([]);
+
+  const onRolar = useCallback((r) => {
+    if (!r) return;
+    setRolagens((antes) => [...antes.slice(-9), r]);
+  }, []);
+  const fecharRolagem = useCallback((id) => {
+    setRolagens((antes) => antes.filter((r) => r.id !== id));
+  }, []);
+  const limparRolagens = useCallback(() => setRolagens([]), []);
 
   const trilhasDisponiveis = useMemo(() => {
     if (!classeId) return TRILHAS;
@@ -648,7 +662,12 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
   function gerar() {
     setEditando(false);
     if (aba === 'ameaca') {
-      setResultado(gerarAmeaca({ vd: Number(vd), arquetipo: arquetipo || null, tamanho: tamanho || null }));
+      setResultado(gerarAmeaca({
+        vd: Number(vd),
+        arquetipo: arquetipo || null,
+        tamanho: tamanho || null,
+        conceito: conceitoAmeaca || '',
+      }));
       return;
     }
     if (aba === 'ocultista') {
@@ -797,6 +816,21 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
           <p className="dica" style={{ marginTop: 0 }}>
             Ameaças e criaturas com habilidades especiais, comportamento sinistro, descrição aterrorizante e dicas de narração para o Mestre.
           </p>
+          <div className="campo" style={{ marginBottom: 14 }}>
+            <label>Conceito da criatura (opcional)</label>
+            <textarea
+              value={conceitoAmeaca}
+              onChange={(e) => setConceitoAmeaca(e.target.value)}
+              placeholder="Ex.: aranha gigante que vive em água podre; boneca de porcelana assombrada; cultista da Ordem do Fogo..."
+              rows={2}
+              style={{ resize: 'vertical' }}
+            />
+            <div className="dica" style={{ marginTop: 4, fontSize: 12 }}>
+              Se preenchido, o site lê o conceito e escolhe descritores, ataque e habilidades temáticas condizentes —
+              a Defesa, PV, testes e dano continuam sempre calculados a partir do VD escolhido abaixo, não do texto.
+              O Arquétipo abaixo só é usado quando este campo fica vazio.
+            </div>
+          </div>
           <div className="grelha-editor" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
             <div className="campo">
               <label>Valor de desafio</label>
@@ -805,8 +839,8 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
               </select>
             </div>
             <div className="campo">
-              <label>Arquétipo</label>
-              <select value={arquetipo} onChange={(e) => setArquetipo(e.target.value)}>
+              <label>Arquétipo {conceitoAmeaca.trim() && '(ignorado — há um conceito preenchido)'}</label>
+              <select value={arquetipo} onChange={(e) => setArquetipo(e.target.value)} disabled={Boolean(conceitoAmeaca.trim())}>
                 <option value="">Ao acaso</option>
                 {ARQUETIPOS_AMEACA.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
               </select>
@@ -851,18 +885,30 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
         )}
       </div>
 
-      {resultado && (resultado.tipo === 'ameaca'
+      {resultado && editando && (
+        <div className="gerador-editor-completo" style={{ marginTop: 10 }}>
+          <div className="dica" style={{ marginBottom: 8 }}>
+            Edição completa: troca armas e itens no Inventário, habilidades e poderes do catálogo ou escritos à mão,
+            e o treino das perícias — tudo o que já dá para fazer numa ficha guardada.
+          </div>
+          {resultado.tipo === 'ameaca'
+            ? <FichaAmeaca ameaca={resultado} setAmeaca={setResultado} onRolar={onRolar} aoConcluir={() => setEditando(false)} />
+            : <Ficha personagem={resultado} setPersonagem={setResultado} onRolar={onRolar} />}
+        </div>
+      )}
+
+      {resultado && !editando && (resultado.tipo === 'ameaca'
         ? <FichaAmeacaPrevia
             a={resultado}
             aoVerDetalhe={setItemDetalhe}
-            editando={editando}
+            editando={false}
             onAtualizarCampo={handleAtualizarCampo}
             aoUploadImagem={handleUploadImagem}
           />
         : <Resumo
             p={resultado}
             aoVerDetalhe={setItemDetalhe}
-            editando={editando}
+            editando={false}
             onAtualizarCampo={handleAtualizarCampo}
             aoUploadImagem={handleUploadImagem}
           />)}
@@ -871,6 +917,8 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
       {itemDetalhe && (
         <ModalDetalheGenerico item={itemDetalhe} aoFechar={() => setItemDetalhe(null)} />
       )}
+
+      <PainelRolagem rolagens={rolagens} aoFechar={fecharRolagem} aoLimpar={limparRolagens} />
     </div>
   );
 }

@@ -155,7 +155,7 @@ export default function ModoMestre({ aoAbrir }) {
         />
       )}
       {aba === 'gerar' && <Geradores aoGuardar={guardar} aoAbrir={aoAbrir} />}
-      {aba === 'bestiario' && <Bestiario lista={listaAmeacas} aoAbrir={aoAbrir} aoApagar={apagar} />}
+      {aba === 'bestiario' && <Bestiario lista={listaAmeacas} aoAbrir={aoAbrir} aoApagar={apagar} aoGuardar={guardar} />}
       {aba === 'encontro' && (
         <Encontro
           ameacas={listaAmeacas}
