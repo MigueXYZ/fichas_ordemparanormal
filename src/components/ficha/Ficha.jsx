@@ -487,6 +487,7 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
                   titulo="DETERMINAÇÃO" classe="barra-determinacao"
                   atual={personagem.pdAtual ?? max.pd} max={max.pd} onChange={(v) => set({ pdAtual: v })}
                   temp={personagem.pdTemp || 0} onTemp={(v) => set({ pdTemp: v })}
+                  extra={personagem.pdExtra} onExtraChange={(v) => set({ pdExtra: v })}
                 />
               ) : (
                 <>

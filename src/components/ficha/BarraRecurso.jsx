@@ -32,10 +32,12 @@ function InputNumeroScroll({ value, onChange, ...props }) {
 }
 
 export default function BarraRecurso({ titulo, classe, atual, max, onChange, temp = 0, onTemp, extra = 0, onExtraChange }) {
-  const [aEditarTemp, setAEditarTemp] = useState(false);
   const [destravado, setDestravado] = useState(false);
-  const [modal, setModal] = useState(null); // null | 'valor' | 'excedente'
+  const [modal, setModal] = useState(null); // null | 'valor' | 'excedente' | 'buff'
+  const [abaBuff, setAbaBuff] = useState('perm'); // 'perm' | 'temp'
   const [rascunho, setRascunho] = useState(0);
+  const [rascunhoExtra, setRascunhoExtra] = useState(0);
+  const [rascunhoTemp, setRascunhoTemp] = useState(0);
   const [excedente, setExcedente] = useState(0);
 
   const t = Math.max(0, Number(temp) || 0);
@@ -59,29 +61,46 @@ export default function BarraRecurso({ titulo, classe, atual, max, onChange, tem
   function adicionarUm() {
     if (destravado && onExtraChange) {
       onExtraChange(ex + 1);
+      onChange(valor + 1);
     } else {
       onChange(Math.max(0, Math.min(valor + 1, max)));
     }
   }
 
-  function editarMaximo() {
-    if (!destravado || !onExtraChange) return;
-    // O jogador escreve o máximo que quer (ex.: 30), não o bónus — mas por
-    // trás continua a guardar-se só a diferença (`extra`) em relação ao
-    // automático puro, para o máximo continuar a acompanhar sozinho o que
-    // muda no automático (Vigor subir, NEX subir, etc.), como já fazia.
-    const res = window.prompt(`Máximo de ${titulo} (atual: ${max}):`, max);
-    if (res === null) return;
-    const novoMax = Math.trunc(Number(res) || 0);
-    const automaticoPuro = max - ex;
-    onExtraChange(novoMax - automaticoPuro);
+  function abrirModalBuff(aba = 'perm') {
+    setRascunhoExtra(ex);
+    setRascunhoTemp(t);
+    setAbaBuff(aba);
+    setModal('buff');
+  }
+
+  function confirmarBuffPerm() {
+    const novoEx = Math.trunc(Number(rascunhoExtra) || 0);
+    const delta = novoEx - ex;
+    if (onExtraChange) {
+      onExtraChange(novoEx);
+    }
+    if (delta > 0) {
+      onChange(Math.max(0, valor + delta));
+    } else if (valor > (max + delta)) {
+      onChange(Math.max(0, max + delta));
+    }
+    setModal(null);
+  }
+
+  function confirmarTemp() {
+    const novoT = Math.max(0, Math.trunc(Number(rascunhoTemp) || 0));
+    if (onTemp) {
+      onTemp(novoT);
+    }
+    setModal(null);
   }
 
   /**
-   * Escreve o valor ATUAL à mão, num popup do estilo da ficha (não o feio
-   * por omissão do browser). Se o número passar do máximo, pergunta-se —
-   * com botões, não um alerta — se os pontos a mais devem virar temporários
-   * ou ficar esquecidos (descartados).
+   * Escreve o valor ATUAL à mão, num popup do estilo da ficha.
+   * Se o número passar do máximo, pergunta-se com botões
+   * se os pontos a mais devem ser aplicados como buff permanente ao máximo,
+   * temporários ou descartados.
    */
   function abrirEditorValor() {
     setRascunho(valor);
@@ -99,9 +118,18 @@ export default function BarraRecurso({ titulo, classe, atual, max, onChange, tem
     }
   }
 
-  function resolverExcedente(transferir) {
-    onChange(max);
-    if (transferir && onTemp) onTemp(t + excedente);
+  function resolverExcedente(opcao) {
+    if (opcao === 'permanente') {
+      if (onExtraChange) {
+        onExtraChange(ex + excedente);
+      }
+      onChange(rascunho);
+    } else if (opcao === 'temp') {
+      onChange(max);
+      if (onTemp) onTemp(t + excedente);
+    } else {
+      onChange(max);
+    }
     setModal(null);
   }
 
@@ -116,7 +144,7 @@ export default function BarraRecurso({ titulo, classe, atual, max, onChange, tem
             <button
               type="button"
               onClick={() => setDestravado(!destravado)}
-              title={destravado ? "Fechar ajuste do máximo" : "Ajustar o máximo à mão"}
+              title={destravado ? "Fechar ajuste do máximo (destravado)" : "Ajustar o máximo à mão (+/-)"}
               style={{
                 display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer',
                 fontSize: '11px', lineHeight: 1, padding: '3px 6px', borderRadius: 4,
@@ -125,7 +153,7 @@ export default function BarraRecurso({ titulo, classe, atual, max, onChange, tem
                 color: destravado ? '#fff' : 'var(--txt-dim)',
               }}
             >
-              {destravado ? '' : '±'}
+              {destravado ? '✓' : '±'}
             </button>
           )}
         </div>
@@ -133,39 +161,38 @@ export default function BarraRecurso({ titulo, classe, atual, max, onChange, tem
         {/* Centro: Título perfeitamente centrado */}
         <span style={{ fontWeight: 'bold', letterSpacing: '1px', textAlign: 'center' }}>{titulo}</span>
         
-        {/* Lado direito: Chip de temp alinhado horizontalmente na mesma linha.
-            O duplo clique fica no wrapper (não no botão/input lá dentro) porque
-            o primeiro clique de um duplo-clique já troca o botão pelo input —
-            se o ouvinte estivesse só no botão, o segundo clique cairia no
-            elemento novo e o duplo-clique nunca era detetado. */}
+        {/* Lado direito: Chips para Buff Permanente e Pontos Temporários */}
         <div
           style={{ justifySelf: 'end', display: 'flex', alignItems: 'center', gap: '4px' }}
-          onDoubleClick={() => onTemp && onTemp(0)}
         >
+          {onExtraChange && (
+            <button
+              type="button"
+              className={'temp-chip' + (ex !== 0 ? ' ativo' : '')}
+              style={ex !== 0 ? {
+                borderColor: 'rgba(239, 68, 68, 0.6)',
+                color: '#f87171',
+                background: 'rgba(239, 68, 68, 0.12)',
+                opacity: 1,
+              } : undefined}
+              onClick={() => abrirModalBuff('perm')}
+              onDoubleClick={() => onExtraChange && onExtraChange(0)}
+              title={ex !== 0 ? `Buff permanente: ${ex > 0 ? `+${ex}` : ex} · Clica para abrir modal · Duplo clique para zerar` : "Adicionar buff permanente ao máximo"}
+            >
+              {ex !== 0 ? `${ex > 0 ? `+${ex}` : ex} buff` : '+ buff'}
+            </button>
+          )}
+
           {onTemp && (
-            aEditarTemp ? (
-              <input
-                className="temp-campo"
-                type="number"
-                autoFocus
-                value={t}
-                onChange={(e) => onTemp(Math.max(0, Number(e.target.value) || 0))}
-                onBlur={() => setAEditarTemp(false)}
-                onKeyDown={(e) => e.key === 'Enter' && setAEditarTemp(false)}
-                title="Pontos temporários"
-                style={{ width: '45px', textAlign: 'center', fontSize: '10px' }}
-              />
-            ) : (
-              <button
-                type="button"
-                className={'temp-chip' + (t > 0 ? ' ativo' : '')}
-                onClick={() => setAEditarTemp(true)}
-                title="Pontos temporários · duplo clique para zerar"
-                style={{ fontSize: '10px', padding: '1px 4px' }}
-              >
-                {t > 0 ? `+${t} temp` : '+ temp'}
-              </button>
-            )
+            <button
+              type="button"
+              className={'temp-chip' + (t > 0 ? ' ativo' : '')}
+              onClick={() => abrirModalBuff('temp')}
+              onDoubleClick={() => onTemp && onTemp(0)}
+              title={t > 0 ? `Pontos temporários: +${t} · Clica para abrir modal · Duplo clique para zerar` : "Pontos temporários"}
+            >
+              {t > 0 ? `+${t} temp` : '+ temp'}
+            </button>
           )}
         </div>
 
@@ -185,17 +212,21 @@ export default function BarraRecurso({ titulo, classe, atual, max, onChange, tem
             >
               {valor}
             </span> / <span
-              onClick={editarMaximo}
+              onClick={() => onExtraChange && abrirModalBuff('perm')}
               style={{
-                cursor: destravado ? 'pointer' : 'default',
-                textDecoration: destravado ? 'underline dotted' : 'none',
+                cursor: onExtraChange ? 'pointer' : 'default',
+                textDecoration: onExtraChange ? 'underline dotted' : 'none',
               }}
-              title={destravado ? 'Clica para escrever o máximo que queres' : ''}
+              title={onExtraChange ? 'Clica para ajustar o máximo permanente ou aplicar buff' : ''}
             >
               {max}
             </span>
             {ex !== 0 && (
-              <span style={{ color: 'var(--txt-fraco)', fontSize: '10px' }} title={`Máximo automático com um bónus fixo de ${ex > 0 ? '+' : ''}${ex} por cima`}>
+              <span
+                style={{ color: '#f87171', fontSize: '10px', cursor: onExtraChange ? 'pointer' : 'default' }}
+                onClick={() => onExtraChange && abrirModalBuff('perm')}
+                title={`Máximo automático com um bónus permanente de ${ex > 0 ? '+' : ''}${ex} por cima · Clica para ajustar`}
+              >
                 {' '}({ex > 0 ? '+' : ''}{ex})
               </span>
             )}
@@ -211,7 +242,7 @@ export default function BarraRecurso({ titulo, classe, atual, max, onChange, tem
           <div className="modal" style={{ maxWidth: 360, textAlign: 'center' }}>
             <div className="modal-topo">
               <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>{titulo} — valor atual</h3>
-              <button className="fechar" onClick={() => setModal(null)}>×</button>
+              <button type="button" className="fechar" onClick={() => setModal(null)}>×</button>
             </div>
             <div className="modal-corpo">
               <p style={{ color: 'var(--txt-dim)', fontSize: 14.5, marginBottom: 20 }}>
@@ -229,8 +260,8 @@ export default function BarraRecurso({ titulo, classe, atual, max, onChange, tem
                 <button type="button" className="btn ghost sm" onClick={() => setRascunho((v) => (Number(v) || 0) + 1)}>+</button>
               </div>
               <div style={{ display: 'flex', gap: 14, justifyContent: 'center' }}>
-                <button className="btn ghost" onClick={() => setModal(null)}>Cancelar</button>
-                <button className="btn" style={{ borderColor: 'var(--sangue)', background: 'var(--sangue)' }} onClick={confirmarValor}>Confirmar</button>
+                <button type="button" className="btn ghost" onClick={() => setModal(null)}>Cancelar</button>
+                <button type="button" className="btn" style={{ borderColor: 'var(--sangue)', background: 'var(--sangue)' }} onClick={confirmarValor}>Confirmar</button>
               </div>
             </div>
           </div>
@@ -239,20 +270,154 @@ export default function BarraRecurso({ titulo, classe, atual, max, onChange, tem
 
       {modal === 'excedente' && (
         <div className="modal-fundo" style={{ zIndex: 100 }} onClick={(e) => e.target === e.currentTarget && setModal(null)}>
-          <div className="modal" style={{ maxWidth: 400, textAlign: 'center' }}>
+          <div className="modal" style={{ maxWidth: 440, textAlign: 'center' }}>
             <div className="modal-topo">
               <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>Passa do máximo</h3>
-              <button className="fechar" onClick={() => setModal(null)}>×</button>
+              <button type="button" className="fechar" onClick={() => setModal(null)}>×</button>
             </div>
             <div className="modal-corpo">
               <p style={{ color: 'var(--txt-dim)', fontSize: 14.5, marginBottom: 22 }}>
-                {rascunho} ultrapassa o máximo de {titulo} ({max}). Queres transferir os <strong>{excedente}</strong> pontos a mais para temporário, ou esquecê-los?
+                {rascunho} ultrapassa o máximo de {titulo} ({max}) por <strong>+{excedente}</strong>. Como queres aplicar este excedente?
               </p>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button className="btn ghost" onClick={() => setModal('valor')}>Voltar</button>
-                <button className="btn ghost" onClick={() => resolverExcedente(false)}>Não, esquecer</button>
-                <button className="btn" style={{ borderColor: 'var(--sangue)', background: 'var(--sangue)' }} onClick={() => resolverExcedente(true)}>Sim, transferir</button>
+                <button type="button" className="btn ghost" onClick={() => setModal('valor')}>Voltar</button>
+                <button type="button" className="btn ghost" onClick={() => resolverExcedente('descartar')}>Descartar</button>
+                {onTemp && (
+                  <button type="button" className="btn ghost" onClick={() => resolverExcedente('temp')}>
+                    +{excedente} Temporário
+                  </button>
+                )}
+                {onExtraChange && (
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{ borderColor: 'var(--sangue)', background: 'var(--sangue)', fontWeight: 'bold' }}
+                    onClick={() => resolverExcedente('permanente')}
+                    title="Aumenta o máximo e o valor atual permanentemente"
+                  >
+                    +{excedente} Permanente
+                  </button>
+                )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modal === 'buff' && (
+        <div className="modal-fundo" style={{ zIndex: 100 }} onClick={(e) => e.target === e.currentTarget && setModal(null)}>
+          <div className="modal" style={{ maxWidth: 420, textAlign: 'center' }}>
+            <div className="modal-topo">
+              <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>{titulo} — Ajustar Buff / Recursos</h3>
+              <button type="button" className="fechar" onClick={() => setModal(null)}>×</button>
+            </div>
+
+            <div className="modal-corpo">
+              {onExtraChange && onTemp && (
+                <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 18 }}>
+                  <button
+                    type="button"
+                    className={`btn sm ${abaBuff === 'perm' ? '' : 'ghost'}`}
+                    style={abaBuff === 'perm' ? { borderColor: 'var(--sangue)', background: 'var(--sangue)' } : undefined}
+                    onClick={() => setAbaBuff('perm')}
+                  >
+                    Buff Permanente {ex !== 0 ? `(${ex > 0 ? `+${ex}` : ex})` : ''}
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn sm ${abaBuff === 'temp' ? '' : 'ghost'}`}
+                    style={abaBuff === 'temp' ? { borderColor: 'var(--sangue)', background: 'var(--sangue)' } : undefined}
+                    onClick={() => setAbaBuff('temp')}
+                  >
+                    Pontos Temporários {t > 0 ? `(+${t})` : ''}
+                  </button>
+                </div>
+              )}
+
+              {abaBuff === 'perm' && onExtraChange && (
+                <div>
+                  <p style={{ color: 'var(--txt-dim)', fontSize: 13.5, marginBottom: 14 }}>
+                    Ajusta o bónus permanente somado ao máximo de {titulo} (talentos, itens, bênçãos ou maldições).
+                  </p>
+
+                  <div style={{ fontSize: 13, color: 'var(--txt-fraco)', marginBottom: 16 }}>
+                    Cálculo base: <b>{max - ex}</b> · Máximo resultante: <b style={{ color: 'var(--txt)' }}>{(max - ex) + (Number(rascunhoExtra) || 0)}</b>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center', marginBottom: 16 }}>
+                    <button type="button" className="btn ghost sm" onClick={() => setRascunhoExtra((v) => (Number(v) || 0) - 1)}>−1</button>
+                    <div style={{ position: 'relative' }}>
+                      <InputNumeroScroll
+                        value={rascunhoExtra}
+                        onChange={(v) => setRascunhoExtra(v === null ? 0 : Number(v) || 0)}
+                        autoFocus
+                        onKeyDown={(e) => e.key === 'Enter' && confirmarBuffPerm()}
+                        style={{ width: 90, textAlign: 'center', fontSize: 22, fontFamily: 'var(--numeros)' }}
+                      />
+                    </div>
+                    <button type="button" className="btn ghost sm" onClick={() => setRascunhoExtra((v) => (Number(v) || 0) + 1)}>+1</button>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 20 }}>
+                    <button type="button" className="btn ghost sm" style={{ fontSize: 11, padding: '2px 8px' }} onClick={() => setRascunhoExtra((v) => (Number(v) || 0) + 2)}>+2</button>
+                    <button type="button" className="btn ghost sm" style={{ fontSize: 11, padding: '2px 8px' }} onClick={() => setRascunhoExtra((v) => (Number(v) || 0) + 5)}>+5</button>
+                    <button type="button" className="btn ghost sm" style={{ fontSize: 11, padding: '2px 8px' }} onClick={() => setRascunhoExtra((v) => (Number(v) || 0) + 10)}>+10</button>
+                    <button type="button" className="btn ghost sm" style={{ fontSize: 11, padding: '2px 8px' }} onClick={() => setRascunhoExtra(0)}>Zerar (+0)</button>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 14, justifyContent: 'center' }}>
+                    <button type="button" className="btn ghost" onClick={() => setModal(null)}>Cancelar</button>
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{ borderColor: 'var(--sangue)', background: 'var(--sangue)' }}
+                      onClick={confirmarBuffPerm}
+                    >
+                      Aplicar Buff Permanente
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {abaBuff === 'temp' && onTemp && (
+                <div>
+                  <p style={{ color: 'var(--txt-dim)', fontSize: 13.5, marginBottom: 14 }}>
+                    Pontos temporários absorvem dano antes da vida normal e duram até ao final da cena.
+                  </p>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center', marginBottom: 16 }}>
+                    <button type="button" className="btn ghost sm" onClick={() => setRascunhoTemp((v) => Math.max(0, (Number(v) || 0) - 1))}>−1</button>
+                    <InputNumeroScroll
+                      value={rascunhoTemp}
+                      onChange={(v) => setRascunhoTemp(Math.max(0, Number(v) || 0))}
+                      autoFocus
+                      onKeyDown={(e) => e.key === 'Enter' && confirmarTemp()}
+                      style={{ width: 90, textAlign: 'center', fontSize: 22, fontFamily: 'var(--numeros)' }}
+                    />
+                    <button type="button" className="btn ghost sm" onClick={() => setRascunhoTemp((v) => (Number(v) || 0) + 1)}>+1</button>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 20 }}>
+                    <button type="button" className="btn ghost sm" style={{ fontSize: 11, padding: '2px 8px' }} onClick={() => setRascunhoTemp((v) => (Number(v) || 0) + 5)}>+5</button>
+                    <button type="button" className="btn ghost sm" style={{ fontSize: 11, padding: '2px 8px' }} onClick={() => setRascunhoTemp((v) => (Number(v) || 0) + 10)}>+10</button>
+                    <button type="button" className="btn ghost sm" style={{ fontSize: 11, padding: '2px 8px' }} onClick={() => setRascunhoTemp((v) => (Number(v) || 0) + 15)}>+15</button>
+                    <button type="button" className="btn ghost sm" style={{ fontSize: 11, padding: '2px 8px' }} onClick={() => setRascunhoTemp((v) => (Number(v) || 0) + 30)}>+30</button>
+                    <button type="button" className="btn ghost sm" style={{ fontSize: 11, padding: '2px 8px' }} onClick={() => setRascunhoTemp(0)}>Zerar</button>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 14, justifyContent: 'center' }}>
+                    <button type="button" className="btn ghost" onClick={() => setModal(null)}>Cancelar</button>
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{ borderColor: 'var(--sangue)', background: 'var(--sangue)' }}
+                      onClick={confirmarTemp}
+                    >
+                      Aplicar Temporários
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
