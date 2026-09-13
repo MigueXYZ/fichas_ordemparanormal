@@ -962,6 +962,24 @@ export function AbaInventario({ personagem, setPersonagem }) {
   const [aviso, setAviso] = useState(null);
   const [aEscolherElementoComponente, setAEscolherElementoComponente] = useState(null);
   const [aEscolherQtd, setAEscolherQtd] = useState(null);
+  const [detalhesAbertos, setDetalhesAbertos] = useState(() => {
+    try {
+      const salvo = localStorage.getItem('ordo_inventario_detalhes_aberto');
+      return salvo !== null ? JSON.parse(salvo) : true;
+    } catch {
+      return true;
+    }
+  });
+
+  function alternarDetalhes() {
+    setDetalhesAbertos((prev) => {
+      const proximo = !prev;
+      try {
+        localStorage.setItem('ordo_inventario_detalhes_aberto', JSON.stringify(proximo));
+      } catch {}
+      return proximo;
+    });
+  }
 
   const catalogoArmas = ITENS.filter(ehArma);
   const catalogoItens = ITENS.filter((i) => !ehArma(i));
@@ -1043,59 +1061,76 @@ export function AbaInventario({ personagem, setPersonagem }) {
 
   return (
     <div>
-      <div className="painel-patente">
-        <div className="campo" style={{ maxWidth: 190, marginBottom: 0 }}>
-          <label>Patente</label>
-          <select
-            value={personagem.patenteId || cats.patente.id}
-            onChange={(e) => set({ patenteId: e.target.value, patente: PATENTES_POR_ID[e.target.value]?.nome || '' })}
-          >
-            {PATENTES.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
-          </select>
-        </div>
-        <div className="campo" style={{ maxWidth: 120, marginBottom: 0 }}>
-          <label>Prestígio</label>
-          <input type="number" value={personagem.pontosPrestigio || 0} onChange={(e) => set({ pontosPrestigio: Number(e.target.value) })} />
-        </div>
-        <div className="campo" style={{ maxWidth: 130, marginBottom: 0 }}>
-          <label>Crédito</label>
-          <input type="text" readOnly value={cats.patente.credito} />
-        </div>
-        <div className="campo" style={{ maxWidth: 280, marginBottom: 0 }}>
-          <label>Carga</label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <input
-              type="text" readOnly
-              className={carga.sobrecarregado ? 'mau' : ''}
-              value={`${carga.usados} / ${carga.max}`}
-              title={`5 espaços por ponto de Força · máximo absoluto ${carga.limiteAbsoluto}`}
-              style={{ width: 90, flexShrink: 0 }}
-            />
-            <span className="dica" style={{ whiteSpace: 'nowrap' }}>
-              {carga.dosItens} em itens · {carga.dasArmas} em armas
-              {carga.bonus ? ` · +${carga.bonus} de equipamento` : ''}
+      <div style={{ marginBottom: 14 }}>
+        <CabecalhoSeta estaAberto={detalhesAbertos} onClick={alternarDetalhes}>
+          <span style={{ fontWeight: 'bold' }}>Detalhes do inventário</span>
+          {!detalhesAbertos && (
+            <span style={{ color: 'var(--txt-dim)', fontSize: 11.5, marginLeft: 8, textTransform: 'none', letterSpacing: 'normal' }}>
+              Patente: <b>{cats.patente.nome}</b> · Carga: <b className={carga.sobrecarregado ? 'mau' : ''}>{carga.usados} / {carga.max}</b>
+              {carga.sobrecarregado && <span style={{ color: 'var(--penalidade)', marginLeft: 6, fontWeight: 'bold' }}>⚠ Sobrecarregado</span>}
+              {cats.excedeu && <span style={{ color: 'var(--penalidade)', marginLeft: 6, fontWeight: 'bold' }}>⚠ Acima da patente</span>}
             </span>
-          </div>
-        </div>
+          )}
+        </CabecalhoSeta>
       </div>
 
-      <div className="slots">
-        {cats.linhas.map((l) => (
-          <div key={l.categoria} className={'slot' + (l.usados > l.limite ? ' excedido' : '')}>
-            <div className="cat">Categoria {l.categoria}</div>
-            <div className="valor">{l.usados} / {l.limite === Infinity ? '∞' : l.limite}</div>
+      {detalhesAbertos && (
+        <>
+          <div className="painel-patente">
+            <div className="campo" style={{ maxWidth: 190, marginBottom: 0 }}>
+              <label>Patente</label>
+              <select
+                value={personagem.patenteId || cats.patente.id}
+                onChange={(e) => set({ patenteId: e.target.value, patente: PATENTES_POR_ID[e.target.value]?.nome || '' })}
+              >
+                {PATENTES.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+              </select>
+            </div>
+            <div className="campo" style={{ maxWidth: 120, marginBottom: 0 }}>
+              <label>Prestígio</label>
+              <input type="number" value={personagem.pontosPrestigio || 0} onChange={(e) => set({ pontosPrestigio: Number(e.target.value) })} />
+            </div>
+            <div className="campo" style={{ maxWidth: 130, marginBottom: 0 }}>
+              <label>Crédito</label>
+              <input type="text" readOnly value={cats.patente.credito} />
+            </div>
+            <div className="campo" style={{ maxWidth: 280, marginBottom: 0 }}>
+              <label>Carga</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <input
+                  type="text" readOnly
+                  className={carga.sobrecarregado ? 'mau' : ''}
+                  value={`${carga.usados} / ${carga.max}`}
+                  title={`5 espaços por ponto de Força · máximo absoluto ${carga.limiteAbsoluto}`}
+                  style={{ width: 90, flexShrink: 0 }}
+                />
+                <span className="dica" style={{ whiteSpace: 'nowrap' }}>
+                  {carga.dosItens} em itens · {carga.dasArmas} em armas
+                  {carga.bonus ? ` · +${carga.bonus} de equipamento` : ''}
+                </span>
+              </div>
+            </div>
           </div>
-        ))}
-      </div>
 
-      {carga.sobrecarregado && (
-        <div className="aviso">
-          <strong>Sobrecarregado:</strong> −5 na Defesa e nas perícias com penalidade de carga, deslocamento −3m.
-          {carga.excedido && ' Passaste o dobro do limite: não consegues carregar isto.'}
-        </div>
-      )}
-      {cats.excedeu && (
-        <div className="aviso"><strong>Acima da patente:</strong> tens mais itens do que a Ordem te libera nesta missão.</div>
+          <div className="slots">
+            {cats.linhas.map((l) => (
+              <div key={l.categoria} className={'slot' + (l.usados > l.limite ? ' excedido' : '')}>
+                <div className="cat">Categoria {l.categoria}</div>
+                <div className="valor">{l.usados} / {l.limite === Infinity ? '∞' : l.limite}</div>
+              </div>
+            ))}
+          </div>
+
+          {carga.sobrecarregado && (
+            <div className="aviso">
+              <strong>Sobrecarregado:</strong> −5 na Defesa e nas perícias com penalidade de carga, deslocamento −3m.
+              {carga.excedido && ' Passaste o dobro do limite: não consegues carregar isto.'}
+            </div>
+          )}
+          {cats.excedeu && (
+            <div className="aviso"><strong>Acima da patente:</strong> tens mais itens do que a Ordem te libera nesta missão.</div>
+          )}
+        </>
       )}
 
       <div className="grelha-botoes-inventario">
