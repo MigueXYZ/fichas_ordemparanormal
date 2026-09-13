@@ -162,6 +162,69 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
     };
   }, [menuAvatarAberto]);
 
+  // Auto-scroll durante o arrasto de widgets na reorganização do layout (US #168)
+  useEffect(() => {
+    if (!modoEdicaoLayout || !arrastandoId) return;
+
+    let animFrame = null;
+    let direcaoScroll = 0;
+    let velocidadeScroll = 0;
+
+    function loopScroll() {
+      if (direcaoScroll !== 0) {
+        window.scrollBy({ top: direcaoScroll * velocidadeScroll, behavior: 'auto' });
+        animFrame = requestAnimationFrame(loopScroll);
+      } else {
+        animFrame = null;
+      }
+    }
+
+    function onDragOverWindow(e) {
+      const margem = 140;
+      const y = e.clientY;
+      const altura = window.innerHeight;
+
+      if (y < margem) {
+        direcaoScroll = -1;
+        const fator = Math.max(0.2, (margem - y) / margem);
+        velocidadeScroll = Math.round(fator * 24);
+        if (!animFrame) animFrame = requestAnimationFrame(loopScroll);
+      } else if (y > altura - margem) {
+        direcaoScroll = 1;
+        const fator = Math.max(0.2, (y - (altura - margem)) / margem);
+        velocidadeScroll = Math.round(fator * 24);
+        if (!animFrame) animFrame = requestAnimationFrame(loopScroll);
+      } else {
+        direcaoScroll = 0;
+      }
+    }
+
+    function onWheelWindow(e) {
+      window.scrollBy({ top: e.deltaY, behavior: 'auto' });
+    }
+
+    function pararScroll() {
+      direcaoScroll = 0;
+      if (animFrame) {
+        cancelAnimationFrame(animFrame);
+        animFrame = null;
+      }
+    }
+
+    window.addEventListener('dragover', onDragOverWindow, { capture: true });
+    window.addEventListener('wheel', onWheelWindow, { passive: true });
+    window.addEventListener('dragend', pararScroll);
+    window.addEventListener('drop', pararScroll);
+
+    return () => {
+      pararScroll();
+      window.removeEventListener('dragover', onDragOverWindow, { capture: true });
+      window.removeEventListener('wheel', onWheelWindow, { passive: true });
+      window.removeEventListener('dragend', pararScroll);
+      window.removeEventListener('drop', pararScroll);
+    };
+  }, [modoEdicaoLayout, arrastandoId]);
+
   const regras = personagem.regras || {};
   const nexUtil = nexEfetivo(personagem);
   // Resistência a Dano concedida automaticamente pela Trilha do Monstruoso

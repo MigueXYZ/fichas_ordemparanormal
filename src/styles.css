@@ -3006,6 +3006,9 @@ body.bate-forte .barra-recurso .preenchido::before {
   display: flex;
   justify-content: flex-end;
   margin-bottom: 12px;
+  position: sticky;
+  top: 10px;
+  z-index: 45;
 }
 .btn-personalizar-layout {
   display: inline-flex;
@@ -3023,7 +3026,9 @@ body.bate-forte .barra-recurso .preenchido::before {
 
 .painel-edicao-layout {
   width: 100%;
-  background: var(--bg-2);
+  background: rgba(18, 18, 22, 0.95);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--sangue);
   border-radius: var(--raio);
   padding: 10px 14px;
@@ -3031,7 +3036,7 @@ body.bate-forte .barra-recurso .preenchido::before {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 10px rgba(var(--sangue-rgb), 0.2) inset;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), 0 0 10px rgba(var(--sangue-rgb), 0.2) inset;
 }
 .rotulo-edicao {
   font-family: var(--display);
