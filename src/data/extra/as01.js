@@ -15,7 +15,7 @@ export const TRILHAS_AS01 = [
       {
         nex: 10,
         nome: 'Identificação Macabra',
-        descricao: `Compreender o paranormal fica cada vez mais prático com o tempo. Quando faz um teste para identificar item amaldiçoado ou identificar ritual, você pode gastar 1 PE para receber +1d10 neste teste. Além disso, sofre apenas –O para identificar itens amaldiçoados como uma ação completa.`,
+        descricao: `Compreender o paranormal fica cada vez mais prático com o tempo. Quando faz um teste para identificar item amaldiçoado ou identificar ritual, você pode gastar 1 PE para receber +1d10 neste teste. Além disso, sofre apenas –1d20 para identificar itens amaldiçoados como uma ação completa.`,
       },
       {
         nex: 40,
@@ -53,7 +53,7 @@ export const ORIGENS_AS01 = [
       'Ocultismo e 1 perícia definida pelo elemento do ritual (Fortitude para Sangue, Vontade para Morte e Conhecimento ou Reflexos para Energia).',
     poder: {
       nome: 'Mácula Ritualística',
-      descricao: `A entidade marcou você com um ritual de 1º círculo a sua escolha do elemento correspondente. Você aprende a conjurar o ritual. Além disso, uma vez por cena, pode conjurá-lo sem gastar PE (mas ainda precisa gastar PE para qualquer efeito adicional, como formas avançadas). Esse ritual não conta no seu limite de rituais conhecidos. Em contrapartida, sofre –O em testes de resistência contra efeitos (como rituais ou poderes paranormais) desse elemento.`,
+      descricao: `A entidade marcou você com um ritual de 1º círculo a sua escolha do elemento correspondente. Você aprende a conjurar o ritual. Além disso, uma vez por cena, pode conjurá-lo sem gastar PE (mas ainda precisa gastar PE para qualquer efeito adicional, como formas avançadas). Esse ritual não conta no seu limite de rituais conhecidos. Em contrapartida, sofre –1d20 em testes de resistência contra efeitos (como rituais ou poderes paranormais) desse elemento.`,
     },
     livro: 'Arquivos Secretos 1',
   },

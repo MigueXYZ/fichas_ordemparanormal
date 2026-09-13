@@ -297,7 +297,7 @@ const classe = {
       id: 'sincronia-paranormal',
       nome: 'Sincronia Paranormal',
       descricao:
-        'A exposição Paranormal de momentos terríveis que você compartilhou com seus aliados criou uma conexão invisível de Medo entre vocês, como uma linha entrelaçada dos seus destinos. Você pode gastar uma ação padrão e 2 PE para estabelecer uma sincronia mental com qualquer número de personagens, em alcance médio, com os quais você já tenha sobrevivido a pelo menos um encontro com o Paranormal. Essa sincronia é uma conexão inconsciente, e não permite uma troca clara de informações; em termos de regras, no início de cada rodada em que a sincronia estiver em efeito você pode distribuir uma quantidade de O de bônus igual à sua Presença entre os demais participantes. Estes dados podem ser usados em testes de perícias baseadas em Intelecto ou Presença e desaparecem no final de cada rodada. Manter a sincronia custa 1 PE no início de cada rodada. Pré-requisito: Pre 2.',
+        'A exposição Paranormal de momentos terríveis que você compartilhou com seus aliados criou uma conexão invisível de Medo entre vocês, como uma linha entrelaçada dos seus destinos. Você pode gastar uma ação padrão e 2 PE para estabelecer uma sincronia mental com qualquer número de personagens, em alcance médio, com os quais você já tenha sobrevivido a pelo menos um encontro com o Paranormal. Essa sincronia é uma conexão inconsciente, e não permite uma troca clara de informações; em termos de regras, no início de cada rodada em que a sincronia estiver em efeito você pode distribuir uma quantidade de dados de bônus igual à sua Presença entre os demais participantes. Estes dados podem ser usados em testes de perícias baseadas em Intelecto ou Presença e desaparecem no final de cada rodada. Manter a sincronia custa 1 PE no início de cada rodada. Pré-requisito: Pre 2.',
       prerequisito: 'Pre 2',
       livro: 'Sobrevivendo ao Horror',
     },
@@ -490,7 +490,7 @@ const classe = {
           nex: 40,
           nome: 'Poder da Fé',
           descricao:
-            'Sua fé e o estudo de suas doutrinas religiosas alimentam suas defesas mentais e espirituais. Você se torna veterano em Religião ou, se já for veterano, recebe +O nessa perícia. Quando falha em um teste de resistência, você pode gastar 2 PE para repetir o teste usando Religião, mas deve aceitar o resultado da segunda rolagem, mesmo que seja menor que a primeira.',
+            'Sua fé e o estudo de suas doutrinas religiosas alimentam suas defesas mentais e espirituais. Você se torna veterano em Religião ou, se já for veterano, recebe +1d20 nessa perícia. Quando falha em um teste de resistência, você pode gastar 2 PE para repetir o teste usando Religião, mas deve aceitar o resultado da segunda rolagem, mesmo que seja menor que a primeira.',
         },
         {
           nex: 65,
@@ -523,7 +523,7 @@ const classe = {
           nex: 40,
           nome: 'As Sombras Dentro de Mim',
           descricao:
-            'Cada vez mais a Entidade cresce dentro de você, tomando seus músculos e guiando seus movimentos. Sua recuperação de PP aumenta para 2 por ação dormir. Além disso, você pode gastar 2 PE para permitir que sua Entidade controle temporariamente seus músculos. Você assume uma postura desnatural que permite movimentos bizarros e silenciosos; você recebe +O em Acrobacia, Atletismo e Furtividade por uma rodada e, se estiver em uma cena de furtividade (veja p. 92), nesta rodada o aumento em sua visibilidade por qualquer ação é reduzido em –1.',
+            'Cada vez mais a Entidade cresce dentro de você, tomando seus músculos e guiando seus movimentos. Sua recuperação de PP aumenta para 2 por ação dormir. Além disso, você pode gastar 2 PE para permitir que sua Entidade controle temporariamente seus músculos. Você assume uma postura desnatural que permite movimentos bizarros e silenciosos; você recebe +1d20 em Acrobacia, Atletismo e Furtividade por uma rodada e, se estiver em uma cena de furtividade (veja p. 92), nesta rodada o aumento em sua visibilidade por qualquer ação é reduzido em –1.',
         },
         {
           nex: 65,

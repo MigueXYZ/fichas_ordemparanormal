@@ -488,7 +488,7 @@ export const ARMAS = [
     pericia: 'luta',
     propriedades: [],
     descricao:
-      'Uma ferramenta capaz de causar ferimentos profundos; sempre que rolar um 6 em um dado de dano com uma motosserra, role um dado de dano adicional. Apesar de potente, esta arma é desajeitada e impõe –O nos seus testes de ataque. Ligar uma motosserra gasta uma ação de movimento.',
+      'Uma ferramenta capaz de causar ferimentos profundos; sempre que rolar um 6 em um dado de dano com uma motosserra, role um dado de dano adicional. Apesar de potente, esta arma é desajeitada e impõe –1d20 nos seus testes de ataque. Ligar uma motosserra gasta uma ação de movimento.',
     livro: 'Livro Base',
   },
 
@@ -736,7 +736,7 @@ export const ARMAS = [
     pericia: 'luta',
     propriedades: [],
     descricao:
-      'Você pode atacar com um objeto que não tenha sido feito para isso, como uma cadeira ou panela, mas sofre –O no teste de ataque. Uma arma improvisada é uma arma corpo a corpo de uma mão com dano 1d6, mas o mestre pode decidir outros parâmetros.',
+      'Você pode atacar com um objeto que não tenha sido feito para isso, como uma cadeira ou panela, mas sofre –1d20 no teste de ataque. Uma arma improvisada é uma arma corpo a corpo de uma mão com dano 1d6, mas o mestre pode decidir outros parâmetros.',
     livro: 'Livro Base',
   },
   {
@@ -1165,7 +1165,7 @@ export const ARMAS = [
     pericia: 'luta',
     propriedades: [],
     descricao:
-      'Uma lâmina projetada para ser fixada em um fuzil ou arma similar. Você pode gastar uma ação de movimento para fixar a baioneta em uma arma de fogo de duas mãos. Se fizer isso, a baioneta se torna uma arma de duas mãos ágil e seu dano aumenta para 1d6. Você ainda pode atacar com a arma de fogo, mas sofre –O em ataques à distância com ela.',
+      'Uma lâmina projetada para ser fixada em um fuzil ou arma similar. Você pode gastar uma ação de movimento para fixar a baioneta em uma arma de fogo de duas mãos. Se fizer isso, a baioneta se torna uma arma de duas mãos ágil e seu dano aumenta para 1d6. Você ainda pode atacar com a arma de fogo, mas sofre –1d20 em ataques à distância com ela.',
     livro: 'Sobrevivendo ao Horror',
   },
   {
@@ -1273,7 +1273,7 @@ export const ARMAS = [
     pericia: 'pontaria',
     propriedades: [],
     descricao:
-      'Uma versão de calibre superior da tradicional pistola. Sua potência e recuo impõem uma penalidade de –O em testes de ataque; empunhá-la com as duas mãos anula essa penalidade.',
+      'Uma versão de calibre superior da tradicional pistola. Sua potência e recuo impõem uma penalidade de –1d20 em testes de ataque; empunhá-la com as duas mãos anula essa penalidade.',
     livro: 'Sobrevivendo ao Horror',
   },
   {
@@ -1291,7 +1291,7 @@ export const ARMAS = [
     pericia: 'pontaria',
     propriedades: [],
     descricao:
-      'Geralmente usada para caça, essa versão da espingarda conta com dois canos paralelos, cada um com um gatilho e capacidade para um cartucho. Ao contrário de outras armas de fogo, você precisa gastar uma ação de movimento para recarregar a espingarda de cano duplo após disparar seus dois cartuchos. Quando ataca com essa arma, você pode disparar os dois canos no mesmo alvo; se fizer isso, sofre –O no teste de ataque, mas o dano da arma aumenta para 6d6.',
+      'Geralmente usada para caça, essa versão da espingarda conta com dois canos paralelos, cada um com um gatilho e capacidade para um cartucho. Ao contrário de outras armas de fogo, você precisa gastar uma ação de movimento para recarregar a espingarda de cano duplo após disparar seus dois cartuchos. Quando ataca com essa arma, você pode disparar os dois canos no mesmo alvo; se fizer isso, sofre –1d20 no teste de ataque, mas o dano da arma aumenta para 6d6.',
     livro: 'Sobrevivendo ao Horror',
   },
 

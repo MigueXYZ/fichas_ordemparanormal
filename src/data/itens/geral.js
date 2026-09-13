@@ -8,7 +8,7 @@
 // ---------------------------------------------------------------------------
 
 export const PENALIDADE_NAO_PROFICIENCIA_PROTECAO =
-  'Se você usar uma proteção com a qual não seja proficiente, sofre –OO em testes baseados em Força e Agilidade.';
+  'Se você usar uma proteção com a qual não seja proficiente, sofre –2d20 em testes baseados em Força e Agilidade.';
 
 export const PROTECOES = [
   {
@@ -612,7 +612,7 @@ export const ITENS_GERAIS = [
     categoria: 0,
     espacos: 1,
     descricao:
-      'Uma ferramenta medieval cuja utilidade a manteve ativa até os dias de hoje, um estrepe é uma peça de metal com quatro pontas afiadas, construída de modo que uma ponta sempre fique voltada para cima. Usar um saco de estrepes em combate exige uma ação padrão para cobrir um quadrado de 1,5m de lado. Um ser que pise numa área coberta de estrepes sofre 1d4 pontos de dano de perfuração e fica lento por um dia. Em uma cena de perseguição, você pode aplicar os estrepes como parte de sua ação, mas sofre –O em seu teste nessa rodada. Um perseguidor que pise nos estrepes sofre –O em testes de perseguição até o fim da cena. Tanto em combate quanto em perseguição, passar em um teste de Reflexos (DT Agi) evita os estrepes. Os estrepes não afetam seres capazes de resistir a todo o seu dano.',
+      'Uma ferramenta medieval cuja utilidade a manteve ativa até os dias de hoje, um estrepe é uma peça de metal com quatro pontas afiadas, construída de modo que uma ponta sempre fique voltada para cima. Usar um saco de estrepes em combate exige uma ação padrão para cobrir um quadrado de 1,5m de lado. Um ser que pise numa área coberta de estrepes sofre 1d4 pontos de dano de perfuração e fica lento por um dia. Em uma cena de perseguição, você pode aplicar os estrepes como parte de sua ação, mas sofre –1d20 em seu teste nessa rodada. Um perseguidor que pise nos estrepes sofre –1d20 em testes de perseguição até o fim da cena. Tanto em combate quanto em perseguição, passar em um teste de Reflexos (DT Agi) evita os estrepes. Os estrepes não afetam seres capazes de resistir a todo o seu dano.',
     livro: 'Sobrevivendo ao Horror',
   },
   {
@@ -737,7 +737,7 @@ export const ITENS_GERAIS = [
     categoria: 1,
     espacos: 1,
     descricao:
-      'Alimentados por uma bateria, estes óculos permitem enxergar no escuro, como se o personagem tivesse visão no escuro. Entretanto, o usuário recebe –O em testes de resistência contra a condição ofuscado e efeitos baseados em luz (como uma granada de atordoamento).',
+      'Alimentados por uma bateria, estes óculos permitem enxergar no escuro, como se o personagem tivesse visão no escuro. Entretanto, o usuário recebe –1d20 em testes de resistência contra a condição ofuscado e efeitos baseados em luz (como uma granada de atordoamento).',
     livro: 'Sobrevivendo ao Horror',
   },
   {

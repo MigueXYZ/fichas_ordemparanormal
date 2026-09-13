@@ -6,7 +6,7 @@
 //             `dt` = DT conforme impressa ('Variável' quando varia no texto, 'Oposto' quando
 //             é um teste oposto, '' quando o livro não indica DT)
 //   box    -> quadro lateral impresso ao lado da perícia (só onde existe)
-// O símbolo O representa dados (ex.: –O = um dado de penalidade), como no original.
+// O símbolo O representa dados (ex.: –1d20 = um dado de penalidade), como no original.
 
 export const PERICIAS_TEXTO = {
   acrobacia: {
@@ -15,7 +15,7 @@ export const PERICIAS_TEXTO = {
     texto:
       'Você consegue fazer proezas acrobáticas.\n\n' +
       'Amortecer Queda (Veterano, DT 15). Quando cai, você pode gastar uma reação e fazer um teste de Acrobacia para reduzir o dano. Se passar, reduz o dano da queda em 1d6, mais 1d6 para cada 5 pontos pelos quais o resultado do teste exceder a DT. Se reduzir o dano a zero, você cai de pé.\n\n' +
-      'Equilíbrio. Se estiver andando por superfícies precárias, você precisa fazer testes de Acrobacia para não cair. Cada ação de movimento exige um teste. Se passar, você avança metade do seu deslocamento. Se falhar, não avança. Se falhar por 5 ou mais, cai. A DT é 10 para piso escorregadio, 15 para uma superfície estreita (como o topo de um muro) e 20 para uma superfície muito estreita (como uma corda esticada). Você pode sofrer –O no teste para avançar seu deslocamento total. Quando está se equilibrando você fica desprevenido e, se sofrer dano, deve fazer um novo teste de Acrobacia; se falhar, cai.\n\n' +
+      'Equilíbrio. Se estiver andando por superfícies precárias, você precisa fazer testes de Acrobacia para não cair. Cada ação de movimento exige um teste. Se passar, você avança metade do seu deslocamento. Se falhar, não avança. Se falhar por 5 ou mais, cai. A DT é 10 para piso escorregadio, 15 para uma superfície estreita (como o topo de um muro) e 20 para uma superfície muito estreita (como uma corda esticada). Você pode sofrer –1d20 no teste para avançar seu deslocamento total. Quando está se equilibrando você fica desprevenido e, se sofrer dano, deve fazer um novo teste de Acrobacia; se falhar, cai.\n\n' +
       'Escapar. Você pode escapar de amarras. A DT é igual ao resultado do teste de Agilidade de quem o amarrou +10, se você estiver preso por cordas, ou 30, se você estiver preso por algemas. Este uso gasta uma ação completa.\n\n' +
       'Levantar-se Rapidamente (Treinado, DT 20). Se estiver caído, você pode fazer um teste de Acrobacia para ficar de pé. Você precisa ter uma ação de movimento disponível. Se passar no teste, se levanta como uma ação livre. Se falhar, gasta sua ação de movimento, mas continua caído.\n\n' +
       'Passar por Espaço Apertado (Treinado, DT 25). Você pode se espremer por lugares estreitos, por onde apenas sua cabeça normalmente passaria. Você gasta uma ação completa e avança metade do deslocamento.\n\n' +
@@ -33,7 +33,7 @@ export const PERICIAS_TEXTO = {
         treino: '',
         dt: 'Variável',
         texto:
-          'Se estiver andando por superfícies precárias, você precisa fazer testes de Acrobacia para não cair. Cada ação de movimento exige um teste. Se passar, você avança metade do seu deslocamento. Se falhar, não avança. Se falhar por 5 ou mais, cai. A DT é 10 para piso escorregadio, 15 para uma superfície estreita (como o topo de um muro) e 20 para uma superfície muito estreita (como uma corda esticada). Você pode sofrer –O no teste para avançar seu deslocamento total. Quando está se equilibrando você fica desprevenido e, se sofrer dano, deve fazer um novo teste de Acrobacia; se falhar, cai.',
+          'Se estiver andando por superfícies precárias, você precisa fazer testes de Acrobacia para não cair. Cada ação de movimento exige um teste. Se passar, você avança metade do seu deslocamento. Se falhar, não avança. Se falhar por 5 ou mais, cai. A DT é 10 para piso escorregadio, 15 para uma superfície estreita (como o topo de um muro) e 20 para uma superfície muito estreita (como uma corda esticada). Você pode sofrer –1d20 no teste para avançar seu deslocamento total. Quando está se equilibrando você fica desprevenido e, se sofrer dano, deve fazer um novo teste de Acrobacia; se falhar, cai.',
       },
       {
         nome: 'Escapar',
@@ -151,7 +151,7 @@ export const PERICIAS_TEXTO = {
     texto:
       'Você pode realizar façanhas atléticas.\n\n' +
       'Corrida. Gaste uma ação completa e faça um teste de Atletismo. Você avança um número de quadrados de 1,5m igual ao seu deslocamento mais o resultado do teste. Por exemplo, se você tem deslocamento 9m (6 quadrados) e tira 15 no teste, avança 21 quadrados. Você só pode correr em linha reta e não pode correr em terreno difícil. Você pode correr por um número de rodadas igual ao seu Vigor. Após isso, deve fazer um teste de Fortitude por rodada (DT 5 + 5 por teste anterior). Se falhar, fica fatigado.\n\n' +
-      'Escalar. Gaste uma ação de movimento e faça um teste de Atletismo. Se passar, você avança metade do seu deslocamento. Se falhar, não avança. Se falhar por 5 ou mais, você cai. A DT é 10 para superfícies com apoios para os pés e mãos (como um barranco com raízes), 15 para um portão ou árvore, 20 para um muro ou parede com reentrâncias e 25 para um muro ou parede liso (como um prédio). Você pode sofrer –O no teste para avançar seu deslocamento total. Quando está escalando você fica desprevenido e, se sofrer dano, deve fazer um novo teste de Atletismo; se falhar, você cai. Se um personagem adjacente a você estiver escalando e cair, você pode tentar pegá-lo. Faça um teste de Atletismo contra a DT da superfície +5. Se passar, você segura o personagem. Se falhar por 5 ou mais, você também cai!\n\n' +
+      'Escalar. Gaste uma ação de movimento e faça um teste de Atletismo. Se passar, você avança metade do seu deslocamento. Se falhar, não avança. Se falhar por 5 ou mais, você cai. A DT é 10 para superfícies com apoios para os pés e mãos (como um barranco com raízes), 15 para um portão ou árvore, 20 para um muro ou parede com reentrâncias e 25 para um muro ou parede liso (como um prédio). Você pode sofrer –1d20 no teste para avançar seu deslocamento total. Quando está escalando você fica desprevenido e, se sofrer dano, deve fazer um novo teste de Atletismo; se falhar, você cai. Se um personagem adjacente a você estiver escalando e cair, você pode tentar pegá-lo. Faça um teste de Atletismo contra a DT da superfície +5. Se passar, você segura o personagem. Se falhar por 5 ou mais, você também cai!\n\n' +
       'Natação. Se estiver na água, você precisa gastar uma ação de movimento e fazer um teste de Atletismo por rodada para não afundar. A DT é 10 para água calma, 15 para agitada e 20 ou mais para tempestuosa. Se passar, você pode avançar metade de seu deslocamento. Se falhar, consegue boiar, mas não avançar. Se falhar por 5 ou mais, você afunda. Se quiser avançar mais, você pode gastar uma segunda ação de movimento na mesma rodada para outro teste de Atletismo. Se você estiver submerso (seja por ter falhado no teste de Atletismo, seja por ter mergulhado de propósito), deve prender a respiração. Você pode prender a respiração por um número de rodadas igual ao seu Vigor. Após isso, deve fazer um teste de Fortitude por rodada (DT 5 + 5 por teste anterior). Se falhar, se afoga (é reduzido a 0 pontos de vida) e fica morrendo (veja o Capítulo 4). Você sofre penalidade de carga em testes de natação.\n\n' +
       'Saltar. Você pode pular sobre buracos ou obstáculos ou alcançar algo elevado. Para um salto longo, a DT é 5 por quadrado de 1,5m (DT 10 para 3m, 15 para 4,5m, 20 para 6m e assim por diante). Para um salto em altura, a DT é 15 por quadrado de 1,5m (30 para 3m). Você deve ter pelo menos 6m para correr e pegar impulso (sem esse espaço, a DT aumenta em +5). Saltar é parte de seu movimento e não exige uma ação.',
     usos: [
@@ -167,7 +167,7 @@ export const PERICIAS_TEXTO = {
         treino: '',
         dt: 'Variável',
         texto:
-          'Gaste uma ação de movimento e faça um teste de Atletismo. Se passar, você avança metade do seu deslocamento. Se falhar, não avança. Se falhar por 5 ou mais, você cai. A DT é 10 para superfícies com apoios para os pés e mãos (como um barranco com raízes), 15 para um portão ou árvore, 20 para um muro ou parede com reentrâncias e 25 para um muro ou parede liso (como um prédio). Você pode sofrer –O no teste para avançar seu deslocamento total. Quando está escalando você fica desprevenido e, se sofrer dano, deve fazer um novo teste de Atletismo; se falhar, você cai. Se um personagem adjacente a você estiver escalando e cair, você pode tentar pegá-lo. Faça um teste de Atletismo contra a DT da superfície +5. Se passar, você segura o personagem. Se falhar por 5 ou mais, você também cai!',
+          'Gaste uma ação de movimento e faça um teste de Atletismo. Se passar, você avança metade do seu deslocamento. Se falhar, não avança. Se falhar por 5 ou mais, você cai. A DT é 10 para superfícies com apoios para os pés e mãos (como um barranco com raízes), 15 para um portão ou árvore, 20 para um muro ou parede com reentrâncias e 25 para um muro ou parede liso (como um prédio). Você pode sofrer –1d20 no teste para avançar seu deslocamento total. Quando está escalando você fica desprevenido e, se sofrer dano, deve fazer um novo teste de Atletismo; se falhar, você cai. Se um personagem adjacente a você estiver escalando e cair, você pode tentar pegá-lo. Faça um teste de Atletismo contra a DT da superfície +5. Se passar, você segura o personagem. Se falhar por 5 ou mais, você também cai!',
       },
       {
         nome: 'Natação',
@@ -190,7 +190,7 @@ export const PERICIAS_TEXTO = {
         nome: 'Ações Especiais em Perseguição',
         treino: '',
         dt: 'Variável',
-        texto: 'Perseguições são resolvidas com testes estendidos de Atletismo (3 sucessos antes de 3 falhas). As ações especiais incluem:\n\n• Cortar Caminho: Sofre –2O no teste de Atletismo; se passar, acumula 2 sucessos na perseguição.\n\n• Esforço Extra: Recebe +O no teste de Atletismo, mas perde 1d4 PV cumulativo por uso na cena (1d4 na 1ª vez, 2d4 na 2ª, etc.).\n\n• Criar Obstáculo: Se for presa, sofre –O em Atletismo e faz teste de Força (DT 15) para criar barreira, diminuindo a DT do teste de Atletismo da rodada em –5 para todos.\n\n• Sacrifício: Falha automaticamente no teste de Atletismo da rodada para atrapalhar perseguidores e conceder +O no teste de todos os aliados.',
+        texto: 'Perseguições são resolvidas com testes estendidos de Atletismo (3 sucessos antes de 3 falhas). As ações especiais incluem:\n\n• Cortar Caminho: Sofre –2d20 no teste de Atletismo; se passar, acumula 2 sucessos na perseguição.\n\n• Esforço Extra: Recebe +1d20 no teste de Atletismo, mas perde 1d4 PV cumulativo por uso na cena (1d4 na 1ª vez, 2d4 na 2ª, etc.).\n\n• Criar Obstáculo: Se for presa, sofre –1d20 em Atletismo e faz teste de Força (DT 15) para criar barreira, diminuindo a DT do teste de Atletismo da rodada em –5 para todos.\n\n• Sacrifício: Falha automaticamente no teste de Atletismo da rodada para atrapalhar perseguidores e conceder +1d20 no teste de todos os aliados.',
       },
       {
         fonte: 'Sobrevivendo ao Horror',
@@ -251,7 +251,7 @@ export const PERICIAS_TEXTO = {
       'Arrombar. Você abre uma fechadura trancada. A DT é 20 para fechaduras comuns (porta de um apartamento), 25 para fechaduras reforçadas (porta de uma loja) e 30 para fechaduras avançadas (cofre de um banco). Este uso gasta uma ação completa.\n\n' +
       'Furto (DT 20). Você pega um objeto de outra pessoa (ou planta um objeto nas posses dela). Gaste uma ação padrão e faça um teste de Crime. Se passar, você pega (ou coloca) o que queria. A vítima tem direito a um teste de Percepção (DT igual ao resultado de seu teste de Crime). Se passar, ela percebe sua tentativa, tenha você conseguido ou não.\n\n' +
       'Ocultar. Você esconde um objeto em você mesmo. Gaste uma ação padrão e faça um teste de Crime oposto pelo teste de Percepção de qualquer um que possa vê-lo. Se uma pessoa revistar você, recebe +10 no teste de Percepção.\n\n' +
-      'Sabotar (Veterano). Você desabilita um dispositivo. Uma ação simples, como desativar um alarme, tem DT 20. Uma ação complexa, como sabotar uma pistola para que exploda quando disparada, tem DT 30. Se você falhar por 5 ou mais, algo sai errado (o alarme dispara, você acha que a arma está sabotada, mas na verdade ainda funciona…). Este uso gasta 1d4+1 ações completas. Você pode sofrer uma penalidade de –O em seu teste para fazê-lo como uma ação completa.\n\n' +
+      'Sabotar (Veterano). Você desabilita um dispositivo. Uma ação simples, como desativar um alarme, tem DT 20. Uma ação complexa, como sabotar uma pistola para que exploda quando disparada, tem DT 30. Se você falhar por 5 ou mais, algo sai errado (o alarme dispara, você acha que a arma está sabotada, mas na verdade ainda funciona…). Este uso gasta 1d4+1 ações completas. Você pode sofrer uma penalidade de –1d20 em seu teste para fazê-lo como uma ação completa.\n\n' +
       'Os usos arrombar e sabotar exigem um kit. Sem ele, você sofre –5 no teste.',
     usos: [
       {
@@ -280,7 +280,7 @@ export const PERICIAS_TEXTO = {
         treino: 'Veterano',
         dt: 'Variável',
         texto:
-          'Você desabilita um dispositivo. Uma ação simples, como desativar um alarme, tem DT 20. Uma ação complexa, como sabotar uma pistola para que exploda quando disparada, tem DT 30. Se você falhar por 5 ou mais, algo sai errado (o alarme dispara, você acha que a arma está sabotada, mas na verdade ainda funciona…). Este uso gasta 1d4+1 ações completas. Você pode sofrer uma penalidade de –O em seu teste para fazê-lo como uma ação completa.',
+          'Você desabilita um dispositivo. Uma ação simples, como desativar um alarme, tem DT 20. Uma ação complexa, como sabotar uma pistola para que exploda quando disparada, tem DT 30. Se você falhar por 5 ou mais, algo sai errado (o alarme dispara, você acha que a arma está sabotada, mas na verdade ainda funciona…). Este uso gasta 1d4+1 ações completas. Você pode sofrer uma penalidade de –1d20 em seu teste para fazê-lo como uma ação completa.',
       },
     ],
     suplementos: [
@@ -289,7 +289,7 @@ export const PERICIAS_TEXTO = {
         nome: 'Atalho em Perseguição — Arrombamento Rápido',
         treino: 'Treinado',
         dt: '25',
-        texto: 'Durante uma cena de perseguição, ao surgir o evento de uma porta trancada levando a um atalho, o personagem pode fazer um teste de Crime (DT 25) no início da rodada para destrancá-la rapidamente e conceder +2O no teste de Atletismo daquela rodada.',
+        texto: 'Durante uma cena de perseguição, ao surgir o evento de uma porta trancada levando a um atalho, o personagem pode fazer um teste de Crime (DT 25) no início da rodada para destrancá-la rapidamente e conceder +2d20 no teste de Atletismo daquela rodada.',
       },
     ],
   },
@@ -300,7 +300,7 @@ export const PERICIAS_TEXTO = {
     texto:
       'Você convence pessoas com lábia e argumentação.\n\n' +
       'Acalmar (treinado, DT 20). Você estabiliza um personagem adjacente que esteja enlouquecendo, fazendo com que ele fique com Sanidade 1. A DT aumenta em +5 para cada vez que ele tiver sido acalmado na cena. Este uso gasta uma ação padrão.\n\n' +
-      'Mudar Atitude. Você muda a categoria de atitude de um NPC em relação a você ou a outra pessoa (veja a página ao lado para a explicação das categorias de atitude). Faça um teste de Diplomacia oposto pelo teste de Vontade do alvo. Se você passar, muda a atitude dele em uma categoria para cima ou para baixo, à sua escolha. Se passar por 10 ou mais, muda a atitude em até duas categorias. Se falhar por 5 ou mais, a atitude do alvo muda uma categoria na direção oposta. Este uso gasta um minuto. Você pode sofrer –OO no teste para fazê-lo como uma ação completa (para evitar uma briga, por exemplo). Você só pode mudar a atitude de uma mesma pessoa uma vez por dia.\n\n' +
+      'Mudar Atitude. Você muda a categoria de atitude de um NPC em relação a você ou a outra pessoa (veja a página ao lado para a explicação das categorias de atitude). Faça um teste de Diplomacia oposto pelo teste de Vontade do alvo. Se você passar, muda a atitude dele em uma categoria para cima ou para baixo, à sua escolha. Se passar por 10 ou mais, muda a atitude em até duas categorias. Se falhar por 5 ou mais, a atitude do alvo muda uma categoria na direção oposta. Este uso gasta um minuto. Você pode sofrer –2d20 no teste para fazê-lo como uma ação completa (para evitar uma briga, por exemplo). Você só pode mudar a atitude de uma mesma pessoa uma vez por dia.\n\n' +
       'Persuasão (DT 20). Você convence uma pessoa a fazer alguma coisa, como responder a uma pergunta ou prestar um favor. Se essa coisa for custosa (como emprestar um carro) você sofre –5 em seu teste. Se for perigosa (como cometer um crime) você sofre –10 ou falha automaticamente. De acordo com o mestre, seu teste pode ser oposto ao teste de Vontade da pessoa. Este uso gasta um minuto ou mais, de acordo com o mestre.',
     usos: [
       {
@@ -315,7 +315,7 @@ export const PERICIAS_TEXTO = {
         treino: '',
         dt: 'Oposto',
         texto:
-          'Você muda a categoria de atitude de um NPC em relação a você ou a outra pessoa (veja a página ao lado para a explicação das categorias de atitude). Faça um teste de Diplomacia oposto pelo teste de Vontade do alvo. Se você passar, muda a atitude dele em uma categoria para cima ou para baixo, à sua escolha. Se passar por 10 ou mais, muda a atitude em até duas categorias. Se falhar por 5 ou mais, a atitude do alvo muda uma categoria na direção oposta. Este uso gasta um minuto. Você pode sofrer –OO no teste para fazê-lo como uma ação completa (para evitar uma briga, por exemplo). Você só pode mudar a atitude de uma mesma pessoa uma vez por dia.',
+          'Você muda a categoria de atitude de um NPC em relação a você ou a outra pessoa (veja a página ao lado para a explicação das categorias de atitude). Faça um teste de Diplomacia oposto pelo teste de Vontade do alvo. Se você passar, muda a atitude dele em uma categoria para cima ou para baixo, à sua escolha. Se passar por 10 ou mais, muda a atitude em até duas categorias. Se falhar por 5 ou mais, a atitude do alvo muda uma categoria na direção oposta. Este uso gasta um minuto. Você pode sofrer –2d20 no teste para fazê-lo como uma ação completa (para evitar uma briga, por exemplo). Você só pode mudar a atitude de uma mesma pessoa uma vez por dia.',
       },
       {
         nome: 'Persuasão',
@@ -359,11 +359,11 @@ export const PERICIAS_TEXTO = {
     texto:
       'Você manipula pessoas com blefes e trapaças.\n\n' +
       'Disfarce (Treinado). Você muda sua aparência ou a de outra pessoa. Faça um teste de Enganação oposto pelo teste de Percepção de quem prestar atenção no disfarçado. Se você passar, a pessoa acredita no disfarce; caso contrário, percebe que há algo errado. Se o disfarce é de uma pessoa específica, aqueles que conhecem essa pessoa recebem +10 no teste de Percepção. Um disfarce exige pelo menos dez minutos e um kit. Sem ele, você sofre –5 no teste.\n\n' +
-      'Falsificação (Veterano). Você falsifica um documento. Faça um teste de Enganação oposto pelo teste de Percepção de quem examinar o documento. Se você passar, a pessoa acredita que ele é válido; caso contrário, percebe que é falso. Se o documento é muito complexo, ou inclui uma assinatura ou carimbo específico, você sofre –OO no teste.\n\n' +
+      'Falsificação (Veterano). Você falsifica um documento. Faça um teste de Enganação oposto pelo teste de Percepção de quem examinar o documento. Se você passar, a pessoa acredita que ele é válido; caso contrário, percebe que é falso. Se o documento é muito complexo, ou inclui uma assinatura ou carimbo específico, você sofre –2d20 no teste.\n\n' +
       'Fintar (Treinado). Você pode gastar uma ação padrão e fazer um teste de Enganação oposto a um teste de Reflexos de um ser em alcance curto. Se você passar, ele fica desprevenido contra seu próximo ataque, se realizado até o fim de seu próximo turno.\n\n' +
       'Insinuação (DT 20). Você fala algo para alguém sem que outras pessoas entendam do que você está falando. Se você passar, o receptor entende sua mensagem. Se falhar por 5 ou mais, entende algo diferente do que você queria. Outras pessoas podem fazer um teste de Intuição oposto ao seu teste de Enganação. Se passarem, entendem o que você está dizendo.\n\n' +
       'Intriga (DT 20). Você espalha uma fofoca. Por exemplo, pode dizer que o dono do bar está aguando a cerveja para enfurecer o povo contra ele. Intrigas muito improváveis (convencer o povo que o delegado é um ET que está abduzindo as pessoas) têm DT 30. Este uso exige pelo menos um dia, mas pode levar mais tempo, de acordo com o mestre. Uma pessoa pode investigar a fonte da fofoca e chegar até você. Isso exige um teste de Investigação por parte dela, com DT igual ao resultado do seu teste para a intriga.\n\n' +
-      'Mentir. Você faz uma pessoa acreditar em algo que não é verdade. Seu teste é oposto pelo teste de Intuição da vítima. Mentiras muito implausíveis impõem uma penalidade de –OO em seu teste (“Por que estou com o crachá do chefe de segurança? Ora, porque ele deixou cair e estou indo devolver!”).',
+      'Mentir. Você faz uma pessoa acreditar em algo que não é verdade. Seu teste é oposto pelo teste de Intuição da vítima. Mentiras muito implausíveis impõem uma penalidade de –2d20 em seu teste (“Por que estou com o crachá do chefe de segurança? Ora, porque ele deixou cair e estou indo devolver!”).',
     usos: [
       {
         nome: 'Disfarce',
@@ -377,7 +377,7 @@ export const PERICIAS_TEXTO = {
         treino: 'Veterano',
         dt: 'Oposto',
         texto:
-          'Você falsifica um documento. Faça um teste de Enganação oposto pelo teste de Percepção de quem examinar o documento. Se você passar, a pessoa acredita que ele é válido; caso contrário, percebe que é falso. Se o documento é muito complexo, ou inclui uma assinatura ou carimbo específico, você sofre –OO no teste.',
+          'Você falsifica um documento. Faça um teste de Enganação oposto pelo teste de Percepção de quem examinar o documento. Se você passar, a pessoa acredita que ele é válido; caso contrário, percebe que é falso. Se o documento é muito complexo, ou inclui uma assinatura ou carimbo específico, você sofre –2d20 no teste.',
       },
       {
         nome: 'Fintar',
@@ -405,7 +405,7 @@ export const PERICIAS_TEXTO = {
         treino: '',
         dt: 'Oposto',
         texto:
-          'Você faz uma pessoa acreditar em algo que não é verdade. Seu teste é oposto pelo teste de Intuição da vítima. Mentiras muito implausíveis impõem uma penalidade de –OO em seu teste (“Por que estou com o crachá do chefe de segurança? Ora, porque ele deixou cair e estou indo devolver!”).',
+          'Você faz uma pessoa acreditar em algo que não é verdade. Seu teste é oposto pelo teste de Intuição da vítima. Mentiras muito implausíveis impõem uma penalidade de –2d20 em seu teste (“Por que estou com o crachá do chefe de segurança? Ora, porque ele deixou cair e estou indo devolver!”).',
       },
     ],
     suplementos: [
@@ -449,7 +449,7 @@ export const PERICIAS_TEXTO = {
     resumo: 'Você sabe ser discreto e sorrateiro.',
     texto:
       'Você sabe ser discreto e sorrateiro.\n\n' +
-      'Esconder-se. Faça um teste de Furtividade oposto pelos testes de Percepção de qualquer um que possa notá-lo. Todos que falharem não conseguem percebê-lo (você tem camuflagem total contra eles). Esconder-se é uma ação livre que você só pode fazer no final do seu turno e apenas se terminar seu turno em um lugar onde seja possível se esconder (atrás de uma porta, num quarto escuro, numa mata densa, no meio de uma multidão…). Se tiver se movido durante o turno, você sofre –O no teste (você pode se mover à metade do deslocamento normal para não sofrer essa penalidade). Se tiver atacado ou feito outra ação muito chamativa, sofre –OOO.\n\n' +
+      'Esconder-se. Faça um teste de Furtividade oposto pelos testes de Percepção de qualquer um que possa notá-lo. Todos que falharem não conseguem percebê-lo (você tem camuflagem total contra eles). Esconder-se é uma ação livre que você só pode fazer no final do seu turno e apenas se terminar seu turno em um lugar onde seja possível se esconder (atrás de uma porta, num quarto escuro, numa mata densa, no meio de uma multidão…). Se tiver se movido durante o turno, você sofre –1d20 no teste (você pode se mover à metade do deslocamento normal para não sofrer essa penalidade). Se tiver atacado ou feito outra ação muito chamativa, sofre –3d20.\n\n' +
       'Seguir. Faça um teste de Furtividade oposto ao teste de Percepção da pessoa sendo seguida. Você sofre –5 se estiver em um lugar sem esconderijos ou sem movimento, como um descampado ou rua deserta. A vítima recebe +5 em seu teste de Percepção se estiver tomando precauções para não ser seguida (como olhar para trás de vez em quando). Se você passar, segue a pessoa até ela chegar ao seu destino. Se falhar, a pessoa o percebe na metade do caminho.',
     usos: [
       {
@@ -457,7 +457,7 @@ export const PERICIAS_TEXTO = {
         treino: '',
         dt: 'Oposto',
         texto:
-          'Faça um teste de Furtividade oposto pelos testes de Percepção de qualquer um que possa notá-lo. Todos que falharem não conseguem percebê-lo (você tem camuflagem total contra eles). Esconder-se é uma ação livre que você só pode fazer no final do seu turno e apenas se terminar seu turno em um lugar onde seja possível se esconder (atrás de uma porta, num quarto escuro, numa mata densa, no meio de uma multidão…). Se tiver se movido durante o turno, você sofre –O no teste (você pode se mover à metade do deslocamento normal para não sofrer essa penalidade). Se tiver atacado ou feito outra ação muito chamativa, sofre –OOO.',
+          'Faça um teste de Furtividade oposto pelos testes de Percepção de qualquer um que possa notá-lo. Todos que falharem não conseguem percebê-lo (você tem camuflagem total contra eles). Esconder-se é uma ação livre que você só pode fazer no final do seu turno e apenas se terminar seu turno em um lugar onde seja possível se esconder (atrás de uma porta, num quarto escuro, numa mata densa, no meio de uma multidão…). Se tiver se movido durante o turno, você sofre –1d20 no teste (você pode se mover à metade do deslocamento normal para não sofrer essa penalidade). Se tiver atacado ou feito outra ação muito chamativa, sofre –3d20.',
       },
       {
         nome: 'Seguir',
@@ -473,7 +473,7 @@ export const PERICIAS_TEXTO = {
         nome: 'Regras de Visibilidade em Cenas de Furtividade',
         treino: '',
         dt: '15',
-        texto: 'Em cenas de furtividade importantes, a visibilidade começa em 0 (completamente escondido) e vai até 3+ (completamente exposto):\n\n• Ação Comum: Investigar normal, andar normal: Visibilidade +1.\n\n• Ação Discreta: Anda metade do deslocamento, sofre –O em testes: Visibilidade +0.\n\n• Ação Chamativa: Correr, gritar, atacar, conjurar ritual: Visibilidade +2.\n\n• Esconder-se: Concentra-se em se ocultar (Furtividade DT 15). Se passar, diminui sua visibilidade em –1.\n\n• Chamar Atenção: Chama a atenção de propósito para proteger aliados; sua visibilidade aumenta em +2, mas a de um aliado diminui em –1.',
+        texto: 'Em cenas de furtividade importantes, a visibilidade começa em 0 (completamente escondido) e vai até 3+ (completamente exposto):\n\n• Ação Comum: Investigar normal, andar normal: Visibilidade +1.\n\n• Ação Discreta: Anda metade do deslocamento, sofre –1d20 em testes: Visibilidade +0.\n\n• Ação Chamativa: Correr, gritar, atacar, conjurar ritual: Visibilidade +2.\n\n• Esconder-se: Concentra-se em se ocultar (Furtividade DT 15). Se passar, diminui sua visibilidade em –1.\n\n• Chamar Atenção: Chama a atenção de propósito para proteger aliados; sua visibilidade aumenta em +2, mas a de um aliado diminui em –1.',
       },
       {
         fonte: 'Sobrevivendo ao Horror',
@@ -531,7 +531,7 @@ export const PERICIAS_TEXTO = {
         nome: 'Perseguições — Abrir Passagem na Multidão',
         treino: '',
         dt: '20',
-        texto: 'Ao deparar-se com uma multidão bloqueando o caminho em uma perseguição urbana, faça um teste de Intimidação (DT 20) no início da rodada para abrir espaço e evitar a penalidade de –2O em Atletismo.',
+        texto: 'Ao deparar-se com uma multidão bloqueando o caminho em uma perseguição urbana, faça um teste de Intimidação (DT 20) no início da rodada para abrir espaço e evitar a penalidade de –2d20 em Atletismo.',
       },
     ],
   },
@@ -598,7 +598,7 @@ export const PERICIAS_TEXTO = {
         nome: 'Novas Ações de Investigação',
         treino: '',
         dt: '15',
-        texto: 'Três novas ações especiais para cenas de investigação:\n\n• Busca Obstinada: Analisa cada detalhe obsessivamente. Funciona como procurar pistas recebendo +O no teste. Porém, perde 1d4 pontos de Sanidade por vez que já fez esta ação na mesma cena (1d4 na 1ª vez, 2d4 na 2ª, 3d4 na 3ª, etc.).\n\n• Recapitular: O jogador recapitula as pistas em voz alta interpretando seu personagem e faz um teste de Intelecto (DT 15). Se passar, descobre uma nova pista a critério do mestre (1x por grupo por cena).\n\n• Compartilhar: O jogador explica uma pista para outro personagem, e o interlocutor faz um teste de Intelecto (DT 15) como ação livre. Se passar, o mestre destaca a informação mais crucial daquela pista (1x por grupo por cena).',
+        texto: 'Três novas ações especiais para cenas de investigação:\n\n• Busca Obstinada: Analisa cada detalhe obsessivamente. Funciona como procurar pistas recebendo +1d20 no teste. Porém, perde 1d4 pontos de Sanidade por vez que já fez esta ação na mesma cena (1d4 na 1ª vez, 2d4 na 2ª, 3d4 na 3ª, etc.).\n\n• Recapitular: O jogador recapitula as pistas em voz alta interpretando seu personagem e faz um teste de Intelecto (DT 15). Se passar, descobre uma nova pista a critério do mestre (1x por grupo por cena).\n\n• Compartilhar: O jogador explica uma pista para outro personagem, e o interlocutor faz um teste de Intelecto (DT 15) como ação livre. Se passar, o mestre destaca a informação mais crucial daquela pista (1x por grupo por cena).',
       },
     ],
   },
@@ -615,7 +615,7 @@ export const PERICIAS_TEXTO = {
         nome: 'Perseguições — Atrapalhar Outra Presa',
         treino: '',
         dt: 'Oposto',
-        texto: 'Se for uma presa, o personagem pode atrapalhar outra presa com o mesmo número de sucessos para aumentar sua própria chance de fuga. Sofre –O no seu teste de Atletismo e faz um teste de Luta oposto a Luta ou Reflexos da vítima. Se vencer, impõe –2O no teste de Atletismo dela.',
+        texto: 'Se for uma presa, o personagem pode atrapalhar outra presa com o mesmo número de sucessos para aumentar sua própria chance de fuga. Sofre –1d20 no seu teste de Atletismo e faz um teste de Luta oposto a Luta ou Reflexos da vítima. Se vencer, impõe –2d20 no teste de Atletismo dela.',
       },
     ],
   },
@@ -629,7 +629,7 @@ export const PERICIAS_TEXTO = {
       'Cuidados Prolongados (Veterano, DT 20). Durante uma cena de interlúdio, você pode gastar uma de suas ações para tratar até uma pessoa por ponto de Intelecto. Se passar, elas recuperam o dobro dos PV pela ação dormir neste interlúdio.\n\n' +
       'Necropsia (Treinado, DT 20). Você examina um cadáver para determinar a causa e o momento aproximado da morte. Causas raras ou extraordinárias, como um veneno exótico ou uma maldição, possuem DT +10. Este uso leva dez minutos.\n\n' +
       'Tratamento (Treinado). Você ajuda a vítima de uma doença ou veneno com efeito contínuo. Gaste uma ação completa e faça um teste contra a DT da doença ou veneno. Se você passar, o paciente recebe +5 em seu próximo teste de Fortitude contra esse efeito.\n\n' +
-      'Esta perícia exige um kit. Sem ele, você sofre –5 no teste. Você pode usar a perícia Medicina em si mesmo, mas sofre –O no teste.',
+      'Esta perícia exige um kit. Sem ele, você sofre –5 no teste. Você pode usar a perícia Medicina em si mesmo, mas sofre –1d20 no teste.',
     usos: [
       {
         nome: 'Primeiros Socorros',
@@ -677,7 +677,7 @@ export const PERICIAS_TEXTO = {
     texto:
       'Você estudou o paranormal.\n\n' +
       'Identificar Criatura. Você analisa uma criatura paranormal que possa ver. A DT do teste é igual à DT para resistir à Presença Perturbadora da criatura. Se você passar, descobre uma característica da criatura, como um poder ou vulnerabilidade. Para cada 5 pontos pelos quais o resultado do teste superar a DT, você descobre outra característica. Se falhar por 5 ou mais, tira uma conclusão errada (por exemplo, acredita que uma criatura tem vulnerabilidade a Morte, quando na verdade tem vulnerabilidade a Energia). Este uso gasta uma ação completa.\n\n' +
-      'Identificar Item Amaldiçoado (DT 20). Você pode gastar uma ação de interlúdio para estudar um item amaldiçoado e identificar seus poderes ou qual ritual o objeto contém. Você pode sofrer –OO no teste para fazê-lo como uma ação completa.\n\n' +
+      'Identificar Item Amaldiçoado (DT 20). Você pode gastar uma ação de interlúdio para estudar um item amaldiçoado e identificar seus poderes ou qual ritual o objeto contém. Você pode sofrer –2d20 no teste para fazê-lo como uma ação completa.\n\n' +
       'Identificar Ritual (DT 10 +5 por círculo do ritual). Quando alguém lança um ritual, você pode descobrir qual é observando seus gestos, palavras e componentes. Este uso é uma reação.\n\n' +
       'Informação. Você responde dúvidas relativas ao Outro Lado, objetos amaldiçoados, fenômenos paranormais, runas, profecias etc. Questões simples não exigem teste. Questões complexas exigem um teste contra DT 20. Por fim, mistérios e enigmas exigem um teste contra DT 30.',
     usos: [
@@ -693,7 +693,7 @@ export const PERICIAS_TEXTO = {
         treino: '',
         dt: '20',
         texto:
-          'Você pode gastar uma ação de interlúdio para estudar um item amaldiçoado e identificar seus poderes ou qual ritual o objeto contém. Você pode sofrer –OO no teste para fazê-lo como uma ação completa.',
+          'Você pode gastar uma ação de interlúdio para estudar um item amaldiçoado e identificar seus poderes ou qual ritual o objeto contém. Você pode sofrer –2d20 no teste para fazê-lo como uma ação completa.',
       },
       {
         nome: 'Identificar Ritual',
@@ -732,7 +732,7 @@ export const PERICIAS_TEXTO = {
     texto:
       'Você nota coisas usando os sentidos.\n\n' +
       'Observar. Você vê coisas discretas ou escondidas. A DT varia de 15, para coisas difíceis de serem vistas (um livro específico em uma estante) a 30, para coisas quase invisíveis (uma gota de sangue em uma folha no meio de uma floresta à noite). Para pessoas ou coisas escondidas, a DT é o resultado do teste de Furtividade ou Crime feito para esconder a pessoa ou ocultar o item. Você também pode ler lábios (DT 20).\n\n' +
-      'Ouvir. Você escuta barulhos sutis. Uma conversa casual próxima tem DT 0 — ou seja, a menos que exista alguma penalidade, você passa automaticamente. Ouvir pessoas sussurrando tem DT 15. Ouvir do outro lado de uma porta aumenta a DT em +5. Você pode fazer testes de Percepção para ouvir mesmo que esteja dormindo, mas sofre –OO no teste; um sucesso faz você acordar. Perceber seres que não possam ser vistos tem DT 20, ou +10 no teste de Furtividade do ser, o que for maior. Mesmo que você passe no teste, ainda sofre penalidades normais por lutar sem ver o inimigo.',
+      'Ouvir. Você escuta barulhos sutis. Uma conversa casual próxima tem DT 0 — ou seja, a menos que exista alguma penalidade, você passa automaticamente. Ouvir pessoas sussurrando tem DT 15. Ouvir do outro lado de uma porta aumenta a DT em +5. Você pode fazer testes de Percepção para ouvir mesmo que esteja dormindo, mas sofre –2d20 no teste; um sucesso faz você acordar. Perceber seres que não possam ser vistos tem DT 20, ou +10 no teste de Furtividade do ser, o que for maior. Mesmo que você passe no teste, ainda sofre penalidades normais por lutar sem ver o inimigo.',
     usos: [
       {
         nome: 'Observar',
@@ -746,7 +746,7 @@ export const PERICIAS_TEXTO = {
         treino: '',
         dt: 'Variável',
         texto:
-          'Você escuta barulhos sutis. Uma conversa casual próxima tem DT 0 — ou seja, a menos que exista alguma penalidade, você passa automaticamente. Ouvir pessoas sussurrando tem DT 15. Ouvir do outro lado de uma porta aumenta a DT em +5. Você pode fazer testes de Percepção para ouvir mesmo que esteja dormindo, mas sofre –OO no teste; um sucesso faz você acordar. Perceber seres que não possam ser vistos tem DT 20, ou +10 no teste de Furtividade do ser, o que for maior. Mesmo que você passe no teste, ainda sofre penalidades normais por lutar sem ver o inimigo.',
+          'Você escuta barulhos sutis. Uma conversa casual próxima tem DT 0 — ou seja, a menos que exista alguma penalidade, você passa automaticamente. Ouvir pessoas sussurrando tem DT 15. Ouvir do outro lado de uma porta aumenta a DT em +5. Você pode fazer testes de Percepção para ouvir mesmo que esteja dormindo, mas sofre –2d20 no teste; um sucesso faz você acordar. Perceber seres que não possam ser vistos tem DT 20, ou +10 no teste de Furtividade do ser, o que for maior. Mesmo que você passe no teste, ainda sofre penalidades normais por lutar sem ver o inimigo.',
       },
     ],
     suplementos: [
@@ -755,7 +755,7 @@ export const PERICIAS_TEXTO = {
         nome: 'Perseguições — Localizar Atalhos e Vias Labirínticas',
         treino: '',
         dt: '20',
-        texto: 'Em cenas de perseguição com atalhos labirínticos, um teste de Percepção (DT 20) no início da rodada concede +2O no teste de Atletismo daquela rodada caso passe (mas impõe –2O se falhar).',
+        texto: 'Em cenas de perseguição com atalhos labirínticos, um teste de Percepção (DT 20) no início da rodada concede +2d20 no teste de Atletismo daquela rodada caso passe (mas impõe –2d20 se falhar).',
       },
     ],
   },
@@ -840,7 +840,7 @@ export const PERICIAS_TEXTO = {
         nome: 'Perseguições — Desviar de Entulhos e Obstáculos',
         treino: '',
         dt: '20',
-        texto: 'Ao rolar o evento de um entulho móvel ou desmoronamento no meio de uma perseguição, faça um teste de Reflexos (DT 20) no início da rodada para não sofrer –2O em Atletismo.',
+        texto: 'Ao rolar o evento de um entulho móvel ou desmoronamento no meio de uma perseguição, faça um teste de Reflexos (DT 20) no início da rodada para não sofrer –2d20 em Atletismo.',
       },
     ],
   },
@@ -902,7 +902,7 @@ export const PERICIAS_TEXTO = {
       'Identificar Animal (Treinado, DT 20). Com uma ação completa, você pode identificar um animal exótico. Veja a perícia Ocultismo.\n\n' +
       'Orientar-se. Um personagem viajando em regiões selvagens precisa fazer um teste de Sobrevivência por dia para avançar. A DT depende do tipo de terreno (veja acima). Se passar, você avança seu deslocamento normal. Se falhar, avança metade. Se falhar por 5 ou mais, se perde e não avança pelo dia inteiro.\n\n' +
       'Num grupo, um personagem deve ser escolhido como guia. Personagens treinados em Sobrevivência podem fazer testes para ajudá-lo. Entretanto, se mais de um personagem quiser fazer o teste por si só, todos deverão rolar os dados em segredo. Os jogadores devem decidir qual guia seguir antes de verem o resultado!\n\n' +
-      'Rastrear (Treinado). Você pode identificar e seguir rastros. A DT varia: 15 para rastrear um grupo grande, ou um único ser em solo macio, como lama ou neve; 20 para um ser em solo comum (grama, terra); 25 para um ser em solo duro (estrada, piso de interiores). Visibilidade precária ou clima ruim (noite, chuva, neblina) impõem –O no teste. Você precisa fazer um teste por dia de perseguição. Enquanto rastreia, seu deslocamento é reduzido à metade. Se falhar, pode tentar novamente gastando mais um dia. Porém, a cada dia desde a criação dos rastros, a DT aumenta em +1.',
+      'Rastrear (Treinado). Você pode identificar e seguir rastros. A DT varia: 15 para rastrear um grupo grande, ou um único ser em solo macio, como lama ou neve; 20 para um ser em solo comum (grama, terra); 25 para um ser em solo duro (estrada, piso de interiores). Visibilidade precária ou clima ruim (noite, chuva, neblina) impõem –1d20 no teste. Você precisa fazer um teste por dia de perseguição. Enquanto rastreia, seu deslocamento é reduzido à metade. Se falhar, pode tentar novamente gastando mais um dia. Porém, a cada dia desde a criação dos rastros, a DT aumenta em +1.',
     usos: [
       {
         nome: 'Acampamento',
@@ -930,7 +930,7 @@ export const PERICIAS_TEXTO = {
         treino: 'Treinado',
         dt: 'Variável',
         texto:
-          'Você pode identificar e seguir rastros. A DT varia: 15 para rastrear um grupo grande, ou um único ser em solo macio, como lama ou neve; 20 para um ser em solo comum (grama, terra); 25 para um ser em solo duro (estrada, piso de interiores). Visibilidade precária ou clima ruim (noite, chuva, neblina) impõem –O no teste. Você precisa fazer um teste por dia de perseguição. Enquanto rastreia, seu deslocamento é reduzido à metade. Se falhar, pode tentar novamente gastando mais um dia. Porém, a cada dia desde a criação dos rastros, a DT aumenta em +1.',
+          'Você pode identificar e seguir rastros. A DT varia: 15 para rastrear um grupo grande, ou um único ser em solo macio, como lama ou neve; 20 para um ser em solo comum (grama, terra); 25 para um ser em solo duro (estrada, piso de interiores). Visibilidade precária ou clima ruim (noite, chuva, neblina) impõem –1d20 no teste. Você precisa fazer um teste por dia de perseguição. Enquanto rastreia, seu deslocamento é reduzido à metade. Se falhar, pode tentar novamente gastando mais um dia. Porém, a cada dia desde a criação dos rastros, a DT aumenta em +1.',
       },
     ],
     suplementos: [
@@ -939,7 +939,7 @@ export const PERICIAS_TEXTO = {
         nome: 'Perseguições — Atalho por Vegetação',
         treino: '',
         dt: '20',
-        texto: 'Em ambientes externos e perseguições na natureza, um teste de Sobrevivência (DT 20) permite identificar caminhos ocultos pela vegetação, concedendo +2O em Atletismo naquela rodada.',
+        texto: 'Em ambientes externos e perseguições na natureza, um teste de Sobrevivência (DT 20) permite identificar caminhos ocultos pela vegetação, concedendo +2d20 em Atletismo naquela rodada.',
       },
     ],
   },
@@ -984,10 +984,10 @@ export const PERICIAS_TEXTO = {
     texto:
       'Você possui conhecimentos avançados de eletrônica e informática. Usos cotidianos, como mexer em um computador ou celular, não exigem treinamento nesta perícia ou testes. Esta perícia serve para usos avançados, como reprogramar um sistema de vigilância ou invadir um servidor seguro.\n\n' +
       'Falsificação (Veterano). Como o uso de Enganação, mas apenas para documentos eletrônicos.\n\n' +
-      'Hackear. Você invade um computador protegido. A DT é 15 para computadores pessoais, 20 para redes profissionais e 25 para grandes servidores corporativos, governamentais ou militares. Este uso gasta 1d4+1 ações completas. Você pode sofrer uma penalidade de –O em seu teste para fazê-lo como uma ação completa. Se você falhar no teste, não pode tentar novamente até ter alguma informação nova que o ajude na invasão, como um nome de usuário ou senha. Se falhar por 5 ou mais, pode ser rastreado pelos administradores do sistema que tentou invadir.\n\n' +
+      'Hackear. Você invade um computador protegido. A DT é 15 para computadores pessoais, 20 para redes profissionais e 25 para grandes servidores corporativos, governamentais ou militares. Este uso gasta 1d4+1 ações completas. Você pode sofrer uma penalidade de –1d20 em seu teste para fazê-lo como uma ação completa. Se você falhar no teste, não pode tentar novamente até ter alguma informação nova que o ajude na invasão, como um nome de usuário ou senha. Se falhar por 5 ou mais, pode ser rastreado pelos administradores do sistema que tentou invadir.\n\n' +
       'Uma vez que invada o sistema, você pode fazer o que veio fazer. Para procurar uma informação específica, veja o uso localizar arquivo, abaixo. Outras ações, como alterar ou deletar arquivos, corromper ou desativar aplicativos ou bloquear o acesso de outros usuários, podem exigir novos testes de Tecnologia, a critério do mestre.\n\n' +
       'Localizar Arquivo. Você procura um arquivo específico em um computador ou rede que possa acessar (se você não tiver acesso ao sistema, precisará primeiro invadi-lo; veja o uso hackear, acima). O tempo exigido e a DT do teste variam de acordo com o tamanho do sistema no qual você está pesquisando: uma ação completa e DT 15 para um computador pessoal, 1d4+1 ações completas e DT 20 para uma rede pequena e 1d6+2 ações completas e DT 25 para uma rede corporativa ou governamental. Este uso se refere apenas a localizar arquivos em sistemas privados que você não conhece. Para procurar informações públicas, na internet, use a perícia Investigação.\n\n' +
-      'Operar Dispositivo. Você opera um dispositivo eletrônico complexo. Isso permite que você acesse câmeras remotamente, destrave fechaduras eletrônicas, ative ou desative alarmes etc. A DT é 15 para aparelhos comuns, 20 para equipamento profissional e 25 para sistemas protegidos. Este uso gasta 1d4+1 ações completas e exige um kit. Você pode sofrer uma penalidade de –O em seu teste para fazê-lo como uma ação completa. Sem o kit, você sofre –5 nos testes de operar dispositivo.',
+      'Operar Dispositivo. Você opera um dispositivo eletrônico complexo. Isso permite que você acesse câmeras remotamente, destrave fechaduras eletrônicas, ative ou desative alarmes etc. A DT é 15 para aparelhos comuns, 20 para equipamento profissional e 25 para sistemas protegidos. Este uso gasta 1d4+1 ações completas e exige um kit. Você pode sofrer uma penalidade de –1d20 em seu teste para fazê-lo como uma ação completa. Sem o kit, você sofre –5 nos testes de operar dispositivo.',
     usos: [
       {
         nome: 'Falsificação',
@@ -1000,7 +1000,7 @@ export const PERICIAS_TEXTO = {
         treino: '',
         dt: 'Variável',
         texto:
-          'Você invade um computador protegido. A DT é 15 para computadores pessoais, 20 para redes profissionais e 25 para grandes servidores corporativos, governamentais ou militares. Este uso gasta 1d4+1 ações completas. Você pode sofrer uma penalidade de –O em seu teste para fazê-lo como uma ação completa. Se você falhar no teste, não pode tentar novamente até ter alguma informação nova que o ajude na invasão, como um nome de usuário ou senha. Se falhar por 5 ou mais, pode ser rastreado pelos administradores do sistema que tentou invadir.\n\nUma vez que invada o sistema, você pode fazer o que veio fazer. Para procurar uma informação específica, veja o uso localizar arquivo, abaixo. Outras ações, como alterar ou deletar arquivos, corromper ou desativar aplicativos ou bloquear o acesso de outros usuários, podem exigir novos testes de Tecnologia, a critério do mestre.',
+          'Você invade um computador protegido. A DT é 15 para computadores pessoais, 20 para redes profissionais e 25 para grandes servidores corporativos, governamentais ou militares. Este uso gasta 1d4+1 ações completas. Você pode sofrer uma penalidade de –1d20 em seu teste para fazê-lo como uma ação completa. Se você falhar no teste, não pode tentar novamente até ter alguma informação nova que o ajude na invasão, como um nome de usuário ou senha. Se falhar por 5 ou mais, pode ser rastreado pelos administradores do sistema que tentou invadir.\n\nUma vez que invada o sistema, você pode fazer o que veio fazer. Para procurar uma informação específica, veja o uso localizar arquivo, abaixo. Outras ações, como alterar ou deletar arquivos, corromper ou desativar aplicativos ou bloquear o acesso de outros usuários, podem exigir novos testes de Tecnologia, a critério do mestre.',
       },
       {
         nome: 'Localizar Arquivo',
@@ -1014,7 +1014,7 @@ export const PERICIAS_TEXTO = {
         treino: '',
         dt: 'Variável',
         texto:
-          'Você opera um dispositivo eletrônico complexo. Isso permite que você acesse câmeras remotamente, destrave fechaduras eletrônicas, ative ou desative alarmes etc. A DT é 15 para aparelhos comuns, 20 para equipamento profissional e 25 para sistemas protegidos. Este uso gasta 1d4+1 ações completas e exige um kit. Você pode sofrer uma penalidade de –O em seu teste para fazê-lo como uma ação completa. Sem o kit, você sofre –5 nos testes de operar dispositivo.',
+          'Você opera um dispositivo eletrônico complexo. Isso permite que você acesse câmeras remotamente, destrave fechaduras eletrônicas, ative ou desative alarmes etc. A DT é 15 para aparelhos comuns, 20 para equipamento profissional e 25 para sistemas protegidos. Este uso gasta 1d4+1 ações completas e exige um kit. Você pode sofrer uma penalidade de –1d20 em seu teste para fazê-lo como uma ação completa. Sem o kit, você sofre –5 nos testes de operar dispositivo.',
       },
     ],
     suplementos: [

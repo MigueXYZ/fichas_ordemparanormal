@@ -71,7 +71,7 @@ Limite de PE. Como um sobrevivente, seu limite de PE é sempre 1, em qualquer es
     {
       nome: 'Cicatrizado',
       nex: 5,
-      descricao: 'No 5º estágio, você já viu — e sobreviveu — a sua cota de horrores. Isso deixou marcas em seu corpo e sua mente, mas também o deixou mais forte. Escolha um tipo de perigo paranormal que seu personagem já enfrentou, de um elemento específico (Sangue, Morte…). Você possui algum trauma em relação a esse perigo e sofre –O em testes de resistência contra ele. Contudo, uma vez por sessão de jogo você pode se esforçar ao máximo para não se deixar cair ou se abater. Como uma reação, você pode sacrificar 1 PV permanentemente para ignorar um dano mental ou gasto de PE, ou pode sacrificar permanentemente 1 PE para reduzir um dano físico à metade.',
+      descricao: 'No 5º estágio, você já viu — e sobreviveu — a sua cota de horrores. Isso deixou marcas em seu corpo e sua mente, mas também o deixou mais forte. Escolha um tipo de perigo paranormal que seu personagem já enfrentou, de um elemento específico (Sangue, Morte…). Você possui algum trauma em relação a esse perigo e sofre –1d20 em testes de resistência contra ele. Contudo, uma vez por sessão de jogo você pode se esforçar ao máximo para não se deixar cair ou se abater. Como uma reação, você pode sacrificar 1 PV permanentemente para ignorar um dano mental ou gasto de PE, ou pode sacrificar permanentemente 1 PE para reduzir um dano físico à metade.',
     },
   ],
   // O livro não lista poderes de classe para o sobrevivente (os poderes que se
@@ -92,7 +92,7 @@ Limite de PE. Como um sobrevivente, seu limite de PE é sempre 1, em qualquer es
         {
           nex: 4,
           nome: 'Pancada Forte',
-          descricao: 'Quando faz um ataque, você pode gastar 1 PE para receber +O no teste de ataque. Se você se tornar um combatente (veja “Treinamento Especial”, a seguir), perde esta habilidade, mas reduz o custo de ativação de Ataque Especial em –1 PE.',
+          descricao: 'Quando faz um ataque, você pode gastar 1 PE para receber +1d20 no teste de ataque. Se você se tornar um combatente (veja “Treinamento Especial”, a seguir), perde esta habilidade, mas reduz o custo de ativação de Ataque Especial em –1 PE.',
         },
       ],
     },

@@ -33,7 +33,7 @@ Pré-requisito. Você precisa cumprir todos os pré-requisitos para escolher um 
 
 Afinidade Elemental. Quando atinge NEX 50% você se conecta com um elemento a sua escolha entre Conhecimento, Energia, Morte e Sangue. Na primeira vez que transcender após isso, irá desenvolver afinidade com o elemento escolhido. Afinidade fornece os seguintes benefícios:
 • Você não precisa mais de componentes ritualísticos para conjurar rituais do elemento com o qual tem afinidade. Além disso, pode aprender rituais que exijam afinidade com esse elemento.
-• Você recebe +OO em testes contra efeitos do seu elemento. No entanto, sofre –OO em testes contra efeitos do elemento opressor ao seu.
+• Você recebe +2d20 em testes contra efeitos do seu elemento. No entanto, sofre –2d20 em testes contra efeitos do elemento opressor ao seu.
 • Você pode escolher poderes paranormais do seu elemento uma segunda vez para receber o benefício listado na linha "Afinidade".`;
 
 export const REGRAS_PODERES_GERAIS = `Poderes gerais são um novo grupo de poderes, que representam habilidades gerais acessíveis a todos os personagens. Essencialmente, eles são considerados poderes de todas as classes. Assim, sempre que você puder escolher um poder de classe pode, em vez disso, escolher um poder geral.
@@ -119,7 +119,7 @@ Afinidade: você fica imune à condição desprevenido.`,
     nexMinimo: null,
     descricao: `Você consegue sentir as emoções e intenções de outros personagens, como medo, raiva ou malícia, recebendo +5 em testes de Diplomacia, Intimidação e Intuição.
 
-Afinidade: quando você faz um teste oposto usando uma dessas perícias, o oponente sofre –O.`,
+Afinidade: quando você faz um teste oposto usando uma dessas perícias, o oponente sofre –1d20.`,
     livro: 'Livro Base',
   },
   {
@@ -436,7 +436,7 @@ Afinidade: a cura acelerada aumenta para 5.`,
     elemento: null,
     prerequisito: 'treinado na perícia escolhida',
     nexMinimo: null,
-    descricao: `Você se dedicou a estudar e treinar os vários pormenores de uma área de conhecimento específica. Escolha uma perícia (exceto Luta e Pontaria). Quando faz um teste dessa perícia, você rola +O. Você pode escolher este poder outras vezes para perícias diferentes. Pré-requisito: treinado na perícia escolhida.`,
+    descricao: `Você se dedicou a estudar e treinar os vários pormenores de uma área de conhecimento específica. Escolha uma perícia (exceto Luta e Pontaria). Quando faz um teste dessa perícia, você rola +1d20. Você pode escolher este poder outras vezes para perícias diferentes. Pré-requisito: treinado na perícia escolhida.`,
     livro: 'Sobrevivendo ao Horror',
   },
   {
@@ -480,7 +480,7 @@ Afinidade: a cura acelerada aumenta para 5.`,
     elemento: null,
     prerequisito: 'Pre 2',
     nexMinimo: null,
-    descricao: `Você é um cara de pau, capaz de mentir descaradamente sem que ninguém perceba. Você recebe treinamento em Enganação ou, se já for treinado nesta perícia, recebe +2 nela. Além disso, a penalidade que você sofre por mentiras muito implausíveis diminui para –O. Pré-requisito: Pre 2.`,
+    descricao: `Você é um cara de pau, capaz de mentir descaradamente sem que ninguém perceba. Você recebe treinamento em Enganação ou, se já for treinado nesta perícia, recebe +2 nela. Além disso, a penalidade que você sofre por mentiras muito implausíveis diminui para –1d20. Pré-requisito: Pre 2.`,
     livro: 'Sobrevivendo ao Horror',
   },
   {
@@ -726,7 +726,7 @@ Afinidade: a cura acelerada aumenta para 5.`,
     elemento: 'sangue',
     prerequisito: '',
     nexMinimo: null,
-    descricao: `O Sangue do Outro Lado deu a você o poder de controlar seu corpo e se mover exatamente como as bestas predadoras fazem. Você recebe +5 em Furtividade. Em cenas de perseguição (p. 90), se for o caçador, pode usar Furtividade em vez de Atletismo. Em cenas de furtividade (p. 92), seus movimentos são calculados pelos seus instintos, o que permite que faça ações discretas sem sofrer –O de penalidade.
+    descricao: `O Sangue do Outro Lado deu a você o poder de controlar seu corpo e se mover exatamente como as bestas predadoras fazem. Você recebe +5 em Furtividade. Em cenas de perseguição (p. 90), se for o caçador, pode usar Furtividade em vez de Atletismo. Em cenas de furtividade (p. 92), seus movimentos são calculados pelos seus instintos, o que permite que faça ações discretas sem sofrer –1d20 de penalidade.
 
 Afinidade: o bônus em Furtividade aumenta para +10.`,
     livro: 'Sobrevivendo ao Horror',
@@ -752,7 +752,7 @@ Afinidade: seus instintos aguçados transformam o terror da perseguição em uma
     elemento: 'morte',
     prerequisito: '',
     nexMinimo: null,
-    descricao: `Sua ligação com a Morte permite que você sacrifique sua vitalidade futura para auxiliar seu presente. Quando faz um teste, você pode acumular uma carga de antecipação para adicionar +O a esse teste. Você pode acumular um máximo de cargas de antecipação igual ao seu Vigor. Enquanto tiver uma carga de antecipação, em sua próxima ação de interlúdio dormir em vez de recuperar pontos de vida você perde uma dessas cargas.
+    descricao: `Sua ligação com a Morte permite que você sacrifique sua vitalidade futura para auxiliar seu presente. Quando faz um teste, você pode acumular uma carga de antecipação para adicionar +1d20 a esse teste. Você pode acumular um máximo de cargas de antecipação igual ao seu Vigor. Enquanto tiver uma carga de antecipação, em sua próxima ação de interlúdio dormir em vez de recuperar pontos de vida você perde uma dessas cargas.
 
 Afinidade: você amplia sua capacidade de sacrificar o presente pelo futuro. O limite de cargas de antecipação que você pode acumular aumenta em +2 e você passa a perder 2 cargas por ação dormir.`,
     livro: 'Sobrevivendo ao Horror',
@@ -817,7 +817,7 @@ Afinidade: você recebe +5 em testes de perícias baseadas em Intelecto ou Prese
     elemento: 'energia',
     prerequisito: '',
     nexMinimo: null,
-    descricao: `Você pode tentar manipular o caos do mundo ao seu redor, um ato que fornece grande poder às custas da ordem de sua mente. Quando faz um teste, você pode escolher tentar controlar o caos. Se fizer isso, você recebe +O nesse teste. Entretanto, se o teste for uma falha, ou se o resultado desse d20 adicional (use um dado de cor diferente para identificá-lo) for igual ou menor que 5, você perde 1d4 pontos de Sanidade.
+    descricao: `Você pode tentar manipular o caos do mundo ao seu redor, um ato que fornece grande poder às custas da ordem de sua mente. Quando faz um teste, você pode escolher tentar controlar o caos. Se fizer isso, você recebe +1d20 nesse teste. Entretanto, se o teste for uma falha, ou se o resultado desse d20 adicional (use um dado de cor diferente para identificá-lo) for igual ou menor que 5, você perde 1d4 pontos de Sanidade.
 
 Afinidade: você perde Sanidade se o teste for uma falha ou se o resultado do O extra for 1 ou 2.`,
     livro: 'Sobrevivendo ao Horror',
@@ -882,7 +882,7 @@ Afinidade: você perde Sanidade se o teste for uma falha ou se o resultado do O 
     elemento: null,
     prerequisito: 'ter cicatrizes',
     nexMinimo: null,
-    descricao: `Você tem cicatrizes graves, físicas ou psicológicas, que podem deixá-lo em um estado de ira caso sejam expostas. Você pode gastar uma ação de movimento para expor sua cicatriz. Se fizer isso, sempre que causar dano, você causa +1d8 pontos de dano do mesmo tipo, mas sofre –O em testes de Vontade e testes que exijam calma, como ficar furtivo ou traduzir um idioma. Caso outro ser exponha sua cicatriz, ainda que contra sua vontade, os mesmos efeitos se aplicam. Os efeitos duram até o fim da cena. Pré-requisitos: ter cicatrizes.`,
+    descricao: `Você tem cicatrizes graves, físicas ou psicológicas, que podem deixá-lo em um estado de ira caso sejam expostas. Você pode gastar uma ação de movimento para expor sua cicatriz. Se fizer isso, sempre que causar dano, você causa +1d8 pontos de dano do mesmo tipo, mas sofre –1d20 em testes de Vontade e testes que exijam calma, como ficar furtivo ou traduzir um idioma. Caso outro ser exponha sua cicatriz, ainda que contra sua vontade, os mesmos efeitos se aplicam. Os efeitos duram até o fim da cena. Pré-requisitos: ter cicatrizes.`,
     livro: 'Arquivos Secretos 1',
   },
   {

@@ -5,7 +5,7 @@
 // Várias páginas estão com o texto rodado/inclinado no PDF; os parágrafos foram
 // reconstruídos a partir da extração por página. Nada foi resumido nem inventado.
 // O glifo do dado (fonte "d20-Regular") aparece como `O`, tal como nos ficheiros
-// as01/as03 (ex.: `–O`, `–2O`, `+O`).
+// as01/as03 (ex.: `–1d20`, `–2d20`, `+1d20`).
 
 export const TRILHAS_AS07 = [
   {
@@ -46,7 +46,7 @@ ENERGIA O caos acelera sua mente e corpo enquanto gasta ambos como se fossem com
       {
         nex: 65,
         nome: 'Ser Expurgado',
-        descricao: `Você expurga um braço do seu corpo para que ele, pouco a pouco, se desate das amarras limitantes da Realidade, substituindo-o por algo superior: um braço feito através da união de componentes ritualísticos e alimentado por seus experimentos constantes (essa alteração faz sua Presença ser reduzida permanentemente em 1 e a penalidade de –5 mudar para –O em Diplomacia, Enganação e Intuição). Agora, ao fazer o experimento, você recupera 3d8+3 PV e, até o fim do dia, também se beneficia de um dos braços a seguir, conforme seu elemento. Sem fazer o experimento, a parte paranormal fica inutilizada e você sofre as consequências disso (por exemplo, se for uma perna, fica lento).
+        descricao: `Você expurga um braço do seu corpo para que ele, pouco a pouco, se desate das amarras limitantes da Realidade, substituindo-o por algo superior: um braço feito através da união de componentes ritualísticos e alimentado por seus experimentos constantes (essa alteração faz sua Presença ser reduzida permanentemente em 1 e a penalidade de –5 mudar para –1d20 em Diplomacia, Enganação e Intuição). Agora, ao fazer o experimento, você recupera 3d8+3 PV e, até o fim do dia, também se beneficia de um dos braços a seguir, conforme seu elemento. Sem fazer o experimento, a parte paranormal fica inutilizada e você sofre as consequências disso (por exemplo, se for uma perna, fica lento).
 
 SANGUE Seu braço novo é envolto por sangue, espinhos e lâminas que alimentam a carne pulsante com dor. Você recebe +1 ponto em Força, +1d8 em testes de ataques corpo a corpo e o dano fornecido por Ser Testado muda para +1d8. Além disso, uma vez por rodada, quando ataca com outra arma, você pode gastar 1 PE para fazer um ataque desarmado com sua parte nova.
 
@@ -59,7 +59,7 @@ ENERGIA Seu braço novo é uma prótese metálica energizada por cabos em sobrec
       {
         nex: 99,
         nome: 'Ser Apavorante',
-        descricao: `Suas experimentações alcançaram o limite entre a humanidade e a monstruosidade, tornando seu corpo o ambiente adequado para a entidade preenchê-lo (esse limite faz sua Presença ser reduzida permanentemente em 1 e a penalidade de –O mudar para –2O em Diplomacia, Enganação e Intuição). Agora, ao fazer o experimento, você recupera 4d8+4 PV e, até o fim do dia, também recebe os efeitos descritos a seguir, conforme seu elemento.
+        descricao: `Suas experimentações alcançaram o limite entre a humanidade e a monstruosidade, tornando seu corpo o ambiente adequado para a entidade preenchê-lo (esse limite faz sua Presença ser reduzida permanentemente em 1 e a penalidade de –1d20 mudar para –2d20 em Diplomacia, Enganação e Intuição). Agora, ao fazer o experimento, você recupera 4d8+4 PV e, até o fim do dia, também recebe os efeitos descritos a seguir, conforme seu elemento.
 
 SANGUE O seu corpo já não é mais seu. Você agora é uma massa bestial impregnada com o mesmo fluxo que banha o Outro Lado. Uma junção de partes desproporcionais costuradas e moldadas a força, a maioria nem sequer parece humana. Consumir é tudo que importa agora. Devorar. Crescer. Experimentar já não carrega o mesmo sentido que possuía antes. Você deve saborear tudo. Os efeitos de Ser Experimentado mudam para: você passa a ser considerado Enorme (+5 em manobras e –5 em Furtividade) e soma sua Força em testes baseados nesse atributo. Além disso, você passa a usar Força, em vez de Presença, para determinar seus PE. Por fim, recebe +1 ponto em Força e aprende o ritual Vínculo de Sangue.
 
@@ -109,9 +109,9 @@ ENERGIA As queimaduras em seu corpo começam a derreter sua pele ou, no mínimo,
       {
         nex: 65,
         nome: 'Ser Rasgado',
-        descricao: `Os símbolos precisam ir ainda mais fundo. Você consegue ouvir a entidade conversando com você, senti-la respirando como se fosse um organismo próprio se apossando cada vez mais do seu corpo. A entidade agora não só escuta suas súplicas e as de seu corpo, ela vive dentro de você, respira através de você e te conhece melhor do que a sua própria mente (essa “simbiose” faz sua Presença ser reduzida permanentemente em 1 e a penalidade de –5 mudar para –O em Diplomacia, Enganação e Intuição). Agora, ao fazer a escarificação, você recupera 1d8 PE e, até o fim do dia, também recebe os efeitos descritos a seguir, conforme seu elemento.
+        descricao: `Os símbolos precisam ir ainda mais fundo. Você consegue ouvir a entidade conversando com você, senti-la respirando como se fosse um organismo próprio se apossando cada vez mais do seu corpo. A entidade agora não só escuta suas súplicas e as de seu corpo, ela vive dentro de você, respira através de você e te conhece melhor do que a sua própria mente (essa “simbiose” faz sua Presença ser reduzida permanentemente em 1 e a penalidade de –5 mudar para –1d20 em Diplomacia, Enganação e Intuição). Agora, ao fazer a escarificação, você recupera 1d8 PE e, até o fim do dia, também recebe os efeitos descritos a seguir, conforme seu elemento.
 
-SANGUE A porta está pronta. Não existe mais pele no seu corpo. Você precisa romper seus músculos anormalmente robustos e expostos para marcar seus rituais em sua própria carne. A dor excruciante desse ato, em conjunto da agonia inexplicável de ainda sentir cada traço feito na pele que já não é mais, forma um banquete para o Sangue, uma refeição que pode ser repartida. Quando conjura um ritual de Sangue, você pode gastar uma ação de movimento e 2d8+2 PV para servir esse sangue a um aliado adjacente. Se o alvo aceitá-lo e ingeri-lo como reação, ele recebe +O em testes baseados em Agilidade, Força e Vigor até o fim da cena. Além disso, a DT dos seus rituais de Sangue marcados na pele aumenta em +2.
+SANGUE A porta está pronta. Não existe mais pele no seu corpo. Você precisa romper seus músculos anormalmente robustos e expostos para marcar seus rituais em sua própria carne. A dor excruciante desse ato, em conjunto da agonia inexplicável de ainda sentir cada traço feito na pele que já não é mais, forma um banquete para o Sangue, uma refeição que pode ser repartida. Quando conjura um ritual de Sangue, você pode gastar uma ação de movimento e 2d8+2 PV para servir esse sangue a um aliado adjacente. Se o alvo aceitá-lo e ingeri-lo como reação, ele recebe +1d20 em testes baseados em Agilidade, Força e Vigor até o fim da cena. Além disso, a DT dos seus rituais de Sangue marcados na pele aumenta em +2.
 
 MORTE A porta está pronta. Você carrega a Morte dentro de si. Galhos e ossos atravessam sua pele por dentro e dessas aberturas o lodo começa a vazar e formar curvas e espirais escurecidas por cima de sua pele acinzentada e marcada por dezenas de símbolos e formas invertidas, tornando-se um com todas elas. Você aprende o ritual Cicatrização. Se já o conhece, em vez disso o custo para conjurá-lo diminui em –1 PE (cumulativo com outras fontes). Quando conjura um ritual de Morte diferente de Cicatrização, você pode conjurar Cicatrização como uma ação de movimento. Além disso, a DT dos seus rituais de Morte marcados na pele aumenta em +2.
 
@@ -122,7 +122,7 @@ ENERGIA A porta está pronta. Sua pele esporadicamente se torna a matéria caót
       {
         nex: 99,
         nome: 'Ser Mutilado',
-        descricao: `As escarificações são tão profundas que os rituais marcados dispensam qualquer comunicação para serem conjurados, entrando em um estado de efeito frequente que só terminará com a morte de seu portador (essas feridas fazem sua Presença ser reduzida permanentemente em 1 e a penalidade de –O mudar para –2O em Diplomacia, Enganação e Intuição). Agora, ao fazer a escarificação, você recupera 1d12 PE e, até o fim do dia, também recebe os efeitos descritos a seguir, conforme seu elemento.
+        descricao: `As escarificações são tão profundas que os rituais marcados dispensam qualquer comunicação para serem conjurados, entrando em um estado de efeito frequente que só terminará com a morte de seu portador (essas feridas fazem sua Presença ser reduzida permanentemente em 1 e a penalidade de –1d20 mudar para –2d20 em Diplomacia, Enganação e Intuição). Agora, ao fazer a escarificação, você recupera 1d12 PE e, até o fim do dia, também recebe os efeitos descritos a seguir, conforme seu elemento.
 
 SANGUE Seu corpo jorra sangue em um fluxo interminável. Todos os sacrifícios que poderiam ser feitos já foram realizados por você. Afinal, você é o sacrifício. Todos os preços já foram pagos. Agora só lhe resta se deleitar nos frutos de todas as suas dores. A própria Entidade do Sangue testou a sua resiliência e você se provou digno de sentir a sua comunicação. A porta está aberta e a conexão é quase absoluta. Você recebe +1 ponto em Força e pode conjurar rituais de Sangue marcados na pele sem a necessidade de fala, gestos e componentes. Além disso, aprende um ritual de Sangue de 4º círculo e um ritual de Medo de 4º círculo à sua escolha. O ritual de Medo escolhido recebe todos os benefícios dessa trilha, como se fosse um ritual de Sangue.
 

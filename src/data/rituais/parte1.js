@@ -679,9 +679,9 @@ export const RITUAIS_PARTE1 = [
     efeito: '',
     duracao: 'Cena',
     resistencia: '',
-    descricao: 'Espirais surgem no corpo do alvo, tornando seus movimentos lentos. O alvo sofre –O em testes de ataque.',
-    discente: { custo: '+2 PE', texto: 'muda a penalidade para –OO.', requer: '2º círculo' },
-    verdadeiro: { custo: '+8 PE', texto: 'muda a penalidade para –OO. e o alvo para “seres escolhidos”.', requer: '3º círculo' },
+    descricao: 'Espirais surgem no corpo do alvo, tornando seus movimentos lentos. O alvo sofre –1d20 em testes de ataque.',
+    discente: { custo: '+2 PE', texto: 'muda a penalidade para –2d20.', requer: '2º círculo' },
+    verdadeiro: { custo: '+8 PE', texto: 'muda a penalidade para –2d20. e o alvo para “seres escolhidos”.', requer: '3º círculo' },
     livro: 'Livro Base',
   },
   {

@@ -143,7 +143,7 @@ const especialista = {
     {
       id: 'na-trilha-certa',
       nome: 'Na Trilha Certa',
-      descricao: 'Sempre que tiver sucesso em um teste para procurar pistas, você pode gastar 1 PE para receber +O no próximo teste. Os custos e os bônus são cumulativos (se passar num segundo teste, pode pagar 2 PE para receber um total de +OO no próximo teste, e assim por diante).',
+      descricao: 'Sempre que tiver sucesso em um teste para procurar pistas, você pode gastar 1 PE para receber +1d20 no próximo teste. Os custos e os bônus são cumulativos (se passar num segundo teste, pode pagar 2 PE para receber um total de +2d20 no próximo teste, e assim por diante).',
       prerequisito: '',
       livro: 'Livro Base',
     },
@@ -178,7 +178,7 @@ const especialista = {
     {
       id: 'primeira-impressao',
       nome: 'Primeira Impressão',
-      descricao: 'Você recebe +OO no primeiro teste de Diplomacia, Enganação, Intimidação ou Intuição que fizer em uma cena.',
+      descricao: 'Você recebe +2d20 no primeiro teste de Diplomacia, Enganação, Intimidação ou Intuição que fizer em uma cena.',
       prerequisito: '',
       livro: 'Livro Base',
     },
@@ -221,7 +221,7 @@ const especialista = {
     {
       id: 'esconderijo-desesperado',
       nome: 'Esconderijo Desesperado',
-      descricao: 'Você já esteve diante de coisas que não podem ser derrotadas e aprendeu da forma mais trágica que às vezes se esconder é a única chance de vitória. Você não sofre –O em testes de Furtividade por se mover ao seu deslocamento normal. Além disso, em cenas de furtividade (veja p. 92), sempre que passa em um teste para esconder-se, sua visibilidade diminui em –2 (em vez de apenas –1).',
+      descricao: 'Você já esteve diante de coisas que não podem ser derrotadas e aprendeu da forma mais trágica que às vezes se esconder é a única chance de vitória. Você não sofre –1d20 em testes de Furtividade por se mover ao seu deslocamento normal. Além disso, em cenas de furtividade (veja p. 92), sempre que passa em um teste para esconder-se, sua visibilidade diminui em –2 (em vez de apenas –1).',
       prerequisito: '',
       livro: 'Sobrevivendo ao Horror',
     },
@@ -249,7 +249,7 @@ const especialista = {
     {
       id: 'maos-firmes',
       nome: 'Mãos Firmes',
-      descricao: 'Quando há um caçador à espreita, derrubar sequer uma agulha pode ser o suficiente para revelar sua localização. E você não quer que isso aconteça. Quando faz um teste de Furtividade para esconder-se ou para executar uma ação discreta que envolva manipular um objeto (como em uma cena de furtividade), você pode gastar 2 PE para receber +O nesse teste.',
+      descricao: 'Quando há um caçador à espreita, derrubar sequer uma agulha pode ser o suficiente para revelar sua localização. E você não quer que isso aconteça. Quando faz um teste de Furtividade para esconder-se ou para executar uma ação discreta que envolva manipular um objeto (como em uma cena de furtividade), você pode gastar 2 PE para receber +1d20 nesse teste.',
       prerequisito: 'Treinado em Furtividade.',
       livro: 'Sobrevivendo ao Horror',
     },
@@ -329,7 +329,7 @@ const especialista = {
         {
           nex: 99,
           nome: 'Sombra Fugaz',
-          descricao: 'Quando faz um teste de Furtividade após atacar ou fazer outra ação chamativa, você pode gastar 3 PE para não sofrer a penalidade de –OOO no teste.',
+          descricao: 'Quando faz um teste de Furtividade após atacar ou fazer outra ação chamativa, você pode gastar 3 PE para não sofrer a penalidade de –3d20 no teste.',
         },
       ],
     },
@@ -375,7 +375,7 @@ const especialista = {
         {
           nex: 40,
           nome: 'Discurso Motivador',
-          descricao: 'Você pode gastar uma ação padrão e 4 PE para inspirar seus aliados com suas palavras. Você e todos os seus aliados em alcance curto ganham +O em testes de perícia até o fim da cena. A partir de NEX 65%, você pode gastar 8 PE para fornecer um bônus total de +OO.',
+          descricao: 'Você pode gastar uma ação padrão e 4 PE para inspirar seus aliados com suas palavras. Você e todos os seus aliados em alcance curto ganham +1d20 em testes de perícia até o fim da cena. A partir de NEX 65%, você pode gastar 8 PE para fornecer um bônus total de +2d20.',
         },
         {
           nex: 65,
@@ -487,7 +487,7 @@ const especialista = {
         {
           nex: 40,
           nome: 'Fuga Obstinada',
-          descricao: 'Seu instinto de sobrevivência lhe impulsiona para desprender as mais desesperadas fugas. Você recebe +O em testes de perícia para fugir de um inimigo (seja em uma perseguição ou não). Além disso, em cenas de perseguição, se você for a presa, pode acumular até 4 falhas antes de ser pego.',
+          descricao: 'Seu instinto de sobrevivência lhe impulsiona para desprender as mais desesperadas fugas. Você recebe +1d20 em testes de perícia para fugir de um inimigo (seja em uma perseguição ou não). Além disso, em cenas de perseguição, se você for a presa, pode acumular até 4 falhas antes de ser pego.',
         },
         {
           nex: 65,

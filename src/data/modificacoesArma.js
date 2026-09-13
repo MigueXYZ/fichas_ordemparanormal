@@ -60,7 +60,7 @@ export const MODIFICACOES_ARMA = [
   },
   {
     id: 'silenciador', nome: 'Silenciador', tipos: ['fogo'],
-    texto: 'Reduz em –OO a penalidade em Furtividade para te esconderes no mesmo turno em que atacaste.',
+    texto: 'Reduz em –2d20 a penalidade em Furtividade para te esconderes no mesmo turno em que atacaste.',
     efeitos: {},
   },
   {
