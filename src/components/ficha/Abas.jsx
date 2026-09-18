@@ -86,26 +86,41 @@ function SeletorQuantidade({ valor, onChange, min = 1, max = 99 }) {
   );
 }
 
-function TextoExpandivel({ texto, limite = 180 }) {
-  const [expandido, setExpandido] = useState(false);
+function TextoExpandivel({ texto, limite = 180, expandidoForcado = null }) {
+  const [expandidoLocal, setExpandidoLocal] = useState(false);
+  const expandido = expandidoForcado !== null ? expandidoForcado : expandidoLocal;
   if (!texto) return null;
   const longo = texto.length > limite;
   return (
     <div className="texto-expandivel">
-      <p style={{ margin: 0, whiteSpace: 'pre-line', fontSize: '13.5px', color: 'var(--txt-suave, #ccc)' }}>
+      <p style={{ margin: 0, whiteSpace: 'pre-line', fontSize: '13.5px', color: 'var(--txt-suave, #ccc)', lineHeight: '1.45' }}>
         {expandido || !longo ? texto : `${texto.slice(0, limite)}…`}
       </p>
-      {longo && (
+      {longo && expandidoForcado === null && (
         <button
           type="button"
           className="btn-link"
-          style={{ fontSize: 12, marginTop: 4, padding: 0, background: 'none', border: 'none', color: 'var(--sangue-claro)', cursor: 'pointer', textAlign: 'left', alignSelf: 'flex-start' }}
+          style={{
+            fontSize: 12,
+            marginTop: 4,
+            padding: '2px 8px',
+            background: 'rgba(255,255,255,0.05)',
+            borderRadius: '4px',
+            border: '1px solid rgba(255,255,255,0.1)',
+            color: 'var(--sangue-claro)',
+            cursor: 'pointer',
+            textAlign: 'left',
+            alignSelf: 'flex-start',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+          }}
           onClick={(e) => {
             e.stopPropagation();
-            setExpandido((v) => !v);
+            setExpandidoLocal((v) => !v);
           }}
         >
-          {expandido ? 'Ver menos' : 'Ver mais'}
+          {expandido ? '▲ Recolher' : '▼ Ver mais'}
         </button>
       )}
     </div>
@@ -578,6 +593,40 @@ export function AbaHabilidades({ personagem, setPersonagem }) {
   const { lista, adicionar, editar, remover } = useLista(personagem, setPersonagem, 'habilidades');
   const [aEscolher, setAEscolher] = useState(false);
 
+  // Controlo de expansão de descrições na ficha
+  const [expandidas, setExpandidas] = useState(() => new Set());
+  const [emEdicao, setEmEdicao] = useState(() => new Set());
+  const [todasExpandidasHab, setTodasExpandidasHab] = useState(false);
+  const [todasExpandidasPod, setTodasExpandidasPod] = useState(false);
+
+  function alternarExpandida(chave) {
+    setExpandidas((prev) => {
+      const n = new Set(prev);
+      if (n.has(chave)) n.delete(chave); else n.add(chave);
+      return n;
+    });
+  }
+
+  function alternarEdicao(indice) {
+    setEmEdicao((prev) => {
+      const n = new Set(prev);
+      if (n.has(indice)) n.delete(indice); else n.add(indice);
+      return n;
+    });
+  }
+
+  function adicionarNovaHabilidade() {
+    const novoIdx = lista.length;
+    adicionar({ ...novaHabilidade(), tipo: 'habilidade', origem: 'Habilidade' });
+    setEmEdicao((prev) => new Set([...prev, novoIdx]));
+  }
+
+  function adicionarNovoPoder() {
+    const novoIdx = lista.length;
+    adicionar({ ...novaHabilidade(), tipo: 'poder', origem: 'Poder' });
+    setEmEdicao((prev) => new Set([...prev, novoIdx]));
+  }
+
   const classe = CLASSES_POR_ID[personagem.classeId];
   const trilha = personagem.trilhaId ? TRILHAS_POR_ID[personagem.trilhaId] : null;
   const origem = personagem.origemId === '__custom__' ? personagem.origemCustom : ORIGENS_POR_ID[personagem.origemId];
@@ -604,20 +653,23 @@ export function AbaHabilidades({ personagem, setPersonagem }) {
     .filter((item) => item.tipo !== 'habilidade' && !/habilidade/i.test(item.origem || ''));
 
   const catalogo = useMemo(() => {
+    const normalizarElemento = (el) => (el ? el.charAt(0).toUpperCase() + el.slice(1).toLowerCase() : null);
     const todos = [
       ...PODERES.map((p) => ({
         ...p,
         tipo: p.tipo === 'paranormal' ? 'Poder Paranormal' : 'Poder Geral',
-        grupoTipo: p.tipo === 'paranormal' ? 'Poder Paranormal' : 'Poder Geral',
+        grupoTipo: p.tipo === 'paranormal' ? 'Poderes Paranormais' : 'Poderes Gerais',
         categoriaSecao: 'poder',
+        elemento: normalizarElemento(p.elemento),
       })),
       ...CLASSES.flatMap((c) =>
         (c.poderes || []).map((p) => ({
           ...p,
           id: p.id || `poder-classe-${c.id}-${p.nome}`,
           tipo: `Poder de ${c.nome}`,
-          grupoTipo: c.nome,
+          grupoTipo: 'Poderes de Classe',
           classe: c.nome,
+          classeId: c.id,
           categoriaSecao: 'poder',
         }))
       ),
@@ -626,8 +678,9 @@ export function AbaHabilidades({ personagem, setPersonagem }) {
           ...h,
           id: h.id || `hab-classe-${c.id}-${h.nome}`,
           tipo: `Habilidade de ${c.nome}`,
-          grupoTipo: c.nome,
+          grupoTipo: 'Habilidades de Classe',
           classe: c.nome,
+          classeId: c.id,
           categoriaSecao: 'habilidade',
         }))
       ),
@@ -636,9 +689,11 @@ export function AbaHabilidades({ personagem, setPersonagem }) {
           ...p,
           id: p.id || `trilha-${t.id}-${p.nome}`,
           tipo: `Trilha: ${t.nome}`,
-          grupoTipo: 'Trilhas',
+          grupoTipo: 'Poderes de Trilha',
           trilha: t.nome,
+          trilhaId: t.id,
           classe: t.classeNome,
+          classeId: t.classeId,
           categoriaSecao: 'poder',
         }))
       ),
@@ -647,8 +702,9 @@ export function AbaHabilidades({ personagem, setPersonagem }) {
         nome: o.poder.nome,
         descricao: o.poder.descricao,
         tipo: 'Poder de Origem',
-        grupoTipo: 'Origens',
+        grupoTipo: 'Poderes de Origem',
         origem: o.nome,
+        origemId: o.id,
         categoriaSecao: 'habilidade',
       })),
     ];
@@ -662,34 +718,98 @@ export function AbaHabilidades({ personagem, setPersonagem }) {
   }, []);
 
   const opcoesFiltroTipo = [
-    { valor: 'Poder Geral', label: 'Poderes Gerais' },
-    { valor: 'Poder Paranormal', label: 'Poderes Paranormais' },
+    { valor: 'Poderes Gerais', label: 'Poderes Gerais' },
+    { valor: 'Poderes Paranormais', label: 'Poderes Paranormais' },
+    { valor: 'Habilidades de Classe', label: 'Habilidades de Classe' },
+    { valor: 'Poderes de Classe', label: 'Poderes de Classe' },
+    { valor: 'Poderes de Trilha', label: 'Poderes de Trilha' },
+    { valor: 'Poderes de Origem', label: 'Poderes de Origem' },
+  ];
+
+  const opcoesFiltroClasse = [
     { valor: 'Combatente', label: 'Combatente' },
     { valor: 'Especialista', label: 'Especialista' },
     { valor: 'Ocultista', label: 'Ocultista' },
     { valor: 'Sobrevivente', label: 'Sobrevivente' },
-    { valor: 'Trilhas', label: 'Poderes de Trilhas' },
-    { valor: 'Origens', label: 'Poderes de Origem' },
   ];
+
+  const opcoesFiltroElemento = [
+    { valor: 'Sangue', label: 'Sangue' },
+    { valor: 'Morte', label: 'Morte' },
+    { valor: 'Energia', label: 'Energia' },
+    { valor: 'Conhecimento', label: 'Conhecimento' },
+    { valor: 'Medo', label: 'Medo' },
+  ];
+
+  const opcoesFiltroTrilha = useMemo(() => {
+    const nomes = [...new Set(TRILHAS.map((t) => t.nome))].sort((a, b) => a.localeCompare(b, 'pt'));
+    return nomes.map((n) => ({ valor: n, label: n }));
+  }, []);
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-        <button className="btn ghost" onClick={() => setAEscolher((v) => !v)}>Do catálogo</button>
-        <button className="btn ghost" onClick={() => adicionar({ ...novaHabilidade(), tipo: 'habilidade', origem: 'Habilidade' })}>+ Nova Habilidade</button>
-        <button className="btn" onClick={() => adicionar({ ...novaHabilidade(), tipo: 'poder', origem: 'Poder' })}>+ Novo Poder</button>
+        <button className="btn ghost" onClick={() => setAEscolher((v) => !v)}>
+          {aEscolher ? 'Fechar catálogo' : 'Do catálogo'}
+        </button>
+        <button className="btn ghost" onClick={adicionarNovaHabilidade}>+ Nova Habilidade</button>
+        <button className="btn" onClick={adicionarNovoPoder}>+ Novo Poder</button>
       </div>
 
       {aEscolher && (
         <Seletor
-          titulo={`Habilidades e Poderes (${catalogo.length})`}
+          titulo="Catálogo de Habilidades e Poderes"
           itens={catalogo}
           filtros={[
             {
+              id: 'meuAgente',
+              tipo: 'toggle',
+              label: 'Meu Agente',
+              filtrar: (i, ativo) => {
+                if (!ativo) return true;
+                if (i.grupoTipo === 'Poderes Gerais' || i.grupoTipo === 'Poderes Paranormais') return true;
+                if (personagem.classeId && (i.classeId === personagem.classeId || (i.classe && i.classe.toLowerCase() === classe?.nome?.toLowerCase()))) return true;
+                if (personagem.trilhaId && (i.trilhaId === personagem.trilhaId || (i.trilha && i.trilha.toLowerCase() === trilha?.nome?.toLowerCase()))) return true;
+                if (personagem.origemId && (i.origemId === personagem.origemId || (i.origem && i.origem.toLowerCase() === origem?.nome?.toLowerCase()))) return true;
+                return false;
+              },
+            },
+            {
+              id: 'mostrarTrilhas',
+              tipo: 'toggle',
+              label: 'Mostrar Trilhas',
+              padrao: false,
+              filtrar: (i, ativo, estado) => {
+                if (i.grupoTipo !== 'Poderes de Trilha') return true;
+                if (ativo) return true;
+                if (estado?.grupoTipo === 'Poderes de Trilha') return true;
+                if (estado?.trilha) return true;
+                return false;
+              },
+            },
+            {
               id: 'grupoTipo',
-              label: 'Todos os tipos',
+              label: 'Todas as categorias',
               valorDe: (i) => i.grupoTipo,
               opcoes: opcoesFiltroTipo,
+            },
+            {
+              id: 'classe',
+              label: 'Todas as classes',
+              valorDe: (i) => i.classe,
+              opcoes: opcoesFiltroClasse,
+            },
+            {
+              id: 'elemento',
+              label: 'Todos os elementos',
+              valorDe: (i) => i.elemento,
+              opcoes: opcoesFiltroElemento,
+            },
+            {
+              id: 'trilha',
+              label: 'Todas as trilhas',
+              valorDe: (i) => i.trilha,
+              opcoes: opcoesFiltroTrilha,
             },
           ]}
           aoProcurar={(i, t) =>
@@ -697,7 +817,9 @@ export function AbaHabilidades({ personagem, setPersonagem }) {
             (i.descricao || '').toLowerCase().includes(t) ||
             (i.classe || '').toLowerCase().includes(t) ||
             (i.trilha || '').toLowerCase().includes(t) ||
-            (i.origem || '').toLowerCase().includes(t)
+            (i.origem || '').toLowerCase().includes(t) ||
+            (i.elemento || '').toLowerCase().includes(t) ||
+            (i.prerequisito || '').toLowerCase().includes(t)
           }
           render={(p) => (
             <>
@@ -718,66 +840,226 @@ export function AbaHabilidades({ personagem, setPersonagem }) {
 
       {/* SEÇÃO 1: HABILIDADES */}
       <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--display)', color: 'var(--txt)', borderBottom: '1px solid var(--borda)', paddingBottom: 6, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span>Habilidades</span>
-          <span className="pill" style={{ fontSize: 11 }}>{automaticasHabilidades.length + listaHabilidades.length}</span>
+        <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--display)', color: 'var(--txt)', borderBottom: '1px solid var(--borda)', paddingBottom: 6, marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>Habilidades</span>
+            <span className="pill" style={{ fontSize: 11 }}>{automaticasHabilidades.length + listaHabilidades.length}</span>
+          </div>
+          {(automaticasHabilidades.length > 0 || listaHabilidades.length > 0) && (
+            <button
+              type="button"
+              className="btn ghost sm"
+              style={{ fontSize: 12, padding: '2px 8px' }}
+              onClick={() => setTodasExpandidasHab((v) => !v)}
+              title={todasExpandidasHab ? 'Recolher descrições de todas as habilidades' : 'Expandir descrições de todas as habilidades'}
+            >
+              {todasExpandidasHab ? '▲ Recolher todas' : '▼ Expandir todas'}
+            </button>
+          )}
         </div>
 
         {automaticasHabilidades.length === 0 && listaHabilidades.length === 0 ? (
           <div className="painel-vazio" style={{ padding: 14 }}>Sem habilidades nesta secção</div>
         ) : (
           <div className="lista-blocos">
-            {automaticasHabilidades.map((h, i) => (
-              <div className="bloco" key={'autohab' + i}>
-                <div className="topo"><b style={{ fontSize: '18px' }}>{h.nome}</b><span className="pill">{h.fonte}{h.nex ? ` · NEX ${h.nex}%` : ''}</span></div>
-                <TextoExpandivel texto={h.descricao} />
-              </div>
-            ))}
-            {listaHabilidades.map((h) => (
-              <div className="bloco" key={'manhab' + h.indiceOriginal}>
-                <div className="topo">
-                  <input type="text" placeholder="Nome da habilidade" value={h.nome} onChange={(e) => editar(h.indiceOriginal, { nome: e.target.value })} style={{ fontSize: '18px', fontWeight: 'bold' }} />
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    <span className="pill">{h.origem || 'Habilidade'}</span>
-                    <button className="btn sm danger" onClick={() => remover(h.indiceOriginal)}>Remover</button>
+            {automaticasHabilidades.map((h, i) => {
+              const chave = 'autohab' + i;
+              const estaExp = todasExpandidasHab || expandidas.has(chave);
+              return (
+                <div className="bloco" key={chave}>
+                  <div className="topo">
+                    <b style={{ fontSize: '18px' }}>{h.nome}</b>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <span className="pill">{h.fonte}{h.nex ? ` · NEX ${h.nex}%` : ''}</span>
+                      <button
+                        type="button"
+                        className="btn ghost sm"
+                        style={{ fontSize: 11, padding: '2px 6px' }}
+                        onClick={() => alternarExpandida(chave)}
+                        title={estaExp ? 'Recolher descrição' : 'Expandir descrição'}
+                      >
+                        {estaExp ? '▲ Recolher' : '▼ Expandir'}
+                      </button>
+                    </div>
                   </div>
+                  <TextoExpandivel texto={h.descricao} expandidoForcado={estaExp} />
                 </div>
-                <div className="campo"><textarea placeholder="Descrição da habilidade" value={h.descricao} onChange={(e) => editar(h.indiceOriginal, { descricao: e.target.value })} /></div>
-              </div>
-            ))}
+              );
+            })}
+            {listaHabilidades.map((h) => {
+              const chave = 'manhab' + h.indiceOriginal;
+              const editando = emEdicao.has(h.indiceOriginal) || !h.nome;
+              const estaExp = todasExpandidasHab || expandidas.has(chave);
+              return (
+                <div className="bloco" key={chave}>
+                  <div className="topo">
+                    {editando ? (
+                      <input
+                        type="text"
+                        placeholder="Nome da habilidade"
+                        value={h.nome}
+                        onChange={(e) => editar(h.indiceOriginal, { nome: e.target.value })}
+                        style={{ fontSize: '18px', fontWeight: 'bold' }}
+                      />
+                    ) : (
+                      <b style={{ fontSize: '18px' }}>{h.nome || 'Sem nome'}</b>
+                    )}
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <span className="pill">{h.origem || 'Habilidade'}</span>
+                      <button
+                        type="button"
+                        className="btn ghost sm"
+                        style={{ fontSize: 11, padding: '2px 6px' }}
+                        onClick={() => alternarExpandida(chave)}
+                        title={estaExp ? 'Recolher descrição' : 'Expandir descrição'}
+                      >
+                        {estaExp ? '▲ Recolher' : '▼ Expandir'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn ghost sm"
+                        style={{ fontSize: 11, padding: '2px 6px' }}
+                        onClick={() => alternarEdicao(h.indiceOriginal)}
+                      >
+                        {editando ? 'Concluir' : 'Editar'}
+                      </button>
+                      <button className="btn sm danger" onClick={() => remover(h.indiceOriginal)}>
+                        Remover
+                      </button>
+                    </div>
+                  </div>
+                  {editando ? (
+                    <div className="campo" style={{ marginTop: 8 }}>
+                      <textarea
+                        placeholder="Descrição da habilidade"
+                        value={h.descricao || ''}
+                        onChange={(e) => editar(h.indiceOriginal, { descricao: e.target.value })}
+                        style={{ minHeight: estaExp ? 180 : 70, transition: 'min-height 0.2s' }}
+                      />
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: 4 }}>
+                      <TextoExpandivel texto={h.descricao || 'Sem descrição.'} expandidoForcado={estaExp} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
 
       {/* SEÇÃO 2: PODERES */}
       <div>
-        <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--display)', color: 'var(--sangue-claro)', borderBottom: '1px solid rgba(239,68,68,0.2)', paddingBottom: 6, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span>Poderes</span>
-          <span className="pill" style={{ fontSize: 11, background: 'rgba(239,68,68,0.15)', color: 'var(--sangue-claro)' }}>{automaticasPoderes.length + listaPoderes.length}</span>
+        <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--display)', color: 'var(--sangue-claro)', borderBottom: '1px solid rgba(239,68,68,0.2)', paddingBottom: 6, marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>Poderes</span>
+            <span className="pill" style={{ fontSize: 11, background: 'rgba(239,68,68,0.15)', color: 'var(--sangue-claro)' }}>{automaticasPoderes.length + listaPoderes.length}</span>
+          </div>
+          {(automaticasPoderes.length > 0 || listaPoderes.length > 0) && (
+            <button
+              type="button"
+              className="btn ghost sm"
+              style={{ fontSize: 12, padding: '2px 8px' }}
+              onClick={() => setTodasExpandidasPod((v) => !v)}
+              title={todasExpandidasPod ? 'Recolher descrições de todos os poderes' : 'Expandir descrições de todos os poderes'}
+            >
+              {todasExpandidasPod ? '▲ Recolher todos' : '▼ Expandir todos'}
+            </button>
+          )}
         </div>
 
         {automaticasPoderes.length === 0 && listaPoderes.length === 0 ? (
           <div className="painel-vazio" style={{ padding: 14 }}>Sem poderes nesta secção</div>
         ) : (
           <div className="lista-blocos">
-            {automaticasPoderes.map((p, i) => (
-              <div className="bloco" key={'autopod' + i}>
-                <div className="topo"><b style={{ fontSize: '18px' }}>{p.nome}</b><span className="pill" style={{ borderColor: 'rgba(239,68,68,0.3)', color: '#fca5a5' }}>{p.fonte}{p.nex ? ` · NEX ${p.nex}%` : ''}</span></div>
-                <TextoExpandivel texto={p.descricao} />
-              </div>
-            ))}
-            {listaPoderes.map((p) => (
-              <div className="bloco" key={'manpod' + p.indiceOriginal}>
-                <div className="topo">
-                  <input type="text" placeholder="Nome do poder" value={p.nome} onChange={(e) => editar(p.indiceOriginal, { nome: e.target.value })} style={{ fontSize: '18px', fontWeight: 'bold' }} />
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    <span className="pill" style={{ borderColor: 'rgba(239,68,68,0.3)', color: '#fca5a5' }}>{p.origem || 'Poder'}</span>
-                    <button className="btn sm danger" onClick={() => remover(p.indiceOriginal)}>Remover</button>
+            {automaticasPoderes.map((p, i) => {
+              const chave = 'autopod' + i;
+              const estaExp = todasExpandidasPod || expandidas.has(chave);
+              return (
+                <div className="bloco" key={chave}>
+                  <div className="topo">
+                    <b style={{ fontSize: '18px' }}>{p.nome}</b>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <span className="pill" style={{ borderColor: 'rgba(239,68,68,0.3)', color: '#fca5a5' }}>
+                        {p.fonte}{p.nex ? ` · NEX ${p.nex}%` : ''}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn ghost sm"
+                        style={{ fontSize: 11, padding: '2px 6px' }}
+                        onClick={() => alternarExpandida(chave)}
+                        title={estaExp ? 'Recolher descrição' : 'Expandir descrição'}
+                      >
+                        {estaExp ? '▲ Recolher' : '▼ Expandir'}
+                      </button>
+                    </div>
                   </div>
+                  <TextoExpandivel texto={p.descricao} expandidoForcado={estaExp} />
                 </div>
-                <div className="campo"><textarea placeholder="Descrição do poder" value={p.descricao} onChange={(e) => editar(p.indiceOriginal, { descricao: e.target.value })} /></div>
-              </div>
-            ))}
+              );
+            })}
+            {listaPoderes.map((p) => {
+              const chave = 'manpod' + p.indiceOriginal;
+              const editando = emEdicao.has(p.indiceOriginal) || !p.nome;
+              const estaExp = todasExpandidasPod || expandidas.has(chave);
+              return (
+                <div className="bloco" key={chave}>
+                  <div className="topo">
+                    {editando ? (
+                      <input
+                        type="text"
+                        placeholder="Nome do poder"
+                        value={p.nome}
+                        onChange={(e) => editar(p.indiceOriginal, { nome: e.target.value })}
+                        style={{ fontSize: '18px', fontWeight: 'bold' }}
+                      />
+                    ) : (
+                      <b style={{ fontSize: '18px' }}>{p.nome || 'Sem nome'}</b>
+                    )}
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <span className="pill" style={{ borderColor: 'rgba(239,68,68,0.3)', color: '#fca5a5' }}>
+                        {p.origem || 'Poder'}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn ghost sm"
+                        style={{ fontSize: 11, padding: '2px 6px' }}
+                        onClick={() => alternarExpandida(chave)}
+                        title={estaExp ? 'Recolher descrição' : 'Expandir descrição'}
+                      >
+                        {estaExp ? '▲ Recolher' : '▼ Expandir'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn ghost sm"
+                        style={{ fontSize: 11, padding: '2px 6px' }}
+                        onClick={() => alternarEdicao(p.indiceOriginal)}
+                      >
+                        {editando ? 'Concluir' : 'Editar'}
+                      </button>
+                      <button className="btn sm danger" onClick={() => remover(p.indiceOriginal)}>
+                        Remover
+                      </button>
+                    </div>
+                  </div>
+                  {editando ? (
+                    <div className="campo" style={{ marginTop: 8 }}>
+                      <textarea
+                        placeholder="Descrição do poder"
+                        value={p.descricao || ''}
+                        onChange={(e) => editar(p.indiceOriginal, { descricao: e.target.value })}
+                        style={{ minHeight: estaExp ? 180 : 70, transition: 'min-height 0.2s' }}
+                      />
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: 4 }}>
+                      <TextoExpandivel texto={p.descricao || 'Sem descrição.'} expandidoForcado={estaExp} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -836,7 +1118,7 @@ export function AbaRituais({ personagem, setPersonagem, onRolar }) {
 
       {aEscolher && (
         <Seletor
-          titulo={`Rituais (${catalogo.length})`}
+          titulo="Grimório de Rituais"
           itens={catalogo}
           filtros={[
             { id: 'elemento', label: 'Todos os elementos', valorDe: (r) => r.elemento, opcoes: ELEMENTOS.map((e) => ({ valor: e.id, label: e.nome })) },
@@ -1145,7 +1427,7 @@ export function AbaInventario({ personagem, setPersonagem }) {
 
       {aEscolherArma && (
         <Seletor
-          titulo={`Armas (${catalogoArmas.length})`}
+          titulo="Catálogo de Armas"
           itens={catalogoArmas}
           filtros={[
             {
@@ -1246,7 +1528,7 @@ export function AbaInventario({ personagem, setPersonagem }) {
 
       {aEscolher && (
         <Seletor
-          titulo={`Itens (${catalogoItens.length})`}
+          titulo="Catálogo de Itens"
           itens={catalogoItens}
           filtros={[
             {

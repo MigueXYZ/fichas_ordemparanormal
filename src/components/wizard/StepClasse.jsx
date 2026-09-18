@@ -94,6 +94,7 @@ export default function StepClasse({ personagem, setPersonagem }) {
   }
 
   function escolherClasse(c) {
+    if (personagem.classeId === c.id) return;
     const base = {
       ...personagem,
       classeId: c.id,

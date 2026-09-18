@@ -12,7 +12,7 @@ import { REGRAS_ATRIBUTOS } from '../../data/atributos.js';
 const PASSOS = ['Atributos', 'Origem', 'Classe', 'Toques Finais'];
 const TITULOS_CRT = ['Módulo de Atributos', 'Módulo de Origem', 'Módulo de Classe', 'Módulo de Toques Finais'];
 
-export default function Wizard({ personagem, setPersonagem, onFinalizar, onRolar, onSair }) {
+export default function Wizard({ personagem, setPersonagem, onFinalizar, onRolar, onSair, onCancelar, ehNovo = true }) {
   const [passo, setPasso] = useState(0);
 
   // sair a qualquer momento pela cruz da TV: null (fechado) | 'perguntar'
@@ -45,7 +45,7 @@ export default function Wizard({ personagem, setPersonagem, onFinalizar, onRolar
   function pedirSaida() {
     // ainda não existe e continua tal como personagemVazio() o deixou: não
     // há nada para perder, sai logo sem incomodar com a pergunta
-    if (!obterAgente(personagem.id) && personagemEhRascunhoVazio(personagem)) {
+    if (ehNovo && !obterAgente(personagem.id) && personagemEhRascunhoVazio(personagem)) {
       onSair();
       return;
     }
@@ -53,15 +53,25 @@ export default function Wizard({ personagem, setPersonagem, onFinalizar, onRolar
     setSair('perguntar');
   }
   function sairSemGuardar() {
-    apagarAgente(personagem.id);
     setSair(null);
-    onSair();
+    if (ehNovo) {
+      apagarAgente(personagem.id);
+      onSair();
+    } else {
+      if (onCancelar) onCancelar();
+      else onSair();
+    }
   }
   function pedirGuardarESair() {
     if (personagem.nome?.trim()) {
       guardarAgente(personagem);
       setSair(null);
-      onSair();
+      if (ehNovo) {
+        onSair();
+      } else {
+        if (onFinalizar) onFinalizar();
+        else onSair();
+      }
     } else {
       setSair('nome');
     }
@@ -73,7 +83,12 @@ export default function Wizard({ personagem, setPersonagem, onFinalizar, onRolar
     guardarAgente(atualizado);
     setPersonagem(atualizado);
     setSair(null);
-    onSair();
+    if (ehNovo) {
+      onSair();
+    } else {
+      if (onFinalizar) onFinalizar();
+      else onSair();
+    }
   }
 
   return (
@@ -198,7 +213,9 @@ export default function Wizard({ personagem, setPersonagem, onFinalizar, onRolar
             <div className="modal-corpo">
               {sair === 'perguntar' ? (
                 <p style={{ margin: 0, fontSize: '15px', lineHeight: '1.5' }}>
-                  Queres guardar o que já fizeste antes de sair, ou sair sem guardar?
+                  {ehNovo
+                    ? 'Queres guardar o que já fizeste antes de sair, ou sair sem guardar?'
+                    : 'Queres guardar as alterações antes de voltar à ficha, ou descartar o que fizeste?'}
                 </p>
               ) : (
                 <>
@@ -222,8 +239,12 @@ export default function Wizard({ personagem, setPersonagem, onFinalizar, onRolar
             <div className="modal-acoes">
               {sair === 'perguntar' ? (
                 <>
-                  <button type="button" className="btn ghost" onClick={sairSemGuardar}>Sair sem guardar</button>
-                  <button type="button" className="btn" onClick={pedirGuardarESair}>Guardar e sair</button>
+                  <button type="button" className="btn ghost" onClick={sairSemGuardar}>
+                    {ehNovo ? 'Sair sem guardar' : 'Descartar alterações'}
+                  </button>
+                  <button type="button" className="btn" onClick={pedirGuardarESair}>
+                    {ehNovo ? 'Guardar e sair' : 'Guardar alterações'}
+                  </button>
                 </>
               ) : (
                 <>
