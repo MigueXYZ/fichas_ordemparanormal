@@ -50,14 +50,19 @@ export default function App() {
   const [erro, setErro] = useState(null);
   const [aExportar, setAExportar] = useState(false);
   const [guardadoEm, setGuardadoEm] = useState(null);
+  const [wizardEhNovo, setWizardEhNovo] = useState(true);
+  const snapshotPersonagemRef = useRef(null);
   const temporizador = useRef(null);
 
   // guarda sozinho, 800 ms depois da última alteração — mas nunca cria um
   // agente novo só porque o assistente ficou aberto: se ainda não existia
   // guardado e continua tal como personagemVazio() o deixou, não há nada
-  // para guardar (ver personagemEhRascunhoVazio em engine/character.js)
+  // para guardar (ver personagemEhRascunhoVazio em engine/character.js).
+  // Também não grava automaticamente no storage enquanto o assistente estiver
+  // a rever um agente já existente, para permitir cancelar sem corromper.
   useEffect(() => {
     if (!personagem || vista === 'inicio') return undefined;
+    if (vista === 'wizard' && !wizardEhNovo) return undefined;
     if (!obterAgente(personagem.id) && personagemEhRascunhoVazio(personagem)) return undefined;
     clearTimeout(temporizador.current);
     temporizador.current = setTimeout(() => {
@@ -66,7 +71,7 @@ export default function App() {
       setGuardadoEm(Date.now());
     }, 800);
     return () => clearTimeout(temporizador.current);
-  }, [personagem, vista]);
+  }, [personagem, vista, wizardEhNovo]);
 
   // enquanto o assistente de criação está aberto, a página em si não rola —
   // só o interior da "TV" (.crt-tela, ver CrtEcra.jsx) — para ela ficar
@@ -204,8 +209,44 @@ export default function App() {
   }, []);
 
   function criar() {
+    setWizardEhNovo(true);
+    snapshotPersonagemRef.current = null;
     setPersonagem({ ...personagemVazio(), id: novoId() });
     setVista('wizard');
+  }
+
+  function criarNovoAgenteAPartirDaFicha() {
+    guardarSeNecessario();
+    criar();
+  }
+
+  function abrirCriacaoParaAgenteExistente() {
+    if (!personagem) return;
+    guardarAgente(personagem);
+    snapshotPersonagemRef.current = JSON.parse(JSON.stringify(personagem));
+    setWizardEhNovo(false);
+    setVista('wizard');
+  }
+
+  function finalizarWizard() {
+    if (personagem) {
+      guardarAgente(personagem);
+    }
+    snapshotPersonagemRef.current = null;
+    setVista('ficha');
+  }
+
+  function cancelarWizard() {
+    if (!wizardEhNovo && snapshotPersonagemRef.current) {
+      guardarAgente(snapshotPersonagemRef.current);
+      setPersonagem(snapshotPersonagemRef.current);
+      snapshotPersonagemRef.current = null;
+      setVista('ficha');
+    } else {
+      setPersonagem(null);
+      snapshotPersonagemRef.current = null;
+      setVista('inicio');
+    }
   }
 
   function abrir(agente) {
@@ -241,11 +282,10 @@ export default function App() {
     setVista(paraMestre ? 'mestre' : 'inicio');
   }
 
-  // a cruz da TV (ver Wizard.jsx) já decide sozinha se guarda ou apaga o
-  // rascunho antes de chamar isto — aqui é só mesmo sair, sem voltar a mexer
+  // a cruz da TV (ver Wizard.jsx) ou cancelamento: se era agente existente,
+  // restaura o snapshot e volta à ficha; se era novo, descarta e volta ao início
   function sairDoWizard() {
-    setPersonagem(null);
-    setVista('inicio');
+    cancelarWizard();
   }
 
   async function exportarPdf() {
@@ -290,7 +330,7 @@ export default function App() {
             </button>
           )}
           {vista === 'wizard' && personagem?.classeId && (
-            <button className="btn ghost sm" onClick={() => setVista('ficha')}>
+            <button className="btn ghost sm" onClick={finalizarWizard}>
               Ver ficha
             </button>
           )}
@@ -394,7 +434,15 @@ export default function App() {
 
       {vista === 'inicio' && <Inicio key={recargaInicio} aoCriar={criar} aoAbrir={abrir} aoAbrirMestre={abrirMestre} tema={tema} aoTrocarTema={trocarTema} />}
       {vista === 'wizard' && personagem && (
-        <Wizard personagem={personagem} setPersonagem={setPersonagem} onRolar={rolar} onFinalizar={() => setVista('ficha')} onSair={sairDoWizard} />
+        <Wizard
+          personagem={personagem}
+          setPersonagem={setPersonagem}
+          onRolar={rolar}
+          onFinalizar={finalizarWizard}
+          onSair={sairDoWizard}
+          onCancelar={cancelarWizard}
+          ehNovo={wizardEhNovo}
+        />
       )}
       {vista === 'ficha' && personagem && personagem.tipo === 'ameaca' && (
         <FichaAmeaca ameaca={personagem} setAmeaca={setPersonagem} onRolar={rolar} aoConcluir={fecharFicha} />
@@ -428,9 +476,13 @@ export default function App() {
           aoExportarPdf={exportarPdf}
           aExportar={aExportar}
           aoExportarJson={exportarJson}
+          aoCriarNovo={() => {
+            setVerDefinicoes(false);
+            criarNovoAgenteAPartirDaFicha();
+          }}
           aoAbrirCriacao={() => {
             setVerDefinicoes(false);
-            setVista('wizard');
+            abrirCriacaoParaAgenteExistente();
           }}
           aoAbrirMural={() => {
             setVerDefinicoes(false);

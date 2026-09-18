@@ -14,6 +14,7 @@ export default function ModalDefinicoes({
   aoExportarPdf,
   aExportar,
   aoExportarJson,
+  aoCriarNovo,
   aoAbrirCriacao,
   aoAbrirMural,
   aoFechar,
@@ -117,30 +118,58 @@ export default function ModalDefinicoes({
             </div>
           </div>
 
-          {/* Secção 2: Criação do Agente */}
-          {personagem && personagem.tipo !== 'ameaca' && aoAbrirCriacao && (
+          {/* Secção 2: Assistente & Criação */}
+          {personagem && personagem.tipo !== 'ameaca' && (aoCriarNovo || aoAbrirCriacao) && (
             <div className="seccao-def">
-              <label className="rotulo-def">Assistente de Personagem</label>
-              <div className="card-opcao-def" style={{ marginTop: 8 }}>
-                <div>
-                  <b style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15 }}>
-                    <IconeCriacao size={16} style={{ color: '#d8b53c' }} />
-                    Modo Criação
-                  </b>
-                  <span className="dica" style={{ display: 'block', marginTop: 2 }}>
-                    Abre o assistente guiado de classe, origem e perícias.
-                  </span>
-                </div>
-                <button
-                  className="btn ghost sm"
-                  onClick={() => {
-                    aoFechar();
-                    aoAbrirCriacao();
-                  }}
-                  style={{ minWidth: 120 }}
-                >
-                  Abrir Criação
-                </button>
+              <label className="rotulo-def">Assistente & Criação</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
+                {aoCriarNovo && (
+                  <div className="card-opcao-def">
+                    <div>
+                      <b style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15 }}>
+                        <IconeCriacao size={16} style={{ color: 'var(--sangue-claro)' }} />
+                        Novo Agente
+                      </b>
+                      <span className="dica" style={{ display: 'block', marginTop: 2 }}>
+                        Guarda este agente com segurança e inicia um novo do zero.
+                      </span>
+                    </div>
+                    <button
+                      className="btn sm"
+                      onClick={() => {
+                        aoFechar();
+                        aoCriarNovo();
+                      }}
+                      style={{ minWidth: 120 }}
+                    >
+                      + Novo Agente
+                    </button>
+                  </div>
+                )}
+
+                {aoAbrirCriacao && (
+                  <div className="card-opcao-def">
+                    <div>
+                      <b style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15 }}>
+                        <IconeCriacao size={16} style={{ color: '#d8b53c' }} />
+                        Rever no Assistente
+                      </b>
+                      <span className="dica" style={{ display: 'block', marginTop: 2 }}>
+                        Reabre o assistente guiado para este agente (com salvaguarda dos dados).
+                      </span>
+                    </div>
+                    <button
+                      className="btn ghost sm"
+                      onClick={() => {
+                        aoFechar();
+                        aoAbrirCriacao();
+                      }}
+                      style={{ minWidth: 120 }}
+                    >
+                      Rever Agente
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}

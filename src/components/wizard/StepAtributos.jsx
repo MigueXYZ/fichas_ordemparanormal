@@ -81,8 +81,9 @@ export default function StepAtributos({ personagem, atualizar }) {
   function setAtributo(id, valorBruto) {
     let novo = Math.round(Number(valorBruto));
     if (Number.isNaN(novo)) return;
-    novo = Math.max(REGRAS_ATRIBUTOS.minimo, Math.min(REGRAS_ATRIBUTOS.maximoInicial, novo));
     const atual = atributos[id];
+    const teto = Math.max(REGRAS_ATRIBUTOS.maximoInicial, atual);
+    novo = Math.max(REGRAS_ATRIBUTOS.minimo, Math.min(teto, novo));
     const delta = novo - atual;
     // não deixa digitar/rodar para além do orçamento partilhado dos 4 pontos
     if (delta > 0 && delta > restantes) novo = atual + Math.max(0, restantes);
@@ -90,7 +91,7 @@ export default function StepAtributos({ personagem, atualizar }) {
     atualizar({ atributos: { ...atributos, [id]: novo } });
   }
 
-  const podeSubir = (id) => atributos[id] < REGRAS_ATRIBUTOS.maximoInicial && restantes > 0;
+  const podeSubir = (id) => restantes > 0;
   const podeDescer = (id) => atributos[id] > REGRAS_ATRIBUTOS.minimo;
 
   return (
