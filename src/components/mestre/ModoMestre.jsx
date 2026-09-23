@@ -1,9 +1,9 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import HubEquipa from './HubEquipa.jsx';
-import Combate from './Combate.jsx';
+import CampoDeBatalha from './CampoDeBatalha.jsx';
 import Geradores from './Geradores.jsx';
 import Bestiario from './Bestiario.jsx';
-import Encontro from './Encontro.jsx';
+import Elenco from './Elenco.jsx';
 import { listarAgentes, guardarAgente, apagarAgente } from '../../engine/armazenamento.js';
 import { estadoCombateVazio, adicionarCombatente } from '../../engine/combateTracker.js';
 import { SubscritorMestre, lerCodigosMestre, guardarCodigosMestre } from '../../engine/redeMestre.js';
@@ -12,8 +12,8 @@ const ABAS = [
   { id: 'hub', nome: 'Hub de Equipa' },
   { id: 'gerar', nome: 'Gerar' },
   { id: 'bestiario', nome: 'Bestiário' },
-  { id: 'encontro', nome: 'Encontro' },
-  { id: 'combate', nome: 'Rastreador de Combate' },
+  { id: 'elenco', nome: 'Elenco' },
+  { id: 'campo', nome: 'Campo de Batalha' },
 ];
 
 function ameacasGuardadas() {
@@ -27,10 +27,10 @@ function agentesGuardados() {
 /**
  * "Modo Mestre" — Painel central do Mestre de Ordem Paranormal RPG:
  * - Hub de Equipa em Tempo Real (P2P WebRTC)
- * - Rastreador de Combate & Iniciativa Multilateral (Multi-Equipas / Múltiplos Lados)
  * - Geradores de NPCs, Ocultistas e Ameaças
- * - Bestiário
- * - Planeador de Encontros (Cálculo de VD Multi-Agente & Multi-Inimigo)
+ * - Bestiário (ameaças) e Elenco (NPCs, sempre em ficha 4)
+ * - Campo de Batalha: balanço de VD/NEX, lados/equipas ilimitados, cartões
+ *   de combate e rastreador de iniciativa — tudo numa aba só
  */
 export default function ModoMestre({ aoAbrir }) {
   const [aba, setAba] = useState('hub');
@@ -99,18 +99,7 @@ export default function ModoMestre({ aoAbrir }) {
         condicoes: agente.condicoes || [],
       })
     );
-    setAba('combate');
-  }, []);
-
-  const iniciarCombateComEncontro = useCallback((combatentes) => {
-    setEstadoCombate((est) => {
-      let novoEst = est;
-      for (const c of combatentes) {
-        novoEst = adicionarCombatente(novoEst, c);
-      }
-      return novoEst;
-    });
-    setAba('combate');
+    setAba('campo');
   }, []);
 
   // Extrair dados puros dos agentes conectados com dados válidos
@@ -126,7 +115,7 @@ export default function ModoMestre({ aoAbrir }) {
     <div className="container">
       <h2 style={{ fontFamily: 'var(--display)', fontSize: 26, marginBottom: 4 }}>Modo Mestre</h2>
       <p className="dica" style={{ marginTop: 0, marginBottom: 20 }}>
-        Hub da equipa em tempo real, rastreador de combate multilateral com iniciativas e turnos, geradores de NPCs e ocultistas, bestiário e cálculo de VD de encontros.
+        Hub da equipa em tempo real, geradores de NPCs e ocultistas, Bestiário e Elenco para guardar o que crias, e um Campo de Batalha único para montar encontros, ver o balanço de VD/NEX e correr o combate com iniciativa e turnos.
       </p>
 
       <div className="abas">
@@ -145,23 +134,24 @@ export default function ModoMestre({ aoAbrir }) {
           aoAdicionarAoCombate={adicionarAoCombate}
         />
       )}
-      {aba === 'combate' && (
-        <Combate
+      {aba === 'gerar' && <Geradores aoGuardar={guardar} aoAbrir={aoAbrir} />}
+      {aba === 'bestiario' && <Bestiario lista={listaAmeacas} aoAbrir={aoAbrir} aoApagar={apagar} aoGuardar={guardar} />}
+      {aba === 'elenco' && (
+        <Elenco
+          lista={listaAgentes.filter((a) => a.tipo === 'npc')}
+          aoAbrir={aoAbrir}
+          aoApagar={apagar}
+          aoGuardar={guardar}
+        />
+      )}
+      {aba === 'campo' && (
+        <CampoDeBatalha
           estadoCombate={estadoCombate}
           setEstadoCombate={setEstadoCombate}
           ameacas={listaAmeacas}
           agentes={listaAgentes}
           agentesConectados={dadosAgentesConectados}
-        />
-      )}
-      {aba === 'gerar' && <Geradores aoGuardar={guardar} aoAbrir={aoAbrir} />}
-      {aba === 'bestiario' && <Bestiario lista={listaAmeacas} aoAbrir={aoAbrir} aoApagar={apagar} aoGuardar={guardar} />}
-      {aba === 'encontro' && (
-        <Encontro
-          ameacas={listaAmeacas}
-          agentes={listaAgentes}
-          agentesConectados={dadosAgentesConectados}
-          aoIniciarCombate={iniciarCombateComEncontro}
+          aoGuardar={guardar}
         />
       )}
     </div>

@@ -13,7 +13,7 @@ import { CLASSES, CLASSES_POR_ID, TRILHAS_POR_ID } from '../data/classes.js';
 import { ARMAS } from '../data/itens/armas.js';
 import { ITENS_GERAIS } from '../data/itens/geral.js';
 import { RITUAIS, circuloMaximoPorNex } from '../data/rituais.js';
-import { NOMES_M, NOMES_F, APELIDOS, OCUPACOES, CIDADES, ANIMAIS, SITIOS } from '../data/nomesPt.js';
+import { NOMES_M, NOMES_F, APELIDOS, OCUPACOES, CIDADES, ANIMAIS, ANIMAIS_GRUPO, SITIOS } from '../data/nomesPt.js';
 import { personagemVazio, normalizarRecursos } from './character.js';
 import { orcamentoPericias, NEX_TRACK } from './calc.js';
 import { aplicarConcessoes } from './concessoes.js';
@@ -22,10 +22,13 @@ import {
   COMPORTAMENTOS_ESTRANHOS_AGENTES,
   APARENCIAS_AGENTES,
   DICAS_RP_AGENTES,
-  HABILIDADES_CRIATURAS,
   COMPORTAMENTOS_CRIATURAS,
   APARENCIAS_CRIATURAS,
   DICAS_RP_CRIATURAS,
+  TRACOS_DISTINTIVOS_AGENTES,
+  MANEIRISMOS_AGENTES,
+  MOTIVACOES_AGENTES,
+  INFORMACOES_UTEIS_AGENTES,
 } from '../data/roleplayTabelas.js';
 
 const ao = (lista) => (lista && lista.length ? lista[Math.floor(Math.random() * lista.length)] : null);
@@ -308,10 +311,37 @@ export function gerarNpcAgente(opcoes = {}) {
   const p = gerarFicha(opcoes);
   p.tipo = 'npc';
   p.jogador = 'NPC';
+  const ocupacaoAnterior = ao(OCUPACOES);
   p.descricao = {
     ...p.descricao,
-    personalidade: `${p.comportamento} ${ao(OCUPACOES)} antes de entrar na Ordem. ${p.dicaRp}`,
+    personalidade: `${p.comportamento} ${ocupacaoAnterior} antes de entrar na Ordem. ${p.dicaRp}`,
   };
+
+  // Breve descrição de uma linha (usada no topo da ficha de NPC — "ficha 4"
+  // e nos cartões do Elenco) e a história em parágrafo (mesma zona, por
+  // baixo) — as duas só vêm preenchidas quando o NPC nasce deste gerador;
+  // um NPC criado em branco no Elenco fica com ambas vazias para o mestre
+  // escrever à mão.
+  const classeNome = CLASSES_POR_ID[p.classeId]?.nome || '';
+  const origemNome = ORIGENS.find((o) => o.id === p.origemId)?.nome || '';
+  p.breveDescricao = [origemNome, classeNome, ocupacaoAnterior ? `ex-${ocupacaoAnterior.toLowerCase()}` : null, `NEX ${p.nex}%`]
+    .filter(Boolean)
+    .join(' · ');
+  p.historia = `${p.aparencia} ${p.descricao.personalidade}`.trim();
+
+  // Guia de interpretação — os 6 campos da "ficha 4": Descrição Física,
+  // Traço Distintivo, Personalidade e Tom de Voz, Maneirismo, Motivação
+  // Principal e Informação Útil. Aparência e dica de RP já vinham de
+  // gerarFicha(); os restantes são exclusivos do NPC.
+  p.comoInterpretar = {
+    descricaoFisica: p.aparencia,
+    tracoDistintivo: ao(TRACOS_DISTINTIVOS_AGENTES),
+    personalidadeTom: p.dicaRp,
+    maneirismo: ao(MANEIRISMOS_AGENTES),
+    motivacaoPrincipal: ao(MOTIVACOES_AGENTES),
+    informacaoUtil: ao(INFORMACOES_UTEIS_AGENTES),
+  };
+
   return p;
 }
 
@@ -319,257 +349,265 @@ export function gerarNpcAgente(opcoes = {}) {
 
 export const VD_SUGERIDOS = [10, 20, 40, 60, 80, 100, 120, 160, 200, 240, 280, 320, 360, 400];
 
-export const ARQUETIPOS_AMEACA = [
+/**
+ * Categoria da ameaça — a forma base da criatura. Cada uma tem o seu próprio
+ * ataque/perícias por defeito e um pequeno poço de habilidades genéricas da
+ * categoria (usadas quando nenhum Elemento está marcado, ou para completar
+ * a lista de habilidades a par das dos elementos escolhidos).
+ */
+export const CATEGORIAS_AMEACA = [
   {
-    id: 'humano', nome: 'Humano armado', descritores: ['Humano'],
-    ataque: { nome: 'Arma de fogo', tipo: 'Balístico', dado: 6 },
-    pericias: ['pontaria', 'percepcao', 'intimidacao'],
-    resistencias: () => [],
+    id: 'humanoide', nome: 'Humanoide',
+    atributos: { agi: 1, for: 2, int: 1, pre: 2, vig: 1 },
+    ataques: [
+      { nome: 'Golpe Errático', tipo: 'Impacto', dado: 8 },
+      { nome: 'Dilaceração', tipo: 'Corte', dado: 8 },
+      { nome: 'Estrangulamento', tipo: 'Impacto', dado: 6 },
+    ],
+    pericias: ['luta', 'intimidacao', 'percepcao'],
+    habilidades: [
+      { nome: 'Rosto Errado', descricao: 'Consegue imitar a voz e a postura de alguém específico que já tenha observado de perto — o suficiente para enganar quem não conheça bem essa pessoa (teste de Intuição, DT {DT}, para perceber a farsa).' },
+      { nome: 'Golpe Calculado', descricao: 'Contra um alvo Surpreendido ou que ainda não tenha agido no combate, o ataque desta criatura causa +{BONUS_DANO} de dano extra.' },
+      { nome: 'Fala Fragmentada', descricao: 'Uma vez por cena, pode dirigir-se a um alvo a até 9m com frases quebradas e fora de contexto: o alvo faz Vontade (DT {DT}) ou fica Abalado por 1 rodada.' },
+      { nome: 'Resiliência Antinatural', descricao: 'No início do seu turno, se não tiver sofrido dano na rodada anterior, recupera {DANO_METADE} pontos de vida.' },
+    ],
+    // Habilidade de limiar — ver comentário em gerarAmeaca() junto a
+    // poolCondicionais: garantida a partir de VD 40, entra sempre para além
+    // das 4 normais acima.
+    habilidadeCondicional: { nome: 'Máscara Cai', descricao: 'Quando fica Machucada, abandona qualquer fingimento: os seus ataques passam a causar +{BONUS_DANO} de dano extra e a voz distorce-se, revelando o que está por baixo.' },
   },
   {
-    id: 'cultista', nome: 'Cultista', descritores: ['Humano', 'Conhecimento'],
-    ataque: { nome: 'Adaga ritual', tipo: 'Perfuração', dado: 4 },
-    pericias: ['ocultismo', 'religiao', 'vontade'],
-    resistencias: () => ['Conhecimento 5'],
-  },
-  {
-    id: 'animal', nome: 'Animal', descritores: ['Animal'],
-    ataque: { nome: 'Mordida', tipo: 'Perfuração', dado: 6 },
+    id: 'animal', nome: 'Animal',
+    atributos: { agi: 3, for: 1, int: 0, pre: 0, vig: 2 },
+    ataques: [
+      { nome: 'Mordida', tipo: 'Perfuração', dado: 6 },
+      { nome: 'Investida', tipo: 'Impacto', dado: 6 },
+      { nome: 'Golpe de Garra', tipo: 'Corte', dado: 6 },
+    ],
     pericias: ['percepcao', 'atletismo', 'furtividade'],
-    resistencias: () => [],
+    habilidades: [
+      { nome: 'Instinto de Matilha', descricao: 'Se outro aliado estiver adjacente ao mesmo alvo, o ataque desta criatura causa +{BONUS_DANO} de dano extra.' },
+      { nome: 'Sentidos Apurados', descricao: 'Não pode ser Surpreendida e ganha +{BONUS_TESTE} em testes de Percepção baseados em olfato ou audição.' },
+      { nome: 'Presa e Recuo', descricao: 'Depois de atacar, pode gastar a ação de movimento para se afastar até 6m sem provocar ataques de oportunidade.' },
+    ],
+    // "Fúria Ferida" era antes uma habilidade normal (podia sair ou não);
+    // como já é, por natureza, uma habilidade de limiar (só faz sentido ao
+    // ficar Machucada), passou a ser a condicional garantida do Animal.
+    habilidadeCondicional: { nome: 'Fúria Ferida', descricao: 'Quando fica Machucada, os seus ataques passam a causar +1 dado de dano até ao fim do combate.' },
   },
   {
-    id: 'sangue', nome: 'Criatura de Sangue', descritores: ['Criatura', 'Sangue'],
-    ataque: { nome: 'Garras', tipo: 'Corte', dado: 10 },
-    pericias: ['luta', 'fortitude', 'atletismo'],
-    resistencias: () => ['Balístico, corte, impacto e perfuração 5', 'Sangue 10'],
+    id: 'criatura', nome: 'Criatura',
+    atributos: { agi: 2, for: 2, int: 0, pre: 1, vig: 2 },
+    ataques: [
+      { nome: 'Investida Selvagem', tipo: 'Impacto', dado: 8 },
+      { nome: 'Tentáculo Constritor', tipo: 'Impacto', dado: 8 },
+      { nome: 'Ferrão', tipo: 'Perfuração', dado: 8 },
+    ],
+    pericias: ['fortitude', 'percepcao', 'furtividade'],
+    habilidades: [
+      { nome: 'Forma Errante', descricao: 'Consegue espremer-se por qualquer abertura até metade do seu tamanho, sem penalidade.' },
+      { nome: 'Reflexos Predatórios', descricao: 'Uma vez por combate, pode fazer um ataque de oportunidade adicional.' },
+      { nome: 'Pele Anómala', descricao: 'Reduz em {BONUS_DANO} todo o dano físico (Balístico, corte, impacto ou perfuração) recebido, antes de aplicar resistências.' },
+      { nome: 'Fome Insaciável', descricao: 'Ao reduzir um alvo a 0 pontos de vida, ganha +{BONUS_TESTE} em todos os testes até ao fim do combate.' },
+    ],
+    habilidadeCondicional: { nome: 'Instinto de Sobrevivência', descricao: 'Quando fica Machucada, o seu deslocamento aumenta em 3m e ganha +{BONUS_TESTE} em testes de Reflexos até ao fim do combate.' },
+  },
+];
+
+/**
+ * Elementos oficiais de Ordem Paranormal (Sangue, Morte, Conhecimento,
+ * Energia, Medo — os mesmos de ELEMENTOS_CULTISTAS) aplicados a ameaças: cada
+ * um junta um descritor, resistência(s), sabor de ataque e o seu próprio
+ * poço de habilidades. O mestre escolhe 0 a 5 no gerador; escolher um
+ * elemento garante que ele entra na lista de habilidades (ver
+ * selecionarHabilidades), não só o descritor.
+ */
+export const ELEMENTOS_AMEACA = [
+  {
+    id: 'Sangue',
+    atributos: { for: 2, vig: 1 },
+    ataques: [
+      { nome: 'Garras', tipo: 'Corte', dado: 10 },
+      { nome: 'Lanças de Osso', tipo: 'Perfuração', dado: 10 },
+      { nome: 'Golpe Sangrento', tipo: 'Corte', dado: 8 },
+    ],
+    resistenciasVariantes: [
+      ['Balístico, corte, impacto e perfuração 5', 'Sangue 10'],
+      ['Sangue 15'],
+    ],
+    habilidades: [
+      { nome: 'Hemorragia Persistente', descricao: 'Um alvo atingido pelo ataque corpo a corpo desta criatura fica Sangrando.' },
+      { nome: 'Salpico Corrosivo', descricao: 'Quando esta criatura tira um crítico, o sangue expelido atinge quem estiver adjacente ao alvo: Reflexos (DT {DT}) ou sofrem {DANO_METADE} de dano de Sangue.' },
+      { nome: 'Coagulação Instantânea', descricao: 'Uma vez por combate, como reação a sofrer dano, reduz esse dano em {BONUS_DANO}.' },
+      { nome: 'Faro para Sangue', descricao: 'Sente a presença de qualquer criatura ferida ou Sangrando a até 18m, mesmo através de paredes, e sabe sempre a direção exata.' },
+    ],
+    habilidadeCondicional: { nome: 'Frenesim Sangrento', descricao: 'Quando fica Machucada, o seu ataque corpo a corpo passa a causar +{DANO_METADE} de dano extra de Sangue, mas perde qualquer resistência a dano físico que tivesse.' },
+    // Comportamento/Aparência/Dica de RP próprios — usados em vez do poço
+    // genérico de criaturas quando este elemento está marcado, para o texto
+    // de interpretação bater certo com as habilidades acima (sangue,
+    // cheiro, coagulação), em vez de sair um comportamento qualquer sem
+    // ligação nenhuma às mecânicas da ficha.
+    comportamentos: [
+      'Deixa um rasto de sangue escuro e viscoso por onde passa, que crepita levemente ao contacto com metal.',
+      'Fareja feridas abertas a metros de distância e muda de direção só de sentir o cheiro.',
+    ],
+    aparencias: [
+      'Pele rachada com sangue escuro a escorrer por baixo, coagulando e voltando a abrir a cada movimento.',
+    ],
+    dicasRp: [
+      'Persegue primeiro quem já estiver ferido — o cheiro do sangue chama-a mais do que qualquer outra coisa.',
+    ],
   },
   {
-    id: 'morte', nome: 'Criatura de Morte', descritores: ['Criatura', 'Morte'],
-    ataque: { nome: 'Toque necrótico', tipo: 'Morte', dado: 8 },
-    pericias: ['furtividade', 'vontade', 'percepcao'],
-    resistencias: () => ['Morte 10', 'Imune a doenças e venenos'],
+    id: 'Morte',
+    atributos: { vig: 1, pre: 2 },
+    ataques: [
+      { nome: 'Toque Necrótico', tipo: 'Morte', dado: 8 },
+      { nome: 'Sopro Mortífero', tipo: 'Morte', dado: 8 },
+      { nome: 'Garra Cadavérica', tipo: 'Corte', dado: 8 },
+    ],
+    resistenciasVariantes: [
+      ['Morte 10', 'Imune a doenças e venenos'],
+      ['Morte 15'],
+    ],
+    habilidades: [
+      { nome: 'Frio da Sepultura', descricao: 'A área a até 3m desta criatura fica gelada e opressiva; quem lá permaneça no início do seu turno faz Fortitude (DT {DT}) ou fica Enjoado por 1 rodada.' },
+      { nome: 'Presságio Fúnebre', descricao: 'Antes de atacar um alvo, pode gastar uma ação livre para o fitar: se o alvo falhar em Vontade (DT {DT}), o próximo ataque desta criatura contra ele causa +{BONUS_DANO} de dano.' },
+      { nome: 'Negar a Morte', descricao: 'Uma vez por combate, ao ser reduzida a 0 pontos de vida, permanece de pé com {DADO_CURA} pontos de vida em vez de cair.' },
+      { nome: 'Toque Consumptivo', descricao: 'Ao causar dano com o ataque corpo a corpo, recupera {DANO_METADE} pontos de vida.' },
+    ],
+    habilidadeCondicional: { nome: 'Abraço da Sepultura', descricao: 'Quando fica Machucada, deixa de temer o fim: os seus ataques causam +{BONUS_DANO} de dano extra, mas já não recupera pontos de vida de forma alguma.' },
+    comportamentos: [
+      'Move-se devagar e sem pressa, como se soubesse que o tempo está do seu lado.',
+      'Aproxima-se de corpos e feridos antes de qualquer outra coisa, como se se alimentasse da proximidade da morte.',
+    ],
+    aparencias: [
+      'Pele cinzenta e fria ao toque, com um cheiro fraco a terra húmida e coisas paradas.',
+    ],
+    dicasRp: [
+      'Fala pouco e nunca se apressa — para ela, o combate já está decidido.',
+    ],
   },
   {
-    id: 'conhecimento', nome: 'Criatura de Conhecimento', descritores: ['Criatura', 'Conhecimento'],
-    ataque: { nome: 'Sussurro dilacerante', tipo: 'Mental', dado: 8 },
-    pericias: ['ocultismo', 'intuicao', 'enganacao'],
-    resistencias: () => ['Conhecimento 10', 'Mental 5'],
+    id: 'Conhecimento',
+    atributos: { int: 3, pre: 1 },
+    ataques: [
+      { nome: 'Sussurro Dilacerante', tipo: 'Mental', dado: 8 },
+      { nome: 'Olhar Impossível', tipo: 'Mental', dado: 8 },
+      { nome: 'Golpe da Verdade', tipo: 'Mental', dado: 6 },
+    ],
+    resistenciasVariantes: [
+      ['Conhecimento 10', 'Mental 5'],
+      ['Conhecimento 15'],
+    ],
+    habilidades: [
+      { nome: 'Olhar que Devora', descricao: 'Uma vez por cena, pode encarar um alvo a até 9m que a veja: o alvo faz Vontade (DT {DT}) ou fica Abalado por 1 rodada, perturbado por algo que preferia ignorar.' },
+      { nome: 'Geometria Impossível', descricao: 'O espaço à sua volta parece errado aos olhos de quem a observa; ataques contra ela têm 20% de chance de falhar por pura confusão espacial.' },
+      { nome: 'Segredo Pesado', descricao: 'Contra um alvo de quem conheça um segredo (a critério do mestre), os ataques desta criatura causam +{BONUS_DANO} de dano.' },
+      { nome: 'Verdade Insuportável', descricao: 'Um alvo atingido pelo ataque corpo a corpo desta criatura faz Vontade (DT {DT}) ou fica Confuso por 1 rodada.' },
+    ],
+    habilidadeCondicional: { nome: 'Colapso da Razão', descricao: 'Quando fica Machucada, a sua presença torna-se insuportável: um alvo que a veja pela primeira vez em cada rodada faz Vontade (DT {DT}) ou fica Confuso por 1 rodada.' },
+    comportamentos: [
+      'Observa antes de agir, como se estivesse a avaliar cada segredo que os alvos escondem.',
+      'Inclina a cabeça de formas que não deviam ser possíveis, como se ouvisse algo que mais ninguém ouve.',
+    ],
+    aparencias: [
+      'Traços que parecem mudar ligeiramente sempre que alguém desvia o olhar.',
+    ],
+    dicasRp: [
+      'Sabe coisas que não devia saber — deixa escapar um detalhe pessoal de um agente a meio do combate.',
+    ],
   },
   {
-    id: 'energia', nome: 'Criatura de Energia', descritores: ['Criatura', 'Energia'],
-    ataque: { nome: 'Descarga', tipo: 'Energia', dado: 10 },
-    pericias: ['reflexos', 'iniciativa', 'acrobacia'],
-    resistencias: () => ['Energia 10'],
+    id: 'Energia',
+    atributos: { int: 1, agi: 2 },
+    ataques: [
+      { nome: 'Descarga', tipo: 'Energia', dado: 10 },
+      { nome: 'Lança de Energia', tipo: 'Energia', dado: 10 },
+      { nome: 'Explosão Cinética', tipo: 'Energia', dado: 8 },
+    ],
+    resistenciasVariantes: [
+      ['Energia 10'],
+      ['Energia 15', 'Balístico 5'],
+    ],
+    habilidades: [
+      { nome: 'Descarga em Cadeia', descricao: 'Quando acerta um ataque, uma segunda descarga salta para outra criatura a até 3m do alvo, causando {DANO_METADE} de dano de Energia.' },
+      { nome: 'Interferência', descricao: 'Aparelhos eletrónicos a até 6m falham de forma intermitente e as luzes cintilam enquanto esta criatura estiver na área.' },
+      { nome: 'Sobrecarga Cinética', descricao: 'Sempre que sofre dano, o seu próximo ataque antes do fim do combate causa +{BONUS_DANO} de dano extra.' },
+      { nome: 'Forma Instável', descricao: 'Reduz para metade todo o dano físico (Balístico, corte, impacto ou perfuração) recebido, antes de aplicar resistências.' },
+    ],
+    habilidadeCondicional: { nome: 'Sobrecarga Terminal', descricao: 'Quando fica Machucada, liberta energia descontrolada: no início de cada um dos seus turnos, quem estiver adjacente sofre {DANO_METADE} de dano de Energia.' },
+    comportamentos: [
+      'Estática crepita à sua volta e as luzes próximas piscam sempre que se aproxima.',
+      'Move-se em movimentos bruscos e descoordenados, como interferência elétrica em forma de criatura.',
+    ],
+    aparencias: [
+      'Contornos que tremeluzem como um sinal mal sintonizado, com faíscas visíveis nas extremidades.',
+    ],
+    dicasRp: [
+      'Aparelhos eletrónicos próximos falham antes de ela aparecer — é o primeiro aviso de que está perto.',
+    ],
+  },
+  {
+    id: 'Medo',
+    atributos: { pre: 3, int: 1 },
+    ataques: [
+      { nome: 'Garras do Pavor', tipo: 'Mental', dado: 8 },
+      { nome: 'Grito Dilacerante', tipo: 'Mental', dado: 8 },
+      { nome: 'Toque do Terror', tipo: 'Mental', dado: 6 },
+    ],
+    resistenciasVariantes: [
+      ['Medo 10'],
+      ['Medo 15'],
+    ],
+    habilidades: [
+      { nome: 'Presença Aterradora', descricao: 'Ao ver a criatura pela primeira vez, um alvo faz Vontade (DT {DT}) ou fica Apavorado por 1 rodada.' },
+      { nome: 'Alimenta-se do Pavor', descricao: 'Recupera {DANO_METADE} pontos de vida sempre que um alvo a até 9m falha um teste de Vontade.' },
+      { nome: 'Grito Paralisante', descricao: 'Uma vez por combate, pode soltar um grito: criaturas a até 6m fazem Fortitude (DT {DT}) ou ficam Paralisadas por 1 rodada.' },
+      { nome: 'Marca do Medo', descricao: 'Um alvo que fique Apavorado por esta criatura sofre +{BONUS_DANO} de dano extra da próxima vez que ela o atingir nesse combate.' },
+    ],
+    habilidadeCondicional: { nome: 'Últimos Instantes de Pavor', descricao: 'Quando fica Machucada, todos os alvos a até 9m que já estejam Abalados ou Apavorados por ela sofrem +{BONUS_DANO} de dano extra do próximo ataque desta criatura.' },
+    comportamentos: [
+      'Aproxima-se devagar da escuridão, deixando que o medo dos alvos faça a maior parte do trabalho.',
+      'Reage ao pânico de quem a vê — fica mais ousada quanto mais os agentes hesitam.',
+    ],
+    aparencias: [
+      'Uma forma que parece mudar consoante o medo de quem a olha — nunca duas pessoas a descrevem da mesma maneira.',
+    ],
+    dicasRp: [
+      'Alimenta-se de reações, não de sangue — dá mais medo a quem já demonstrou ter medo.',
+    ],
   },
 ];
 
 export const TAMANHOS = ['Minúsculo', 'Pequeno', 'Médio', 'Grande', 'Enorme', 'Colossal'];
 
+/** Pequena variação aleatória à volta de um valor central (±pct) — os stat
+ * blocks reais do livro também não caem todos exatamente em cima da curva
+ * de VD, variam à volta dela. `minimo` evita que a variação empurre um
+ * valor pequeno para algo ridículo (ex.: Defesa 2). O VD em si (o que
+ * conta para o orçamento de combate) nunca é tocado por isto — só a
+ * "textura" de Defesa/PV/DT à volta dele. */
+function variar(valor, pct, minimo = 1) {
+  const delta = valor * pct * (Math.random() * 2 - 1);
+  return Math.max(minimo, Math.round(valor + delta));
+}
+
 /** Modelo tirado das fichas do livro (ver comentário no topo). */
 function escalaAmeaca(vd) {
   const v = Math.max(5, Number(vd) || 10);
-  const defesa = Math.round(13 + v * 0.115);
-  const pv = Math.round((v * (1.6 + v / 320)) / 5) * 5;
+  const defesa = variar(13 + v * 0.115, 0.08, 8);
+  const pv = Math.max(5, Math.round(variar(v * (1.6 + v / 320), 0.12, 5) / 5) * 5);
   const bonusTeste = Math.round(5 + v * 0.1);
   const dadosTeste = v >= 380 ? 6 : v >= 260 ? 5 : v >= 160 ? 4 : v >= 100 ? 3 : v >= 40 ? 2 : 1;
   const dadosDano = Math.min(6, Math.max(1, Math.round(1 + v / 70)));
   const bonusDano = Math.round(v / 10);
-  const dt = Math.round(10 + v * 0.05);
+  const dt = variar(10 + v * 0.05, 0.08, 8);
   return { defesa, pv, bonusTeste, dadosTeste, dadosDano, bonusDano, dt };
 }
 
-/** Remove acentos e baixa para minúsculas, para comparar palavras-chave em PT-BR. */
-function normalizarTexto(txt) {
-  return String(txt || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9\s]/g, ' ');
-}
-
-/**
- * Temas usados para transformar um conceito livre (texto escrito pelo
- * utilizador, ex.: "aranha gigante que se alimenta de medo") em descritores,
- * ataque, resistências e habilidades temáticas para gerarAmeaca(). Cada tema
- * tem palavras-chave em português (sem acento) que pontuam a favor dele
- * quando aparecem no conceito. Os valores numéricos das habilidades (dano,
- * DT, bónus) são sempre preenchidos a partir de escalaAmeaca(vd) — o texto
- * livre nunca decide a matemática, só o sabor.
- */
-const TEMAS_CONCEITO = [
-  {
-    id: 'sangue', descritores: ['Criatura', 'Sangue'], pericias: ['luta', 'fortitude', 'atletismo'],
-    palavras: ['sangue', 'carne', 'dilacera', 'viscera', 'entranha', 'mutila', 'canibal', 'devora', 'garra', 'presa', 'visceral', 'carnificina'],
-    ataque: { nome: 'Garras Ensanguentadas', tipo: 'Corte', dado: 10 },
-    resistencias: ['Sangue 10'],
-    habilidades: [
-      { nome: 'Fome de Sangue', descricao: 'Ao causar dano com o ataque corpo a corpo, recupera {DANO_METADE} pontos de vida.' },
-      { nome: 'Frenesi Sanguinário', descricao: 'Quando fica Machucada, ganha +{BONUS_TESTE} em testes de dano até ao fim do combate.' },
-      { nome: 'Rastro de Sangue', descricao: 'Alvos feridos por esta criatura sofrem −2 em testes de Furtividade enquanto sangrarem.' },
-      { nome: 'Regeneração Visceral', descricao: 'Recupera {DADO_CURA} pontos de vida no início de cada turno, a menos que tenha sofrido dano de Fogo ou Energia na rodada anterior.' },
-    ],
-  },
-  {
-    id: 'morte', descritores: ['Criatura', 'Morte'], pericias: ['furtividade', 'vontade', 'percepcao'],
-    palavras: ['morte', 'morto', 'cadaver', 'necro', 'tumulo', 'decomp', 'putrefa', 'zumbi', 'cemiterio', 'sepultura', 'apodrecid', 'podre'],
-    ataque: { nome: 'Toque Necrótico', tipo: 'Morte', dado: 8 },
-    resistencias: ['Morte 10', 'Imune a doenças e venenos'],
-    habilidades: [
-      { nome: 'Hálito da Tumba', descricao: 'Criaturas a até 3 metros fazem um teste de Fortitude (DT {DT}) ou ficam Enjoadas por 1 rodada.' },
-      { nome: 'Não-Morta', descricao: 'Não precisa de respirar, comer ou dormir. Imune a efeitos que dependam de processos biológicos vivos.' },
-      { nome: 'Decomposição Acelerada', descricao: 'Objetos orgânicos tocados por esta criatura apodrecem; comida e bebida estragam-se instantaneamente.' },
-      { nome: 'Última Vontade', descricao: 'Ao morrer, explode em matéria pútrida: criaturas a até 3 metros fazem Reflexos (DT {DT}) ou sofrem {DANO} de dano de Morte.' },
-    ],
-  },
-  {
-    id: 'agua', descritores: ['Criatura', 'Água'], pericias: ['atletismo', 'furtividade', 'fortitude'],
-    palavras: ['agua', 'afoga', 'lodo', 'pantano', 'umid', 'mofo', 'chuva', 'rio', 'lago', 'oceano', 'mar', 'submers', 'molhad'],
-    ataque: { nome: 'Aperto Afogante', tipo: 'Impacto', dado: 8 },
-    resistencias: ['Impacto 5'],
-    habilidades: [
-      { nome: 'Anfíbia', descricao: 'Move-se na água à mesma velocidade que em terra e pode respirar debaixo de água indefinidamente.' },
-      { nome: 'Afogar', descricao: 'Se acertar dois ataques corpo a corpo seguidos no mesmo alvo, pode tentar afogá-lo: o alvo faz Fortitude (DT {DT}) ou começa a sufocar.' },
-      { nome: 'Corrente Traiçoeira', descricao: 'Criaturas na água a até 9 metros fazem Força (DT {DT}) ou são puxadas 3 metros em direção a ela.' },
-      { nome: 'Dissolver-se', descricao: 'Quando sofreria dano que a reduziria a 0 PV, pode em vez disso dissolver-se em água e reaparecer a até 9 metros, com {DADO_CURA} pontos de vida.' },
-    ],
-  },
-  {
-    id: 'fogo', descritores: ['Criatura', 'Energia'], pericias: ['reflexos', 'iniciativa', 'atletismo'],
-    palavras: ['fogo', 'chama', 'queima', 'brasa', 'cinza', 'incendio', 'ardente', 'calor', 'fumaca', 'fumo'],
-    ataque: { nome: 'Investida Flamejante', tipo: 'Energia', dado: 8 },
-    resistencias: ['Energia 10', 'Imune a Fogo'],
-    habilidades: [
-      { nome: 'Aura Ardente', descricao: 'Criaturas que a atacam corpo a corpo sofrem {DANO_METADE} de dano de Energia (fogo).' },
-      { nome: 'Rastro de Cinzas', descricao: 'Deixa um rasto de fogo ao mover-se: quem passar pelo espaço percorrido sofre {DANO_METADE} de dano de Energia.' },
-      { nome: 'Combustão', descricao: 'Uma vez por combate, pode explodir em chamas: todas as criaturas a até 6 metros fazem Reflexos (DT {DT}) ou sofrem {DANO} de dano de Energia.' },
-      { nome: 'Imune ao Calor', descricao: 'Não sofre dano de Fogo nem de ambientes extremamente quentes.' },
-    ],
-  },
-  {
-    id: 'gelo', descritores: ['Criatura', 'Energia'], pericias: ['fortitude', 'reflexos', 'percepcao'],
-    palavras: ['gelo', 'frio', 'congela', 'neve', 'inverno', 'glacial', 'gelido'],
-    ataque: { nome: 'Garras Geladas', tipo: 'Energia', dado: 6 },
-    resistencias: ['Energia 10', 'Imune a Frio'],
-    habilidades: [
-      { nome: 'Toque Gélido', descricao: 'Alvos atingidos pelo ataque fazem Fortitude (DT {DT}) ou têm o deslocamento reduzido a metade por 1 rodada.' },
-      { nome: 'Congelar no Lugar', descricao: 'Uma vez por combate, pode tentar imobilizar um alvo a até 9 metros: Fortitude (DT {DT}) ou fica Paralisado por 1 rodada.' },
-      { nome: 'Ar Gélido', descricao: 'A temperatura em volta desta criatura cai drasticamente; criaturas desprotegidas do frio sofrem −2 em todos os testes.' },
-    ],
-  },
-  {
-    id: 'sombra', descritores: ['Criatura', 'Conhecimento'], pericias: ['furtividade', 'intuicao', 'percepcao'],
-    palavras: ['sombra', 'escurid', 'trevas', 'breu', 'noite', 'negrume', 'penumbra'],
-    ataque: { nome: 'Garras Sombrias', tipo: 'Mental', dado: 8 },
-    resistencias: ['Conhecimento 5', 'Mental 5'],
-    habilidades: [
-      { nome: 'Um com as Trevas', descricao: 'Em áreas escuras ou sem iluminação, esta criatura fica praticamente invisível — quem tentar percebê-la sofre −5 em Percepção.' },
-      { nome: 'Deslizar nas Sombras', descricao: 'Pode mover-se entre quaisquer duas sombras a até 9 metros uma da outra como ação de movimento, sem provocar ataques de oportunidade.' },
-      { nome: 'Terror na Escuridão', descricao: 'Criaturas que a vejam pela primeira vez em ambiente escuro fazem Vontade (DT {DT}) ou ficam Apavoradas por 1 rodada.' },
-    ],
-  },
-  {
-    id: 'inseto', descritores: ['Animal'], pericias: ['percepcao', 'furtividade', 'atletismo'],
-    palavras: ['inseto', 'aranha', 'enxame', 'larva', 'verme', 'formiga', 'barata', 'gafanhoto', 'lacraia', 'centopeia', 'abelha', 'vespa'],
-    ataque: { nome: 'Ferroada Venenosa', tipo: 'Perfuração', dado: 6 },
-    resistencias: [],
-    habilidades: [
-      { nome: 'Enxame', descricao: 'Ataques de área contra ela causam apenas metade do dano; ataques corpo a corpo únicos têm 50% de chance de acertar só uma parte do enxame, sem efeito.' },
-      { nome: 'Veneno Paralisante', descricao: 'Alvos atingidos pelo ataque fazem Fortitude (DT {DT}) ou ficam Vulneráveis por 1 rodada.' },
-      { nome: 'Multiplicação', descricao: 'No início de cada turno seu, se estiver Machucada, pode gerar mais um enxame idêntico com {DADO_CURA} pontos de vida.' },
-      { nome: 'Sentidos Compostos', descricao: 'Não pode ser Surpreendida e ignora penalidades de Percepção causadas por escuridão.' },
-    ],
-  },
-  {
-    id: 'mente', descritores: ['Criatura', 'Conhecimento'], pericias: ['intuicao', 'enganacao', 'vontade'],
-    palavras: ['mente', 'loucura', 'sussurro', 'pesadelo', 'insania', 'delirio', 'alucina', 'psique', 'sonho'],
-    ataque: { nome: 'Sussurro Dilacerante', tipo: 'Mental', dado: 8 },
-    resistencias: ['Conhecimento 10', 'Mental 10'],
-    habilidades: [
-      { nome: 'Voz na Cabeça', descricao: 'Uma vez por turno, pode sussurrar algo perturbador na mente de um alvo a até 18 metros: Vontade (DT {DT}) ou o alvo fica Abalado por 1 rodada.' },
-      { nome: 'Alimenta-se do Medo', descricao: 'Recupera {DANO_METADE} pontos de vida sempre que um Agente a até 9 metros falha um teste de Vontade.' },
-      { nome: 'Ilusão Perfeita', descricao: 'Pode criar uma ilusão sensorial que só se desfaz com um teste de Vontade (DT {DT}) bem-sucedido.' },
-      { nome: 'Presença Insana', descricao: 'Agentes que terminem o turno adjacentes a esta criatura fazem Vontade (DT {DT}) ou ganham 1 ponto de Sanidade Insana.' },
-    ],
-  },
-  {
-    id: 'infancia', descritores: ['Criatura'], pericias: ['enganacao', 'intuicao', 'furtividade'],
-    palavras: ['crianca', 'infantil', 'boneca', 'brinquedo', 'berco', 'bebe', 'menina', 'menino'],
-    ataque: { nome: 'Golpe Inesperado', tipo: 'Impacto', dado: 6 },
-    resistencias: [],
-    habilidades: [
-      { nome: 'Aparência Inofensiva', descricao: 'Agentes que a vejam pela primeira vez precisam ser bem-sucedidos num teste de Intuição (DT {DT}) para reconhecê-la como ameaça antes de agir.' },
-      { nome: 'Cântico Perturbador', descricao: 'Ao cantarolar, criaturas a até 9 metros fazem Vontade (DT {DT}) ou ficam Abaladas por 1 rodada.' },
-      { nome: 'Brincadeira Cruel', descricao: 'Contra um alvo Surpreendido ou Desprevenido, o ataque desta criatura causa dano dobrado.' },
-    ],
-  },
-  {
-    id: 'ritual', descritores: ['Humano', 'Conhecimento'], pericias: ['ocultismo', 'religiao', 'vontade'],
-    palavras: ['ritual', 'religiao', 'seita', 'altar', 'sacrificio', 'profeta', 'culto', 'oraculo'],
-    ataque: { nome: 'Adaga Ritual', tipo: 'Perfuração', dado: 6 },
-    resistencias: ['Conhecimento 5'],
-    habilidades: [
-      { nome: 'Bênção Profana', descricao: 'Uma vez por combate, pode conceder a si mesma ou a um aliado próximo +{BONUS_TESTE} num teste, invocando o nome de sua entidade.' },
-      { nome: 'Marca do Sacrifício', descricao: 'Se um Agente morrer a até 9 metros desta criatura, ela recupera {DANO} pontos de vida.' },
-      { nome: 'Fanatismo', descricao: 'Imune a efeitos que causem Medo ou Apavoramento, e a testes de Vontade contra Conhecimento.' },
-    ],
-  },
-  {
-    id: 'maquina', descritores: ['Criatura', 'Energia'], pericias: ['fortitude', 'percepcao', 'luta'],
-    palavras: ['maquina', 'metal', 'engrenagem', 'ferrugem', 'robo', 'automato', 'mecanico', 'peca', 'parafuso'],
-    ataque: { nome: 'Lâmina Mecânica', tipo: 'Corte', dado: 8 },
-    resistencias: ['Balístico, corte, impacto e perfuração 5'],
-    habilidades: [
-      { nome: 'Construto', descricao: 'Imune a venenos, doenças, sono, medo e efeitos mentais. Não precisa de respirar.' },
-      { nome: 'Blindagem', descricao: 'Reduz em {BONUS_DANO} todo o dano físico recebido, antes de aplicar resistências.' },
-      { nome: 'Sobrecarga', descricao: 'Uma vez por combate, pode gastar o turno para disparar um raio de energia contra um alvo a até 18 metros: Reflexos (DT {DT}) ou {DANO} de dano de Energia.' },
-    ],
-  },
-  {
-    id: 'planta', descritores: ['Animal'], pericias: ['furtividade', 'fortitude', 'percepcao'],
-    palavras: ['planta', 'raiz', 'floresta', 'espinho', 'flor', 'fungo', 'vinha', 'musgo', 'esporo'],
-    ataque: { nome: 'Vinhas Constritoras', tipo: 'Impacto', dado: 8 },
-    resistencias: [],
-    habilidades: [
-      { nome: 'Enraizada', descricao: 'Ao ficar imóvel por 1 rodada inteira, ganha +{BONUS_TESTE} na Defesa até se mover novamente.' },
-      { nome: 'Esporos Tóxicos', descricao: 'Uma vez por combate, liberta uma nuvem de esporos num raio de 6 metros: Fortitude (DT {DT}) ou Enjoado por 1 rodada.' },
-      { nome: 'Camuflagem Natural', descricao: 'Em ambientes com vegetação, ganha +5 em Furtividade e não pode ser Surpreendida.' },
-    ],
-  },
-  {
-    id: 'espirito', descritores: ['Criatura', 'Morte'], pericias: ['furtividade', 'intuicao', 'vontade'],
-    palavras: ['fantasma', 'espirito', 'alma', 'assombra', 'eterea', 'etereo', 'poltergeist', 'aparicao'],
-    ataque: { nome: 'Toque Espectral', tipo: 'Mental', dado: 8 },
-    resistencias: ['Morte 10', 'Balístico, corte, impacto e perfuração 10'],
-    habilidades: [
-      { nome: 'Incorpórea', descricao: 'Pode atravessar objetos e criaturas sólidas, e só pode ser afetada por ataques ou efeitos paranormais.' },
-      { nome: 'Assombração', descricao: 'Está presa a um local ou objeto: não pode afastar-se dele mais do que 90 metros.' },
-      { nome: 'Manifestação Aterradora', descricao: 'Uma vez por combate, pode manifestar-se visivelmente: criaturas a até 9 metros fazem Vontade (DT {DT}) ou ficam Apavoradas por 1 rodada.' },
-    ],
-  },
-];
-
-/** Pontua os temas contra o texto do conceito e devolve os 1-2 mais fortes. */
-function analisarConceito(texto) {
-  // Ignora palavras curtas (artigos, preposições, etc.) para não gerar falsos positivos
-  // — ex.: "na" não pode contar como se tivesse acertado a palavra-chave "insania".
-  const tokens = normalizarTexto(texto).split(/\s+/).filter((t) => t.length >= 3);
-  if (!tokens.length) return [];
-  const pontuadas = TEMAS_CONCEITO
-    .map((tema) => ({
-      tema,
-      // O token precisa CONTER a palavra-chave (ex.: "apodrecida" contém "apodrecid"),
-      // nunca o inverso — assim um token curto não "acerta" por ser substring de uma
-      // palavra-chave longa e não relacionada.
-      pontos: tema.palavras.reduce((soma, palavra) => soma + (tokens.some((t) => t.includes(palavra)) ? 1 : 0), 0),
-    }))
-    .filter((x) => x.pontos > 0)
-    .sort((a, b) => b.pontos - a.pontos);
-  return pontuadas.slice(0, 2).map((x) => x.tema);
-}
-
-/** Preenche os marcadores {DANO}, {DT}, etc. de uma habilidade temática com os valores já escalados pelo VD. */
-function formatarHabilidadeConceito(hab, e) {
+/** Preenche os marcadores {DANO}, {DT}, etc. de uma habilidade com os valores já escalados pelo VD. */
+function formatarHabilidade(hab, e) {
   const danoTexto = `${e.dadosDano}d6+${e.bonusDano}`;
   const danoMetade = Math.max(1, Math.round((e.dadosDano * 3.5 + e.bonusDano) / 2));
   return {
@@ -584,33 +622,124 @@ function formatarHabilidadeConceito(hab, e) {
   };
 }
 
-export function gerarAmeaca({ vd = 20, arquetipo = null, tamanho = null, conceito = '' } = {}) {
-  const conceitoLimpo = String(conceito || '').trim();
-  const temasConceito = conceitoLimpo ? analisarConceito(conceitoLimpo) : [];
-  const usaConceito = temasConceito.length > 0;
-
-  const arq = usaConceito ? null : (ARQUETIPOS_AMEACA.find((a) => a.id === arquetipo) || ao(ARQUETIPOS_AMEACA));
-  const e = escalaAmeaca(vd);
-
-  const descritores = usaConceito
-    ? [...new Set(temasConceito.flatMap((t) => t.descritores))].slice(0, 4)
-    : arq.descritores;
-  const ataqueFlavor = usaConceito ? temasConceito[0].ataque : arq.ataque;
-  const resistenciasFlavor = usaConceito ? [...new Set(temasConceito.flatMap((t) => t.resistencias))] : arq.resistencias();
-  const periciasIds = usaConceito ? [...new Set(temasConceito.flatMap((t) => t.pericias))].slice(0, 4) : arq.pericias;
-  const humano = descritores.includes('Humano');
-
-  const { nome } = nomePortugues();
-  let nomeAmeaca;
-  if (conceitoLimpo) {
-    nomeAmeaca = conceitoLimpo.charAt(0).toUpperCase() + conceitoLimpo.slice(1);
-  } else if (humano) {
-    nomeAmeaca = `${nome} — ${arq.nome}`;
-  } else if (arq.id === 'animal') {
-    nomeAmeaca = `${ao(ANIMAIS)} ${ao(SITIOS)}`;
-  } else {
-    nomeAmeaca = `${arq.nome} ${ao(SITIOS)}`;
+/**
+ * Escolhe `qtd` habilidades alternando entre os poços dados (round-robin),
+ * sem repetir nomes. Os poços vêm ordenados por prioridade — os elementos
+ * escolhidos pelo mestre entram primeiro, a categoria por último — para que
+ * cada elemento marcado garanta pelo menos uma habilidade sua sempre que
+ * `qtd` chegue para isso, em vez de deixar tudo ao acaso.
+ */
+function selecionarHabilidades(qtd, pools) {
+  const filas = pools.filter((p) => p?.length).map((p) => [...p].sort(() => Math.random() - 0.5));
+  if (!filas.length) return [];
+  const usados = new Set();
+  const escolhidas = [];
+  let i = 0;
+  while (escolhidas.length < qtd && filas.some((f) => f.length)) {
+    const fila = filas[i % filas.length];
+    i += 1;
+    if (!fila.length) continue;
+    const cand = fila.shift();
+    if (!usados.has(cand.nome)) {
+      usados.add(cand.nome);
+      escolhidas.push(cand);
+    }
   }
+  return escolhidas;
+}
+
+/** Soma pesos de atributos (categoria + elementos escolhidos) num só objeto. */
+function somarPesosAtributos(...listas) {
+  const total = { agi: 0, for: 0, int: 0, pre: 0, vig: 0 };
+  for (const pesos of listas) {
+    if (!pesos) continue;
+    for (const k of Object.keys(total)) total[k] += pesos[k] || 0;
+  }
+  return total;
+}
+
+/**
+ * Atributos (AGI/FOR/INT/PRE/VIG) — campo oficial da ficha de ameaça (Livro
+ * Base, cap. 7) que faltava no gerador. Não há tabela oficial de "atributo
+ * por VD" (só há para Defesa/PV/testes, já usada em escalaAmeaca); esta é
+ * uma escala própria, do mesmo estilo aproximado do resto do gerador —
+ * `pesos` diz que atributos a categoria/elemento favorecem, `nivel` escala
+ * com o VD (o mesmo 1-6 de dadosTeste) e um jitter dá variedade entre
+ * gerações em vez de sair sempre o mesmo número para o mesmo VD.
+ */
+function gerarAtributosAmeaca(pesos, nivel) {
+  const fator = 0.5 + nivel * 0.4;
+  const attrs = {};
+  for (const k of ['agi', 'for', 'int', 'pre', 'vig']) {
+    const peso = pesos[k] || 0;
+    const jitter = entre(-1, 1);
+    attrs[k] = Math.max(-1, Math.min(9, Math.round(peso * fator) + jitter));
+  }
+  return attrs;
+}
+
+export function gerarAmeaca({ vd = 20, categoria = null, elementos = [], tamanho = null, conceito = '', grupo = false, quantidadeGrupo = 2 } = {}) {
+  const conceitoLimpo = String(conceito || '').trim();
+  const cat = CATEGORIAS_AMEACA.find((c) => c.id === categoria) || ao(CATEGORIAS_AMEACA);
+  const elementosEscolhidos = ELEMENTOS_AMEACA.filter((el) => (elementos || []).includes(el.id));
+
+  // Grupo de criaturas idênticas: o VD escolhido é o VD do grupo todo (o que
+  // conta para o orçamento de combate), por isso divide-se pelo número de
+  // criaturas para chegar ao VD — e à Defesa/PV/dano — de CADA uma.
+  const ehGrupo = Boolean(grupo);
+  const qtdGrupo = ehGrupo ? Math.max(2, Math.min(50, Math.round(Number(quantidadeGrupo) || 2))) : 1;
+  const vdTotalPedido = Math.max(5, Number(vd) || 10);
+  const vdCada = qtdGrupo > 1 ? Math.max(5, Math.round(vdTotalPedido / qtdGrupo)) : vdTotalPedido;
+  const e = escalaAmeaca(vdCada);
+
+  const descritores = [...new Set([cat.nome, ...elementosEscolhidos.map((el) => el.id)])];
+  // Ações e resistências saem de um poço (categoria, e todos os elementos
+  // escolhidos) escolhido ao acaso a cada geração — a mesma combinação de
+  // Categoria+Elemento(s) já não sai sempre com o mesmo ataque/resistência.
+  // Uma criatura pode ter 1 a 3 ações (mais VD = mais ações, tal como as
+  // fichas maiores do livro têm sempre vários ataques listados), sem repetir
+  // nome entre elas.
+  const qtdAcoes = vdCada >= 200 ? 3 : vdCada >= 60 ? 2 : 1;
+  const poolAcoesTotal = elementosEscolhidos.length
+    ? [...elementosEscolhidos.flatMap((el) => el.ataques), ...cat.ataques]
+    : [...cat.ataques];
+  const candidatosAcoes = [...poolAcoesTotal].sort(() => Math.random() - 0.5);
+  const nomesAcoesUsados = new Set();
+  const acoesEscolhidas = [];
+  for (const cand of candidatosAcoes) {
+    if (acoesEscolhidas.length >= qtdAcoes) break;
+    if (nomesAcoesUsados.has(cand.nome)) continue;
+    nomesAcoesUsados.add(cand.nome);
+    acoesEscolhidas.push(cand);
+  }
+  const resistenciasFlavor = [...new Set(elementosEscolhidos.flatMap((el) => ao(el.resistenciasVariantes) || []))];
+  const periciasIds = cat.pericias;
+  const atributosAmeaca = gerarAtributosAmeaca(
+    somarPesosAtributos(cat.atributos, ...elementosEscolhidos.map((el) => el.atributos)),
+    e.dadosTeste
+  );
+  // Deslocamento: base pelo VD, +3m para Animal (mais ágeis por natureza) e
+  // mais 25% de hipótese de +3m extra — para não sair sempre exatamente 9m
+  // ou 12m, sempre em múltiplos de 3m como o livro usa.
+  const deslocamentoBase = (vdCada >= 200 ? 12 : 9) + (cat.id === 'animal' ? 3 : 0);
+  const deslocamento = deslocamentoBase + (Math.random() < 0.25 ? 3 : 0);
+
+  let nomeBase;
+  if (conceitoLimpo) {
+    nomeBase = conceitoLimpo.charAt(0).toUpperCase() + conceitoLimpo.slice(1);
+  } else if (cat.id === 'animal') {
+    // Nome coletivo (ex.: "Alcateia de lobos") só quando é mesmo um grupo —
+    // uma única criatura "Animal" nunca sai com nome de bando. Os elementos
+    // escolhidos continuam a valer para estatísticas/habilidades, só não
+    // entram no nome — um "Corvo do Farol" não precisa de se chamar
+    // "Corvo de Morte do Farol" para ter as habilidades de Morte.
+    nomeBase = ehGrupo ? `${ao(ANIMAIS_GRUPO)} ${ao(SITIOS)}` : `${ao(ANIMAIS)} ${ao(SITIOS)}`;
+  } else if (elementosEscolhidos.length) {
+    nomeBase = `${cat.nome} de ${elementosEscolhidos.map((el) => el.id).join(' e ')} ${ao(SITIOS)}`;
+  } else {
+    nomeBase = `${cat.nome} ${ao(SITIOS)}`;
+  }
+  const nomeAmeaca = ehGrupo ? `${nomeBase} (grupo de ${qtdGrupo})` : nomeBase;
 
   const pericias = periciasIds.map((id) => ({
     nome: PERICIAS_POR_ID[id]?.nome || id,
@@ -618,38 +747,61 @@ export function gerarAmeaca({ vd = 20, arquetipo = null, tamanho = null, conceit
     bonus: e.bonusTeste,
   }));
 
-  // Habilidades conforme o VD — temáticas (do conceito) ou aleatórias genéricas.
-  const qtdHabilidades = Number(vd) >= 160 ? 3 : Number(vd) >= 60 ? 2 : 1;
-  let habilidades;
-  if (usaConceito) {
-    const poolTemas = [...new Map(temasConceito.flatMap((t) => t.habilidades).map((h) => [h.nome, h])).values()];
-    const baralhadas = poolTemas.sort(() => Math.random() - 0.5);
-    habilidades = baralhadas.slice(0, qtdHabilidades).map((h) => formatarHabilidadeConceito(h, e));
-  } else {
-    const habilidadesBaralhadas = [...HABILIDADES_CRIATURAS].sort(() => Math.random() - 0.5);
-    habilidades = habilidadesBaralhadas.slice(0, qtdHabilidades);
+  // Habilidades conforme o VD de cada criatura: os elementos escolhidos têm
+  // prioridade (cada um garante entrar, ver selecionarHabilidades), a
+  // categoria preenche o resto.
+  const qtdHabilidades = vdCada >= 160 ? 3 : vdCada >= 60 ? 2 : 1;
+  const poolsPrioridade = [...elementosEscolhidos.map((el) => el.habilidades), cat.habilidades];
+  let habilidades = selecionarHabilidades(qtdHabilidades, poolsPrioridade).map((h) => formatarHabilidade(h, e));
+
+  // Habilidade de limiar: ao ficar Machucada (metade da vida), a criatura
+  // ganha algo — o mesmo padrão de "Fúria Ferida" e dos precedentes oficiais
+  // de criaturas que mudam a meio do combate (Zumbi de Sangue, Melancolia,
+  // Apóstata). Garantida a partir de VD 40, além das habilidades normais
+  // acima — abaixo disso a criatura não costuma durar o suficiente em
+  // combate para a diferença se notar.
+  const poolCondicionais = [...elementosEscolhidos.map((el) => el.habilidadeCondicional), cat.habilidadeCondicional].filter(Boolean);
+  if (vdCada >= 40 && poolCondicionais.length) {
+    const extra = ao(poolCondicionais);
+    if (!habilidades.some((h) => h.nome === extra.nome)) {
+      habilidades = [...habilidades, formatarHabilidade(extra, e)];
+    }
   }
 
-  // Comportamento, Aparência e Dicas de Narração / RP
-  const comportamento = ao(COMPORTAMENTOS_CRIATURAS);
-  const aparencia = ao(APARENCIAS_CRIATURAS);
-  const dicaRp = ao(DICAS_RP_CRIATURAS);
+  // Comportamento, Aparência e Dicas de Narração / RP — quando há elemento(s)
+  // marcado(s), vêm do poço próprio de cada elemento (escrito para bater
+  // certo com as habilidades desse elemento: sangue puxa para rasto/cheiro,
+  // Energia para estática/interferência, etc.) em vez do poço genérico, para
+  // o texto de interpretação nunca prometer algo que a ficha não tem.
+  const poolComportamentos = elementosEscolhidos.length ? elementosEscolhidos.flatMap((el) => el.comportamentos) : COMPORTAMENTOS_CRIATURAS;
+  const poolAparencias = elementosEscolhidos.length ? elementosEscolhidos.flatMap((el) => el.aparencias) : APARENCIAS_CRIATURAS;
+  const poolDicasRp = elementosEscolhidos.length ? elementosEscolhidos.flatMap((el) => el.dicasRp) : DICAS_RP_CRIATURAS;
+  const comportamento = ao(poolComportamentos);
+  const aparencia = ao(poolAparencias);
+  const dicaRp = ao(poolDicasRp);
+
+  const notaGrupo = ehGrupo
+    ? `Grupo de ${qtdGrupo} criaturas idênticas: cada uma tem VD ${vdCada} (Defesa, PV e dano já refletem isso); o grupo todo soma VD ${vdTotalPedido}. Duplica este cartão ${qtdGrupo}× no Campo de Batalha.`
+    : '';
 
   return {
     tipo: 'ameaca',
     nome: nomeAmeaca,
     tags: [],
-    arquetipo: usaConceito ? temasConceito.map((t) => t.id).join('+') : arq.id,
+    arquetipo: cat.id,
+    elementos: elementosEscolhidos.map((el) => el.id),
     conceito: conceitoLimpo || null,
-    vd: Number(vd),
+    vd: vdCada,
+    grupo: ehGrupo ? { quantidade: qtdGrupo, vdTotal: vdTotalPedido, vdCada } : null,
     descritores,
-    tamanho: tamanho || (Number(vd) >= 300 ? 'Enorme' : Number(vd) >= 160 ? 'Grande' : 'Médio'),
-    ocupacao: humano ? ao(OCUPACOES) : null,
+    tamanho: tamanho || (vdCada >= 300 ? 'Enorme' : vdCada >= 160 ? 'Grande' : 'Médio'),
+    ocupacao: null,
+    atributos: atributosAmeaca,
     defesa: e.defesa,
     pv: e.pv,
     pvMachucado: Math.round(e.pv / 2),
     dt: e.dt,
-    deslocamento: Number(vd) >= 200 ? 12 : 9,
+    deslocamento,
     sentidos: { percepcao: `${e.dadosTeste}d20+${e.bonusTeste}`, iniciativa: `${e.dadosTeste}d20+${e.bonusTeste}` },
     resistencias: resistenciasFlavor,
     testes: {
@@ -662,18 +814,24 @@ export function gerarAmeaca({ vd = 20, arquetipo = null, tamanho = null, conceit
     comportamento,
     aparencia,
     dicaRp,
-    ataque: {
-      nome: ataqueFlavor.nome,
+    // Ações no esquema oficial (Livro Base, cap. 7 — "Padrão/Movimento/Livre/
+    // Reação/Completa" antes do nome, x2 para múltiplos ataques): a mesma
+    // lista que a ficha completa (FichaAmeaca.jsx) e o Campo de Batalha já
+    // sabem ler (engine/combateAtaques.js → acoesDeAmeaca).
+    acoes: acoesEscolhidas.map((at) => ({
+      tipo: 'Padrão',
+      nome: at.nome,
+      detalhe: at.tipo,
       teste: `${e.dadosTeste}d20+${e.bonusTeste}`,
-      dados: e.dadosTeste,
-      bonus: e.bonusTeste,
-      dano: `${e.dadosDano}d${ataqueFlavor.dado}+${e.bonusDano}`,
-      tipo: ataqueFlavor.tipo,
+      dano: `${e.dadosDano}d${at.dado}+${e.bonusDano}`,
       critico: 'x2',
-    },
-    notas: conceitoLimpo
-      ? `Conceito: "${conceitoLimpo}". ${comportamento} ${dicaRp}`
-      : `${comportamento} ${dicaRp}`,
+      descricao: '',
+    })),
+    // Nota livre do mestre — mostrada como descrição no topo do cartão
+    // (ficha-npc-historia, tal como a "história" do NPC) e editável na ficha
+    // completa (FichaAmeaca.jsx). Não repete comportamento/aparência/dica —
+    // esses já vivem só no painel Roleplay, para não duplicar texto.
+    notas: [conceitoLimpo ? `Conceito: "${conceitoLimpo}".` : '', notaGrupo].filter(Boolean).join(' '),
   };
 }
 
@@ -805,7 +963,9 @@ export function gerarOcultista({ vd = 40, elemento = null, patente = null } = {}
       tipo: tipoDano,
       critico: '19/x2',
     },
-    notas: `Culto: ${culto}. ${comportamento} ${dicaRp}`,
+    // Não repete comportamento/dicaRp aqui — já vivem só no painel Roleplay
+    // (mesma razão da nota em gerarAmeaca, acima).
+    notas: `Culto: ${culto}.`,
   };
 }
 

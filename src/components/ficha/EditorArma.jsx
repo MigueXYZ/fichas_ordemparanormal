@@ -5,6 +5,7 @@ import { TIPOS_DANO } from '../../data/itens.js';
 import { CATEGORIAS } from '../../data/patentes.js';
 import { MODIFICACOES_ARMA, ALCANCES, aplicarModificacoes } from '../../data/modificacoesArma.js';
 import { MALDICOES_ARMAS, ELEMENTOS_MALDICAO, aplicarMaldicoesArma } from '../../data/maldicoes.js';
+import { categoriaEfetivaArma } from '../../engine/calc.js';
 import { lerImagem } from '../../engine/armazenamento.js';
 import { obterInfoTipoDano } from '../ExibirDano.jsx';
 
@@ -20,6 +21,7 @@ export default function EditorArma({ arma, aoGuardar, aoFechar }) {
   const set = (patch) => setA({ ...a, ...patch });
   const mods = aplicarModificacoes(a);
   const maldicoes = aplicarMaldicoesArma(a, Number(a.margem) || 20);
+  const categoriaFinal = categoriaEfetivaArma(a);
   const [novoExtraExpr, setNovoExtraExpr] = useState('');
   const [novoExtraTipo, setNovoExtraTipo] = useState('');
   const [erroImagem, setErroImagem] = useState(null);
@@ -135,11 +137,14 @@ export default function EditorArma({ arma, aoGuardar, aoFechar }) {
               <input type="number" value={a.espacos} onChange={(e) => set({ espacos: e.target.value })} />
             </div>
             <div className="campo">
-              <label>Categoria</label>
+              <label>Categoria (base)</label>
               <select value={a.categoria} onChange={(e) => set({ categoria: e.target.value })}>
                 <option value="">—</option>
                 {CATEGORIAS.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
+              {categoriaFinal !== (a.categoria || '0') && (
+                <span className="dica">Sobe sozinha para <b>{categoriaFinal}</b> com as modificações/maldições de baixo — conta assim para o limite da patente.</span>
+              )}
             </div>
             <div className="campo">
               <label>Arma ágil</label>

@@ -211,6 +211,11 @@ export function adicionarCombatente(estado, combatente) {
     defesa: Number(combatente.defesa || 10),
     condicoes: Array.isArray(combatente.condicoes) ? [...combatente.condicoes] : [],
     efeitos: Array.isArray(combatente.efeitos) ? [...combatente.efeitos] : [],
+    // Referência à ficha completa de origem (agente guardado, ameaça do Bestiário,
+    // ou agente ligado via Hub de Equipa) — usada só para mostrar ataques,
+    // habilidades e poderes no cartão de detalhe. null para combatentes criados
+    // manualmente, que não têm ficha nenhuma.
+    ficha: combatente.ficha || null,
   };
 
   const lista = ordenarCombatentes([...(estado.combatentes || []), c]);

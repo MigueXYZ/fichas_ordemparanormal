@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   estadoCombateVazio,
   adicionarCombatente,
@@ -18,6 +18,8 @@ import {
   CORES_EQUIPAS,
 } from '../../engine/combateTracker.js';
 import { CONDICOES } from '../../data/condicoes.js';
+import PainelRolagem from '../PainelRolagem.jsx';
+import PainelDetalheUnidade from './PainelDetalheUnidade.jsx';
 
 export default function Combate({
   estadoCombate,
@@ -37,6 +39,17 @@ export default function Combate({
   const [modalEfeito, setModalEfeito] = useState(null); // combatenteId
   const [nomeEfeito, setNomeEfeito] = useState('');
   const [duracaoEfeito, setDuracaoEfeito] = useState('2');
+
+  const [detalheId, setDetalheId] = useState(null); // combatenteId do cartão de detalhe aberto
+  const [rolagens, setRolagens] = useState([]);
+  const onRolar = useCallback((r) => {
+    if (!r) return;
+    setRolagens((antes) => [...antes.slice(-9), r]);
+  }, []);
+  const fecharRolagem = useCallback((id) => {
+    setRolagens((antes) => antes.filter((r) => r.id !== id));
+  }, []);
+  const limparRolagens = useCallback(() => setRolagens([]), []);
 
   // Criação manual
   const [novoNome, setNovoNome] = useState('');
@@ -147,6 +160,7 @@ export default function Combate({
         pe: ag.pe || null,
         defesa: Number(ag.defesa || 12),
         condicoes: ag.condicoes || [],
+        ficha: ag,
       })
     );
   }
@@ -165,6 +179,7 @@ export default function Combate({
         san: ficha.sanAtual ? { atual: ficha.sanAtual, max: ficha.sanMax || 10, temp: 0 } : null,
         pe: ficha.peAtual ? { atual: ficha.peAtual, max: ficha.peMax || 5, temp: 0 } : null,
         defesa: Number(ficha.defesa || 10),
+        ficha,
       })
     );
   }
@@ -181,6 +196,7 @@ export default function Combate({
         agi: Number(item.testes?.reflexos ? 2 : 1),
         pv: { atual: Number(item.pv || 30), max: Number(item.pv || 30), temp: 0 },
         defesa: Number(item.defesa || 15),
+        ficha: item,
       })
     );
   }
@@ -721,6 +737,7 @@ export default function Combate({
                       onAbrirEfeito={() => setModalEfeito(c.id)}
                       onRemoverEfeito={(efId) => setEstado((est) => removerEfeitoCombatente(est, c.id, efId))}
                       onAlternarCondicao={(condId) => setEstado((est) => alternarCondicaoCombatente(est, c.id, condId))}
+                      onAbrirDetalhe={() => setDetalheId(c.id)}
                     />
                   ))
                 )}
@@ -765,6 +782,7 @@ export default function Combate({
                   onAbrirEfeito={() => setModalEfeito(c.id)}
                   onRemoverEfeito={(efId) => setEstado((est) => removerEfeitoCombatente(est, c.id, efId))}
                   onAlternarCondicao={(condId) => setEstado((est) => alternarCondicaoCombatente(est, c.id, condId))}
+                  onAbrirDetalhe={() => setDetalheId(c.id)}
                 />
               );
             })}
@@ -809,6 +827,24 @@ export default function Combate({
           </div>
         </div>
       )}
+
+      {/* Cartão de Detalhe: ataques, habilidades e poderes de um combatente, com
+          atacar / rolar dano rápidos — para não ter de abrir a ficha completa. */}
+      {detalheId && (() => {
+        const c = combatentes.find((x) => x.id === detalheId);
+        if (!c) return null;
+        return (
+          <PainelDetalheUnidade
+            unidade={c}
+            alvos={combatentes.filter((x) => x.id !== c.id)}
+            onFechar={() => setDetalheId(null)}
+            onRolar={onRolar}
+            onAplicarDano={(alvoId, quantidade) => alterarPv(alvoId, -quantidade)}
+          />
+        );
+      })()}
+
+      <PainelRolagem rolagens={rolagens} aoFechar={fecharRolagem} aoLimpar={limparRolagens} />
     </div>
   );
 }
@@ -826,6 +862,7 @@ function CombatenteCard({
   onAbrirEfeito,
   onRemoverEfeito,
   onAlternarCondicao,
+  onAbrirDetalhe,
 }) {
   const eq = equipas.find((e) => e.id === c.equipaId) || equipas[0];
   const pvAtual = Number(c.pv?.atual ?? 0);
@@ -858,7 +895,11 @@ function CombatenteCard({
               #{ordem}
             </span>
           )}
-          <span style={{ fontWeight: 'bold', fontSize: 15, color: 'var(--txt)' }}>
+          <span
+            style={{ fontWeight: 'bold', fontSize: 15, color: 'var(--txt)', cursor: 'pointer', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}
+            onClick={onAbrirDetalhe}
+            title="Ver ataques, habilidades e poderes — atacar ou rolar dano"
+          >
             {c.nome}
           </span>
           {/* VD / NEX em Destaque Singular à frente do Nome */}

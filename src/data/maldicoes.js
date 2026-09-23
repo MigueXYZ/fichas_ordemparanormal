@@ -150,6 +150,15 @@ export const MALDICOES_ACESSORIOS = [
 export function aplicarMaldicoesArma(arma, margemBase = 20) {
   const maldicoes = (arma.maldicoes || []).map((id) => MALDICOES_ARMAS_POR_ID[id]).filter(Boolean);
 
+  // Corpo a corpo ou à distância: como em todo o resto do motor de armas
+  // (engine/armas.js), decide-se pela perícia de ataque ('luta' = corpo a
+  // corpo), nunca por `arma.tipo` — esse campo é o TIPO DE DANO (Corte,
+  // Perfuração, Balístico...), escolhido livremente no editor, e nunca vale
+  // a string 'corpo-a-corpo'. Usar `arma.tipo` aqui fazia o dado extra de
+  // "Empuxo" nunca aplicar (a condição nunca era verdadeira) e o alcance
+  // extra de "Predadora" aplicar sempre, mesmo em armas corpo a corpo.
+  const corpoACorpo = arma.pericia === 'luta';
+
   let margemExtra = 0;
   let dadosDano = 0;
   let alcanceCategoria = 0;
@@ -163,10 +172,10 @@ export function aplicarMaldicoesArma(arma, margemBase = 20) {
       const amplitudeAtual = Math.max(1, 21 - margemBase);
       margemExtra += amplitudeAtual; // soma a amplitude original para duplicar
     }
-    if (m.efeitos.dadosDano && arma.tipo === 'corpo-a-corpo') {
+    if (m.efeitos.dadosDano && corpoACorpo) {
       dadosDano += m.efeitos.dadosDano;
     }
-    if (m.efeitos.alcanceCategoria && arma.tipo !== 'corpo-a-corpo') {
+    if (m.efeitos.alcanceCategoria && !corpoACorpo) {
       alcanceCategoria += m.efeitos.alcanceCategoria;
     }
     if (m.efeitos.defesa) {

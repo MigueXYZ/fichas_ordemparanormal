@@ -203,12 +203,25 @@ export function marcarCopiaFeita() {
   try { localStorage.setItem(CHAVE_COPIA, new Date().toISOString()); } catch { /* ignora */ }
 }
 
+const CHAVE_AVISO_DISPENSADO = 'ordo:aviso-copia-dispensado';
+
+/** O mestre já fechou o aviso de cópia de segurança com o × (para sempre, não é "agora não"). */
+export function avisoCopiaDispensado() {
+  try { return localStorage.getItem(CHAVE_AVISO_DISPENSADO) === '1'; } catch { return false; }
+}
+
+export function dispensarAvisoCopia() {
+  try { localStorage.setItem(CHAVE_AVISO_DISPENSADO, '1'); } catch { /* ignora */ }
+}
+
 /**
  * Deve mostrar-se o lembrete? Só com agentes guardados, e se nunca houve
  * cópia ou a última já leva mais de 14 dias. Sem agentes não há nada a
- * perder, e o aviso só seria ruído.
+ * perder, e o aviso só seria ruído. Dispensado com o × fica dispensado para
+ * sempre, mesmo que passem os 14 dias outra vez.
  */
 export function precisaDeCopia(dias = 14) {
+  if (avisoCopiaDispensado()) return false;
   if (ler().length === 0) return false;
   const ultima = ultimaCopia();
   if (!ultima) return true;
