@@ -6,10 +6,13 @@ import PainelRolagem from './components/PainelRolagem.jsx';
 import Fundo from './components/Fundo.jsx';
 import { lerTema, guardarTema, aplicarTema, lerFundoEscuro, guardarFundoEscuro, aplicarFundoEscuro } from './engine/tema.js';
 import EspacoToken from './components/EspacoToken.jsx';
+import gifMargemVazia from './assets/gerador-vazio.gif';
 import HistoricoRolagens from './components/HistoricoRolagens.jsx';
 import PainelOverlay from './components/PainelOverlay.jsx';
 import EditorOverlay from './components/EditorOverlay.jsx';
 import FichaAmeaca from './components/ficha/FichaAmeaca.jsx';
+import FichaNpcCard from './components/mestre/FichaNpcCard.jsx';
+import ModalDetalheGenerico from './components/mestre/ModalDetalheGenerico.jsx';
 import ModoMestre from './components/mestre/ModoMestre.jsx';
 import ModalDefinicoes from './components/ModalDefinicoes.jsx';
 import ModalDefinicoesInicio from './components/ModalDefinicoesInicio.jsx';
@@ -29,6 +32,12 @@ import UpdateModal from './components/UpdateModal.jsx';
 
 export default function App() {
   const [vista, setVista] = useState('inicio'); // inicio | wizard | ficha | mestre
+  // Ficha de NPC ("ficha 4"): sempre o cartão visual (FichaNpcCard), nunca a
+  // <Ficha> normal de personagem — um NPC não é um PC, não tem inventário
+  // nem rituais aqui. "Editar guia" liga o modo de edição do próprio cartão
+  // (nome, atributos, perícias, ataques, habilidades, guia de interpretação).
+  const [editandoNpcCard, setEditandoNpcCard] = useState(false);
+  const [npcDetalhe, setNpcDetalhe] = useState(null);
   // Tema (pele por elemento) — global e guardado no browser. Aplicado no
   // <html> por `aplicarTema`, que é onde o CSS declara a paleta.
   const [tema, setTemaEstado] = useState(lerTema);
@@ -208,9 +217,12 @@ export default function App() {
     setVista('wizard');
   }
 
-  function abrir(agente) {
+  function abrir(agente, { editando = false } = {}) {
     setPersonagem(agente);
     setVista('ficha');
+    // Um NPC recém-criado em branco (Elenco) entra logo em modo de editar,
+    // para escrever direto sem um clique extra em "Editar Guia".
+    setEditandoNpcCard(Boolean(editando));
   }
 
   function abrirMestre() {
@@ -229,14 +241,15 @@ export default function App() {
     setVista('inicio');
   }
 
-  // Botão "← Voltar" da barra do topo: uma ameaça só é aberta a partir do
-  // Modo Mestre (Bestiário, Combate ou Encontro), por isso ao fechar a sua
-  // ficha o destino natural é voltar para lá — nunca para a lista de agentes,
-  // onde ela nem sequer aparece. A alteração já fica guardada sozinha (o
-  // auto-guardar de cima trata disso); isto só decide para onde navegar.
+  // Botão "← Voltar" da barra do topo: uma ameaça ou NPC só é aberto a partir
+  // do Modo Mestre (Bestiário, Elenco ou Campo de Batalha), por isso ao
+  // fechar a sua ficha o destino natural é voltar para lá — nunca para a
+  // lista de agentes, onde nenhum dos dois aparece. A alteração já fica
+  // guardada sozinha (o auto-guardar de cima trata disso); isto só decide
+  // para onde navegar.
   function fecharFicha() {
     guardarSeNecessario();
-    const paraMestre = personagem?.tipo === 'ameaca';
+    const paraMestre = personagem?.tipo === 'ameaca' || personagem?.tipo === 'npc';
     setPersonagem(null);
     setVista(paraMestre ? 'mestre' : 'inicio');
   }
@@ -264,16 +277,24 @@ export default function App() {
   // suficiente para caber na margem — ver .espaco-token em styles.css). Fica
   // escondido durante a criação (vista === 'wizard'): lá quem pede o avatar
   // e o token é o passo "Toques Finais", não este espaço com o boneco.
-  const comToken = vista === 'ficha' && Boolean(personagem) && personagem.tipo !== 'ameaca';
+  const comToken = vista === 'ficha' && Boolean(personagem) && personagem.tipo !== 'ameaca' && personagem.tipo !== 'npc';
 
   return (
     <div className={'app' + (vista === 'wizard' ? ' app-wizard-fixo' : '')}>
       <Fundo tema={tema} />
-      {comToken && (
+      {comToken ? (
         <EspacoToken
           token={personagem.token || null}
           aoMudarToken={(t) => setPersonagem((p) => ({ ...p, token: t }))}
         />
+      ) : (
+        // Mesma margem esquerda do EspacoToken, só que preenchida com este
+        // gif em vez do modelo de token — em todo o resto da app (início,
+        // wizard, Modo Mestre, fichas de NPC/ameaça), já que aí não há
+        // nenhum token de agente a ocupar o espaço.
+        <div className="gerador-vazio">
+          <img src={gifMargemVazia} alt="" />
+        </div>
       )}
       <div className="topbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -284,9 +305,9 @@ export default function App() {
             <button
               className="btn ghost sm btn-nav-agentes"
               onClick={fecharFicha}
-              title={personagem?.tipo === 'ameaca' ? 'Voltar ao Modo Mestre' : 'Voltar à lista de agentes'}
+              title={(personagem?.tipo === 'ameaca' || personagem?.tipo === 'npc') ? 'Voltar ao Modo Mestre' : 'Voltar à lista de agentes'}
             >
-              {personagem?.tipo === 'ameaca' ? '← Mestre' : '← Agentes'}
+              {(personagem?.tipo === 'ameaca' || personagem?.tipo === 'npc') ? '← Mestre' : '← Agentes'}
             </button>
           )}
           {vista === 'wizard' && personagem?.classeId && (
@@ -399,7 +420,24 @@ export default function App() {
       {vista === 'ficha' && personagem && personagem.tipo === 'ameaca' && (
         <FichaAmeaca ameaca={personagem} setAmeaca={setPersonagem} onRolar={rolar} aoConcluir={fecharFicha} />
       )}
-      {vista === 'ficha' && personagem && personagem.tipo !== 'ameaca' && (
+      {vista === 'ficha' && personagem && personagem.tipo === 'npc' && (
+        <div className="container">
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+            <button type="button" className={`btn sm ${editandoNpcCard ? '' : 'ghost'}`} onClick={() => setEditandoNpcCard((v) => !v)}>
+              {editandoNpcCard ? 'Concluir Edição' : 'Editar NPC'}
+            </button>
+          </div>
+          <FichaNpcCard
+            p={personagem}
+            aoVerDetalhe={setNpcDetalhe}
+            editando={editandoNpcCard}
+            onAtualizarCampo={(campo, valor) => setPersonagem((ant) => ({ ...ant, [campo]: valor }))}
+            aoUploadImagem={(dataUrl) => setPersonagem((ant) => ({ ...ant, imagem: dataUrl }))}
+          />
+          {npcDetalhe && <ModalDetalheGenerico item={npcDetalhe} aoFechar={() => setNpcDetalhe(null)} />}
+        </div>
+      )}
+      {vista === 'ficha' && personagem && personagem.tipo !== 'ameaca' && personagem.tipo !== 'npc' && (
         <Ficha personagem={personagem} setPersonagem={setPersonagem} onRolar={rolar} />
       )}
 

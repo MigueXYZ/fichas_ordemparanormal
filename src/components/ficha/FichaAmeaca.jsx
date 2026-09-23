@@ -4,7 +4,7 @@ import EditorTags from '../EditorTags.jsx';
 import { rolarTeste, rolarDano } from '../../engine/dados.js';
 
 const TIPOS_ACAO = ['Padrão', 'Movimento', 'Livre', 'Reação', 'Completa'];
-const DESCRITORES_CONHECIDOS = ['Sangue', 'Morte', 'Conhecimento', 'Energia', 'Medo', 'Humano', 'Animal', 'Criatura', 'Ocultista'];
+const DESCRITORES_CONHECIDOS = ['Sangue', 'Morte', 'Conhecimento', 'Energia', 'Medo', 'Humano', 'Humanoide', 'Animal', 'Criatura', 'Ocultista'];
 
 /** Lê "3d20+10", "-2d20+0", "1d20-5", "5d20" — ou o mesmo com uma nota a seguir tipo
  * "4d20+15 (Percepção às cegas)" — e devolve {dados,bonus}, ou null se não achar a pool de d20. */
@@ -141,6 +141,23 @@ export default function FichaAmeaca({ ameaca, setAmeaca, onRolar, aoConcluir }) 
   }
   function adicionarHabilidade() {
     set({ habilidades: [...habilidades, { nome: 'Nova habilidade', descricao: '' }] });
+  }
+
+  // --------------------------------------------------------------- poderes
+  // Separado das habilidades — sobretudo para ocultistas/cultistas (que têm
+  // poderes paranormais próprios, distintos das habilidades passivas da
+  // criatura) — para não amontoar tudo numa lista só.
+  const poderes = Array.isArray(a.poderes) ? a.poderes : [];
+  function atualizarPoder(i, patch) {
+    const novos = [...poderes];
+    novos[i] = { ...novos[i], ...patch };
+    set({ poderes: novos });
+  }
+  function removerPoder(i) {
+    set({ poderes: poderes.filter((_, j) => j !== i) });
+  }
+  function adicionarPoder() {
+    set({ poderes: [...poderes, { nome: 'Novo poder', descricao: '' }] });
   }
 
   // -------------------------------------------------------------- atributos
@@ -343,6 +360,31 @@ export default function FichaAmeaca({ ameaca, setAmeaca, onRolar, aoConcluir }) 
             {habilidades.length === 0 && <p className="dica">Sem habilidades passivas.</p>}
           </div>
         ) : null}
+
+        {/* Separado das Habilidades — poderes paranormais (sobretudo de
+            ocultistas e cultistas), para não ficarem todos amontoados numa
+            lista só. */}
+        <div className="ameaca-bloco largo">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h4>Poderes</h4>
+            <button type="button" className="btn ghost sm" onClick={adicionarPoder}>+ Poder</button>
+          </div>
+          {poderes.map((p, i) => (
+            <div key={i} className="bloco" style={{ marginTop: 10 }}>
+              <div className="topo">
+                <input type="text" value={p.nome || ''} style={{ fontFamily: 'var(--display)', fontSize: 16 }} onChange={(e) => atualizarPoder(i, { nome: e.target.value })} />
+                <button type="button" className="btn-remover-linha" onClick={() => removerPoder(i)}>×</button>
+              </div>
+              <textarea
+                value={p.descricao || ''}
+                rows={2}
+                style={{ width: '100%', marginTop: 8 }}
+                onChange={(e) => atualizarPoder(i, { descricao: e.target.value })}
+              />
+            </div>
+          ))}
+          {poderes.length === 0 && <p className="dica">Sem poderes paranormais.</p>}
+        </div>
 
         <div className="ameaca-bloco largo">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

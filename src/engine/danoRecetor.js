@@ -18,6 +18,37 @@ export const TIPOS_DANO = [
 
 export const TIPOS_DANO_POR_ID = Object.fromEntries(TIPOS_DANO.map((t) => [t.id, t]));
 
+// Medo ignora Resistências por definição (ver TIPOS_DANO acima) — fica fora
+// de qualquer lista de checkboxes de Resistência (Ficha.jsx, FichaNpcCard.jsx).
+export const TIPOS_DANO_RESISTIVEIS = TIPOS_DANO.filter((t) => !t.ignoraRd);
+
+/**
+ * Lê o estado de Resistência de `tipo` na lista de uma ficha (`resistencias`,
+ * o mesmo array de string usado por personagem e NPC): `null` = não marcada;
+ * `{ valor: null }` = marcada sem número (½ dano); `{ valor: N }` = marcada
+ * com número (desconta N ao dano, em vez da metade).
+ */
+export function estadoResistencia(lista, tipo) {
+  const arr = Array.isArray(lista) ? lista : [];
+  if (arr.includes(tipo.id)) return { valor: null };
+  const entrada = arr.find((e) => e === tipo.nome || e.startsWith(tipo.nome + ' '));
+  if (!entrada) return null;
+  const m = entrada.match(/(\d+)\s*$/);
+  return { valor: m ? Number(m[1]) : null };
+}
+
+/**
+ * Marca/desmarca ou muda o número da Resistência de `tipo` na lista.
+ * `valor`: `null` = desmarcar; `undefined` = marcar sem número (½ dano);
+ * um número = marcar com esse número (RD fixa).
+ */
+export function definirResistencia(lista, tipo, valor) {
+  const atual = (Array.isArray(lista) ? lista : []).filter((e) => e !== tipo.id && e !== tipo.nome && !e.startsWith(tipo.nome + ' '));
+  if (valor === null) return atual;
+  if (valor === undefined) return [...atual, tipo.id];
+  return [...atual, `${tipo.nome} ${valor}`];
+}
+
 /**
  * Ids de TIPOS_DANO marcados como "Resistência" na ficha SEM número (entrada
  * = id puro, ex.: "sangue"): dano desse tipo fica a metade, arredondado para
@@ -34,6 +65,43 @@ function normalizar(texto) {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
+}
+
+// Palavras que identificam cada tipo de dano num texto livre \u2014 usado para
+// ligar o tipo de uma arma/a\u00e7\u00e3o ("Perfura\u00e7\u00e3o", "2d12+10 impacto"...) a um id
+// de TIPOS_DANO sem o jogador ter de escolher outra vez \u00e0 m\u00e3o (ver
+// `tipoDanoParaId`, usado pelo "S\u00f3 Dano" do PainelDetalheUnidade).
+const PALAVRAS_POR_TIPO_DANO = {
+  balistico: ['balistico', 'balistica'],
+  perfuracao: ['perfuracao', 'perfurante'],
+  corte: ['corte'],
+  impacto: ['impacto'],
+  sangue: ['sangue'],
+  morte: ['morte'],
+  energia: ['energia'],
+  conhecimento: ['conhecimento'],
+  medo: ['medo'],
+  mental: ['mental', 'sanidade'],
+  fogo: ['fogo'],
+  frio: ['frio', 'gelo'],
+  eletricidade: ['eletricidade', 'eletrico', 'raio'],
+  quimico: ['quimico', 'acido', 'veneno'],
+};
+
+/**
+ * Tenta reconhecer o tipo de dano num texto livre (o "Tipo" de uma arma, ou
+ * o texto que sobra depois do "Dano" de uma a\u00e7\u00e3o de amea\u00e7a, ex.: "impacto"
+ * em "2d12+10 impacto") e devolve o id de TIPOS_DANO correspondente \u2014 ou
+ * 'geral' quando n\u00e3o reconhece nada, para o dano continuar a aplicar-se
+ * (s\u00f3 sem RD/Resist\u00eancia espec\u00edfica de tipo).
+ */
+export function tipoDanoParaId(texto) {
+  const limpo = normalizar(texto);
+  if (!limpo) return 'geral';
+  for (const [id, palavras] of Object.entries(PALAVRAS_POR_TIPO_DANO)) {
+    if (palavras.some((p) => limpo.includes(p))) return id;
+  }
+  return 'geral';
 }
 
 /**

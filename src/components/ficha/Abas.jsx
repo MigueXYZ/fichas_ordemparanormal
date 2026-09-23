@@ -573,7 +573,7 @@ function RituaisEmCombate({ personagem, setPersonagem, onRolar }) {
 
 export function AbaHabilidades({ personagem, setPersonagem }) {
   const { lista, adicionar, editar, remover } = useLista(personagem, setPersonagem, 'habilidades');
-  const [aEscolher, setAEscolher] = useState(false);
+  const [catalogoAberto, setCatalogoAberto] = useState(null); // null | 'habilidade' | 'poder'
 
   const classe = CLASSES_POR_ID[personagem.classeId];
   const trilha = personagem.trilhaId ? TRILHAS_POR_ID[personagem.trilhaId] : null;
@@ -669,18 +669,23 @@ export function AbaHabilidades({ personagem, setPersonagem }) {
     { valor: 'Origens', label: 'Poderes de Origem' },
   ];
 
+  const catalogoHabilidades = useMemo(() => catalogo.filter((i) => i.categoriaSecao === 'habilidade'), [catalogo]);
+  const catalogoPoderes = useMemo(() => catalogo.filter((i) => i.categoriaSecao === 'poder'), [catalogo]);
+  const catalogoFiltrado = catalogoAberto === 'habilidade' ? catalogoHabilidades : catalogoAberto === 'poder' ? catalogoPoderes : [];
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-        <button className="btn ghost" onClick={() => setAEscolher((v) => !v)}>Do catálogo</button>
+        <button className="btn ghost" onClick={() => setCatalogoAberto((v) => (v === 'habilidade' ? null : 'habilidade'))}>Habilidades do Catálogo</button>
+        <button className="btn ghost" onClick={() => setCatalogoAberto((v) => (v === 'poder' ? null : 'poder'))}>Poderes do Catálogo</button>
         <button className="btn ghost" onClick={() => adicionar({ ...novaHabilidade(), tipo: 'habilidade', origem: 'Habilidade' })}>+ Nova Habilidade</button>
         <button className="btn" onClick={() => adicionar({ ...novaHabilidade(), tipo: 'poder', origem: 'Poder' })}>+ Novo Poder</button>
       </div>
 
-      {aEscolher && (
+      {catalogoAberto && (
         <Seletor
-          titulo={`Habilidades e Poderes (${catalogo.length})`}
-          itens={catalogo}
+          titulo={catalogoAberto === 'habilidade' ? `Habilidades do Catálogo (${catalogoHabilidades.length})` : `Poderes do Catálogo (${catalogoPoderes.length})`}
+          itens={catalogoFiltrado}
           filtros={[
             {
               id: 'grupoTipo',
@@ -707,9 +712,9 @@ export function AbaHabilidades({ personagem, setPersonagem }) {
           )}
           onEscolher={(p) => {
             adicionar({ nome: p.nome, descricao: p.descricao, origem: p.tipo, tipo: p.categoriaSecao || 'poder' });
-            setAEscolher(false);
+            setCatalogoAberto(null);
           }}
-          onFechar={() => setAEscolher(false)}
+          onFechar={() => setCatalogoAberto(null)}
         />
       )}
 
@@ -837,7 +842,7 @@ export function AbaRituais({ personagem, setPersonagem, onRolar }) {
           itens={catalogo}
           filtros={[
             { id: 'elemento', label: 'Todos os elementos', valorDe: (r) => r.elemento, opcoes: ELEMENTOS.map((e) => ({ valor: e.id, label: e.nome })) },
-            { id: 'circulo', label: 'Todos os círculos', valorDe: (r) => r.circulo, opcoes: CIRCULOS.map((c) => ({ valor: c.id, label: c.nome })) },
+            { id: 'circulo', label: 'Todos os círculos', valorDe: (r) => r.circulo, opcoes: CIRCULOS.map((c) => ({ valor: c, label: `${c}º Círculo` })) },
           ]}
           aoProcurar={(r, t) => r.nome.toLowerCase().includes(t) || (r.descricao || '').toLowerCase().includes(t)}
           render={(r) => (

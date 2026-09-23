@@ -193,3 +193,70 @@ export const DICAS_RP_CULTISTAS = [
   'Convicção absoluta: fale com fervor religioso, usando termos grandiosos para descrever o Outro Lado.',
   'Tática covarde mas implacável: mantém peões à sua frente enquanto canaliza rituais devastadores à distância.',
 ];
+
+// ----------------------------------------------------- FICHA DE NPC ("Como Interpretar")
+// Quatro tabelas usadas só pelo guia de interpretação da ficha de NPC:
+// Traço Distintivo, Maneirismo, Motivação Principal e Informação Útil.
+// Descrição Física e Personalidade/Tom de Voz continuam a usar
+// APARENCIAS_AGENTES e DICAS_RP_AGENTES, já existentes.
+
+export const TRACOS_DISTINTIVOS_AGENTES = [
+  'Uma cicatriz em meia-lua sobre a sobrancelha esquerda, lembrança de uma missão que nunca conta em detalhe.',
+  'Falta a falange do dedo mindinho direito — diz que foi "o preço de um ritual mal calculado".',
+  'Um olho ligeiramente mais claro que o outro, quase impercetível à luz do dia.',
+  'Uma voz rouca demais para a idade, como se tivesse gritado até perder o tom.',
+  'Anda sempre com as mangas compridas, mesmo no calor, escondendo algo nos antebraços.',
+  'Um sotaque que muda ligeiramente consoante o assunto fica desconfortável.',
+  'Postura assimétrica, como se favorecesse permanentemente um lado do corpo ferido há anos.',
+  'Um cheiro persistente a incenso ou cera queimada que não sai da roupa.',
+  'Nunca tira as luvas, nem para comer.',
+  'Uma mancha de nascença escura no pescoço, que tenta sempre manter tapada.',
+  'Pestaneja o dobro do normal quando alguém menciona um nome específico.',
+  'Traz sempre um objeto pequeno no bolso que aperta com força em momentos de tensão.',
+  'Um tremor quase impercetível na mão direita, que desaparece assim que percebe que alguém reparou.',
+  'Dentes ligeiramente desalinhados de um lado, resultado de um golpe antigo nunca tratado como deve ser.',
+];
+
+export const MANEIRISMOS_AGENTES = [
+  'Bate os dedos na mesa em grupos de três sempre que pondera uma resposta.',
+  'Gira um anel ou fio no dedo enquanto fala, sem se dar conta disso.',
+  'Faz uma pausa longa antes de responder a perguntas diretas, como se pesasse cada palavra.',
+  'Repete a última palavra da pergunta antes de responder, quase como um eco automático.',
+  'Evita sentar-se de costas para portas ou janelas, mudando de lugar se necessário.',
+  'Sorri sempre um instante depois de deveria, como se o gesto fosse aprendido e não natural.',
+  'Limpa as mãos na roupa com frequência, mesmo quando estão secas.',
+  'Fala baixo demais em assuntos sérios, obrigando quem ouve a aproximar-se.',
+  'Conta nos dedos, discretamente, sempre que enumera algo — mesmo coisas simples.',
+  'Olha para o relógio ou para o telemóvel a cada poucos minutos, mesmo sem hora marcada.',
+  'Interrompe silêncios longos com perguntas triviais, desconfortável com pausas.',
+  'Mantém sempre uma distância física maior do que o normal, mesmo com conhecidos.',
+  'Risca pequenos símbolos ou linhas em qualquer superfície disponível enquanto pensa.',
+];
+
+export const MOTIVACOES_AGENTES = [
+  'Provar a si mesmo que o erro que cometeu no passado não define quem é agora.',
+  'Proteger alguém específico — um familiar, um amigo, um antigo colega — custe o que custar.',
+  'Encontrar respostas sobre um desaparecimento ou morte que a Ordem nunca resolveu oficialmente.',
+  'Subir de patente o suficiente para ter acesso a informação que hoje lhe é negada.',
+  'Manter uma promessa feita a alguém que já morreu.',
+  'Escapar de uma dívida — financeira, moral ou paranormal — contraída há muito tempo.',
+  'Provar que a sua forma pouco ortodoxa de agir traz resultados que os métodos oficiais não trazem.',
+  'Encontrar uma forma de reverter ou controlar algo que lhe aconteceu e que esconde dos outros.',
+  'Vingança contra uma entidade, culto ou pessoa específica responsável por uma perda pessoal.',
+  'Simplesmente sobreviver mais um dia, sem grandes ambições para além disso.',
+  'Ganhar a confiança de alguém que atualmente o trata com desconfiança ou desprezo.',
+  'Manter as aparências de normalidade para não perder algo que valoriza fora da Ordem.',
+];
+
+export const INFORMACOES_UTEIS_AGENTES = [
+  'Sabe de um local que muda de fechadura ou de acesso regularmente, sem explicação oficial.',
+  'Conhece alguém dentro da Ordem que não é de confiança, mas não tem provas para o denunciar.',
+  'Guarda um contacto fora da Ordem que consegue arranjar recursos ou informação por baixo da mesa.',
+  'Já viu algo semelhante ao caso atual antes, mas o relatório dessa missão foi arquivado como confidencial.',
+  'Sabe o verdadeiro motivo por trás de uma decisão recente da Ordem que foi anunciada com outra justificação.',
+  'Tem conhecimento de um padrão ou ritual que se repete em datas específicas, ainda não documentado.',
+  'Conhece uma rota, passagem ou atalho que evita vigilância — paranormal ou não.',
+  'Sabe de um objeto ou artefacto perdido que pode ser relevante, mas hesita em revelar onde está.',
+  'Testemunhou algo que contradiz a versão oficial de um evento recente, mas tem medo de o admitir.',
+  'Tem um pressentimento fundado sobre quem será o próximo alvo — mas não sabe como o provar.',
+];

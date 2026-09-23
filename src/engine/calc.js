@@ -3,6 +3,8 @@ import { efeitosRituaisAtivos } from './rituaisEfeitos.js';
 import { PERICIAS, GRAUS_TREINO } from '../data/pericias.js';
 import { CLASSES_POR_ID } from '../data/classes.js';
 import { PATENTES_POR_ID, CATEGORIAS, categoriaRomana, patentePorPrestigio } from '../data/patentes.js';
+import { aplicarModificacoes } from '../data/modificacoesArma.js';
+import { aplicarMaldicoesArma } from '../data/maldicoes.js';
 import { PROGRESSAO_PD, ALTERACOES_GERAIS } from '../data/regrasOpcionais.js';
 import {
   efeitosDiarios as efeitosDiariosMonstruoso, atributosEfetivos as atributosDaTrilha,
@@ -568,6 +570,22 @@ export function calcCarga(personagem) {
   };
 }
 
+/**
+ * Categoria REAL de uma arma para efeitos de limite de patente: a categoria
+ * base escolhida no editor, subida automaticamente pelas modificações
+ * (+I cada) e maldições (+II cada) aplicadas — em vez de ficar só como uma
+ * nota informativa ("categoria +N") que nunca contava a sério para o limite
+ * de itens por categoria (Livro Base, cap. 3). A categoria base guardada em
+ * `arma.categoria` nunca é reescrita: isto é sempre calculado ao vivo, para
+ * nunca perder o valor original se a modificação/maldição for removida.
+ */
+export function categoriaEfetivaArma(arma) {
+  const baseIdx = Math.max(0, CATEGORIAS.indexOf(categoriaRomana(arma?.categoria) || '0'));
+  const extra = (aplicarModificacoes(arma).categoriaExtra || 0) + (aplicarMaldicoesArma(arma).categoriaExtra || 0);
+  const idx = Math.min(CATEGORIAS.length - 1, baseIdx + extra);
+  return CATEGORIAS[idx];
+}
+
 export function calcItensPorCategoria(personagem) {
   const patente = PATENTES_POR_ID[personagem.patenteId] || patentePorPrestigio(personagem.pontosPrestigio);
   const usados = { 0: 0, I: 0, II: 0, III: 0, IV: 0 };
@@ -576,7 +594,7 @@ export function calcItensPorCategoria(personagem) {
     if (cat) usados[cat] = (usados[cat] || 0) + (Number(item.quantidade) || 1);
   }
   for (const arma of personagem.ataques || []) {
-    const cat = categoriaRomana(arma.categoria);
+    const cat = categoriaEfetivaArma(arma);
     if (cat) usados[cat] = (usados[cat] || 0) + 1;
   }
   const linhas = CATEGORIAS.map((cat) => ({

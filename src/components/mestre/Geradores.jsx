@@ -5,7 +5,7 @@ import { PERICIAS_TEXTO } from '../../data/periciasTexto.js';
 import { NEX_TRACK, calcMaximos, calcDefesas, calcPericias } from '../../engine/calc.js';
 import { quantidadeDados } from '../../engine/dados.js';
 import {
-  CONCEITOS, ARQUETIPOS_AMEACA, VD_SUGERIDOS, TAMANHOS,
+  CONCEITOS, CATEGORIAS_AMEACA, ELEMENTOS_AMEACA, VD_SUGERIDOS, TAMANHOS,
   ELEMENTOS_CULTISTAS, PATENTES_CULTISTAS,
   gerarFicha, gerarNpcAgente, gerarAmeaca, gerarOcultista, vdParaGrupo,
 } from '../../engine/geradores.js';
@@ -13,10 +13,12 @@ import ModalDetalheGenerico from './ModalDetalheGenerico.jsx';
 import Ficha from '../ficha/Ficha.jsx';
 import FichaAmeaca from '../ficha/FichaAmeaca.jsx';
 import PainelRolagem from '../PainelRolagem.jsx';
+import FichaNpcCard from './FichaNpcCard.jsx';
+import FichaAmeacaCard from './FichaAmeacaCard.jsx';
 
 const SEPARADORES = [
   { id: 'ficha', nome: 'Ficha aleatória' },
-  { id: 'npc', nome: 'NPC agente' },
+  { id: 'npc', nome: 'NPC' },
   { id: 'ocultista', nome: 'Ocultista' },
   { id: 'ameaca', nome: 'Criatura / Ameaça' },
 ];
@@ -361,270 +363,6 @@ function Resumo({ p, aoVerDetalhe, editando, onAtualizarCampo, aoUploadImagem })
   );
 }
 
-function FichaAmeacaPrevia({ a, aoVerDetalhe, editando, onAtualizarCampo, aoUploadImagem }) {
-  const fileInputRef = useRef(null);
-  const habilidades = a.habilidades || [];
-  const rituais = a.rituais || [];
-
-  function handleFileChange(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      aoUploadImagem(reader.result);
-    };
-    reader.readAsDataURL(file);
-  }
-
-  return (
-    <div className="previa" style={{ marginTop: 16 }}>
-      {/* Bloco de Imagem e Identificação */}
-      <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
-        <div style={{ position: 'relative', width: 90, height: 90, borderRadius: 8, overflow: 'hidden', border: '2px solid var(--borda)', background: '#0e0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {a.imagem ? (
-            <img src={a.imagem} alt={a.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            <span style={{ fontSize: 11, color: 'var(--txt-fraco)', textAlign: 'center', padding: 4 }}>Sem Imagem</span>
-          )}
-          {editando && (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              style={{
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                background: 'rgba(0,0,0,0.75)',
-                color: '#fff',
-                border: 'none',
-                fontSize: 10,
-                padding: '3px 0',
-                cursor: 'pointer',
-              }}
-            >
-              Trocar
-            </button>
-          )}
-          <input type="file" accept="image/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
-        </div>
-
-        <div style={{ flex: 1, minWidth: 200 }}>
-          {editando ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <input
-                type="text"
-                value={a.nome}
-                onChange={(e) => onAtualizarCampo('nome', e.target.value)}
-                placeholder="Nome da ameaça"
-                style={{ fontSize: 18, fontWeight: 'bold', width: '100%' }}
-              />
-              <input
-                type="text"
-                placeholder="URL da Imagem"
-                value={a.imagem || ''}
-                onChange={(e) => onAtualizarCampo('imagem', e.target.value)}
-                style={{ fontSize: 12 }}
-              />
-            </div>
-          ) : (
-            <>
-              <div className="previa-nome" style={{ margin: 0 }}>{a.nome}</div>
-              <div className="previa-linha" style={{ marginTop: 4 }}>
-                {a.descritores?.join(' · ')} · {a.tamanho} · VD {a.vd}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Vitais */}
-      {editando ? (
-        <div className="grelha-editor" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 10 }}>
-          <div className="campo">
-            <label>DEFESA</label>
-            <input type="number" value={a.defesa} onChange={(e) => onAtualizarCampo('defesa', Number(e.target.value))} />
-          </div>
-          <div className="campo">
-            <label>PV MÁXIMO</label>
-            <input type="number" value={a.pv} onChange={(e) => onAtualizarCampo('pv', Number(e.target.value))} />
-          </div>
-          <div className="campo">
-            <label>DT</label>
-            <input type="number" value={a.dt} onChange={(e) => onAtualizarCampo('dt', Number(e.target.value))} />
-          </div>
-          <div className="campo">
-            <label>VD</label>
-            <input type="number" value={a.vd} onChange={(e) => onAtualizarCampo('vd', Number(e.target.value))} />
-          </div>
-        </div>
-      ) : (
-        <div className="previa-attrs">
-          <span><b>{a.defesa}</b> DEFESA</span>
-          <span><b>{a.pv}</b> PV</span>
-          <span><b>{a.dt}</b> DT</span>
-          {a.pe != null && <span><b>{a.pe}</b> PE</span>}
-        </div>
-      )}
-
-      {/* Comportamento e Dicas de RP */}
-      {editando ? (
-        <div className="previa-bloco" style={{ background: 'rgba(255,255,255,0.03)', padding: 10, borderRadius: 4, marginTop: 10 }}>
-          <div className="previa-rotulo">Editar Narração & RP</div>
-          <div className="campo" style={{ marginBottom: 6 }}>
-            <label>Comportamento sinistro</label>
-            <input type="text" value={a.comportamento || ''} onChange={(e) => onAtualizarCampo('comportamento', e.target.value)} />
-          </div>
-          <div className="campo" style={{ marginBottom: 6 }}>
-            <label>Aparência</label>
-            <input type="text" value={a.aparencia || ''} onChange={(e) => onAtualizarCampo('aparencia', e.target.value)} />
-          </div>
-          <div className="campo">
-            <label>Dica para o Mestre</label>
-            <input type="text" value={a.dicaRp || ''} onChange={(e) => onAtualizarCampo('dicaRp', e.target.value)} />
-          </div>
-        </div>
-      ) : (
-        (a.comportamento || a.aparencia || a.dicaRp) && (
-          <div className="previa-bloco" style={{ background: 'rgba(255,255,255,0.03)', padding: 8, borderRadius: 4, marginTop: 10 }}>
-            <div className="previa-rotulo" style={{ color: 'var(--txt)' }}>Comportamento & Narração</div>
-            {a.comportamento && (
-              <div style={{ fontSize: 12, marginBottom: 4 }}>
-                <b style={{ color: 'var(--sangue-claro)' }}>Comportamento:</b> {a.comportamento}
-              </div>
-            )}
-            {a.aparencia && (
-              <div style={{ fontSize: 12, marginBottom: 4 }}>
-                <b style={{ color: 'var(--txt-dim)' }}>Aparência:</b> {a.aparencia}
-              </div>
-            )}
-            {a.dicaRp && (
-              <div style={{ fontSize: 12 }}>
-                <b style={{ color: 'var(--conhecimento-claro)' }}>Dica para o Mestre:</b> {a.dicaRp}
-              </div>
-            )}
-          </div>
-        )
-      )}
-
-      {/* Perícias */}
-      {a.pericias?.length > 0 && (
-        <div className="previa-bloco">
-          <div className="previa-rotulo">Perícias ({a.pericias.length})</div>
-          <ul className="previa-pericias">
-            {a.pericias.map((x) => (
-              <li
-                key={x.nome}
-                style={{ cursor: 'pointer' }}
-                onClick={() =>
-                  aoVerDetalhe({
-                    nome: x.nome,
-                    tipo: 'Perícia de Ameaça',
-                    tags: [
-                      { rotulo: 'Teste', valor: `${quantidadeDados(x.dados)}d20+${x.bonus}` },
-                      { rotulo: 'Dados', valor: `${x.dados}d20` },
-                      { rotulo: 'Bónus', valor: `+${x.bonus}` },
-                    ],
-                    descricao: `Teste de perícia para a criatura: ${quantidadeDados(x.dados)}d20+${x.bonus}.`,
-                  })
-                }
-              >
-                <span className="pn" style={{ textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>{x.nome}</span>
-                <span className="pb">{quantidadeDados(x.dados)}d20 +{x.bonus}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Habilidades Especiais / Poderes Paranormais */}
-      {habilidades.length > 0 && (
-        <div className="previa-bloco">
-          <div className="previa-rotulo" style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>Habilidades Especiais ({habilidades.length})</span>
-            <span style={{ fontSize: 11, color: 'var(--txt-fraco)' }}>Clica para expandir</span>
-          </div>
-          <ul className="previa-pericias" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {habilidades.map((h, i) => (
-              <li
-                key={i}
-                style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}
-                onClick={() =>
-                  aoVerDetalhe({
-                    nome: h.nome,
-                    tipo: 'Habilidade Especial',
-                    descricao: h.descricao,
-                  })
-                }
-              >
-                <b style={{ color: 'var(--txt)', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>{h.nome}</b>
-                <span style={{ fontSize: 11, color: 'var(--txt-dim)' }}>{h.descricao}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Rituais (para Ocultistas) */}
-      {rituais.length > 0 && (
-        <div className="previa-bloco">
-          <div className="previa-rotulo" style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>Rituais Preparados ({rituais.length})</span>
-            <span style={{ fontSize: 11, color: 'var(--txt-fraco)' }}>Clica para ver efeitos</span>
-          </div>
-          <ul className="previa-pericias">
-            {rituais.map((r, i) => (
-              <li
-                key={i}
-                style={{ cursor: 'pointer' }}
-                onClick={() =>
-                  aoVerDetalhe({
-                    nome: r.nome,
-                    tipo: `Ritual de ${r.circulo}º Círculo`,
-                    subtitulo: `Elemento: ${r.elemento} · DT ${r.dt} · Custo: ${r.custo}`,
-                    tags: [
-                      { rotulo: 'DT', valor: r.dt },
-                      { rotulo: 'Círculo', valor: `${r.circulo}º Círculo` },
-                      { rotulo: 'Elemento', valor: r.elemento },
-                      { rotulo: 'Execução', valor: r.execucao || 'Padrão' },
-                      { rotulo: 'Alcance', valor: r.alcance || 'Curto' },
-                    ],
-                    descricao: r.descricao || 'Ritual canalizado pelo cultista.',
-                  })
-                }
-              >
-                <span className="pn" style={{ textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>{r.nome}</span>
-                <span className="pb" style={{ textTransform: 'capitalize' }}>DT {r.dt} · {r.circulo}º Círculo</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <div
-        className="previa-linha"
-        style={{ marginTop: 8, cursor: 'pointer' }}
-        onClick={() =>
-          aoVerDetalhe({
-            nome: a.ataque.nome,
-            tipo: 'Ataque de Ameaça',
-            subtitulo: `Teste: ${a.ataque.teste} · Dano: ${a.ataque.dano} ${a.ataque.tipo}`,
-            tags: [
-              { rotulo: 'Teste de Ataque', valor: a.ataque.teste },
-              { rotulo: 'Dano', valor: a.ataque.dano },
-              { rotulo: 'Tipo', valor: a.ataque.tipo },
-              { rotulo: 'Crítico', valor: a.ataque.critico || 'x2' },
-            ],
-            descricao: `Ataque principal da criatura/inimigo: rola ${a.ataque.teste} para acertar e causa ${a.ataque.dano} de dano ${a.ataque.tipo}.`,
-          })
-        }
-      >
-        <b>Ataque:</b> <span style={{ textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>{a.ataque.nome}</span> ({a.ataque.teste}) · dano {a.ataque.dano} {a.ataque.tipo}
-      </div>
-    </div>
-  );
-}
-
 export default function Geradores({ aoGuardar, aoAbrir }) {
   const [aba, setAba] = useState('ficha');
   const [nex, setNex] = useState(5);
@@ -633,9 +371,12 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
   const [trilhaId, setTrilhaId] = useState('');
   const [origemId, setOrigemId] = useState('');
   const [vd, setVd] = useState(20);
-  const [arquetipo, setArquetipo] = useState('');
+  const [categoriaAmeaca, setCategoriaAmeaca] = useState('');
+  const [elementosAmeaca, setElementosAmeaca] = useState([]);
   const [tamanho, setTamanho] = useState('');
   const [conceitoAmeaca, setConceitoAmeaca] = useState('');
+  const [ehGrupoAmeaca, setEhGrupoAmeaca] = useState(false);
+  const [qtdGrupoAmeaca, setQtdGrupoAmeaca] = useState(2);
   const [elementoCultista, setElementoCultista] = useState('');
   const [patenteCultista, setPatenteCultista] = useState('');
   const [nexGrupo, setNexGrupo] = useState(20);
@@ -664,9 +405,12 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
     if (aba === 'ameaca') {
       setResultado(gerarAmeaca({
         vd: Number(vd),
-        arquetipo: arquetipo || null,
+        categoria: categoriaAmeaca || null,
+        elementos: elementosAmeaca,
         tamanho: tamanho || null,
         conceito: conceitoAmeaca || '',
+        grupo: ehGrupoAmeaca,
+        quantidadeGrupo: Number(qtdGrupoAmeaca),
       }));
       return;
     }
@@ -716,12 +460,12 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
         ))}
       </div>
 
-      {/* Aba 1 e 2: Ficha e NPC Agente */}
+      {/* Aba 1 e 2: Ficha e NPC */}
       {(aba === 'ficha' || aba === 'npc') && (
         <>
           <p className="dica" style={{ marginTop: 0 }}>
             {aba === 'npc'
-              ? 'NPC com ficha de agente completa — poderes, habilidades de trilha, rituais, comportamento fora do comum e dicas de RP.'
+              ? 'Um NPC jogável — atributos, perícias, equipamento e, consoante o NEX escolhido, poderes, trilha e rituais — mais comportamento fora do comum e dicas de RP. Não implica que seja um agente da Ordem: serve para qualquer pessoa com ficha completa.'
               : 'Uma ficha jogável inteira: atributos, origem, classe, trilha, poderes de NEX, rituais, comportamento e equipamento.'}
           </p>
           <div className="grelha-editor" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
@@ -821,28 +565,28 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
             <textarea
               value={conceitoAmeaca}
               onChange={(e) => setConceitoAmeaca(e.target.value)}
-              placeholder="Ex.: aranha gigante que vive em água podre; boneca de porcelana assombrada; cultista da Ordem do Fogo..."
+              placeholder="Ex.: a aranha da cave do Convento; a boneca de porcelana da Fábrica..."
               rows={2}
               style={{ resize: 'vertical' }}
             />
             <div className="dica" style={{ marginTop: 4, fontSize: 12 }}>
-              Se preenchido, o site lê o conceito e escolhe descritores, ataque e habilidades temáticas condizentes —
-              a Defesa, PV, testes e dano continuam sempre calculados a partir do VD escolhido abaixo, não do texto.
-              O Arquétipo abaixo só é usado quando este campo fica vazio.
+              Só dá nome à ficha (se ficar vazio, o nome sai da Categoria/Elemento(s) abaixo). Quem decide descritores,
+              ataque, resistências e habilidades é sempre a Categoria e o(s) Elemento(s) escolhidos abaixo — a Defesa, PV,
+              testes e dano vêm sempre do VD, nunca do texto.
             </div>
           </div>
           <div className="grelha-editor" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
             <div className="campo">
-              <label>Valor de desafio</label>
+              <label>Valor de desafio {ehGrupoAmeaca && '(do grupo todo)'}</label>
               <select value={vd} onChange={(e) => setVd(Number(e.target.value))}>
                 {VD_SUGERIDOS.map((v) => <option key={v} value={v}>VD {v}</option>)}
               </select>
             </div>
             <div className="campo">
-              <label>Arquétipo {conceitoAmeaca.trim() && '(ignorado — há um conceito preenchido)'}</label>
-              <select value={arquetipo} onChange={(e) => setArquetipo(e.target.value)} disabled={Boolean(conceitoAmeaca.trim())}>
+              <label>Categoria</label>
+              <select value={categoriaAmeaca} onChange={(e) => setCategoriaAmeaca(e.target.value)}>
                 <option value="">Ao acaso</option>
-                {ARQUETIPOS_AMEACA.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
+                {CATEGORIAS_AMEACA.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
             </div>
             <div className="campo">
@@ -853,12 +597,52 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
               </select>
             </div>
             <div className="campo">
-              <label>NEX somado do grupo</label>
-              <input type="number" value={nexGrupo} onChange={(e) => setNexGrupo(Number(e.target.value))} />
+              <label>&nbsp;</label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 'normal', height: 34 }}>
+                <input type="checkbox" checked={ehGrupoAmeaca} onChange={(e) => setEhGrupoAmeaca(e.target.checked)} />
+                É um grupo de várias criaturas iguais?
+              </label>
+            </div>
+            {ehGrupoAmeaca && (
+              <div className="campo">
+                <label>Número de criaturas</label>
+                <input
+                  type="number"
+                  min={2}
+                  max={50}
+                  value={qtdGrupoAmeaca}
+                  onChange={(e) => setQtdGrupoAmeaca(Number(e.target.value))}
+                />
+              </div>
+            )}
+          </div>
+          <div className="campo" style={{ marginTop: 4, marginBottom: 0 }}>
+            <label>Elemento(s) — opcional, escolhe quantos quiseres</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginTop: 4 }}>
+              {ELEMENTOS_AMEACA.map((el) => (
+                <label key={el.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 'normal' }}>
+                  <input
+                    type="checkbox"
+                    checked={elementosAmeaca.includes(el.id)}
+                    onChange={(e) =>
+                      setElementosAmeaca((antes) =>
+                        e.target.checked ? [...antes, el.id] : antes.filter((x) => x !== el.id)
+                      )
+                    }
+                  />
+                  {el.id}
+                </label>
+              ))}
             </div>
           </div>
           <div className="dica" style={{ marginTop: 6, fontSize: 12 }}>
-            Referência de VD para o grupo: fácil {vdParaGrupo(nexGrupo, 'facil')} · equilibrado {vdParaGrupo(nexGrupo)} · difícil {vdParaGrupo(nexGrupo, 'dificil')}
+            {elementosAmeaca.length > 0
+              ? `Cada elemento marcado (${elementosAmeaca.join(', ')}) garante o seu próprio descritor, resistência e pelo menos uma habilidade temática; a Categoria preenche o resto.`
+              : 'Sem elemento marcado, as habilidades e resistências vêm só da Categoria (mais genéricas). Marca um ou mais elementos para uma criatura temática — ex.: Conhecimento dá-lhe habilidades de Conhecimento a sério, não genéricas.'}
+            {' '}
+            {ehGrupoAmeaca
+              ? `O VD escolhido acima é o do grupo todo — é dividido por ${qtdGrupoAmeaca || 2} criaturas para chegar à Defesa, PV e dano de cada uma. Duplica a ficha gerada ${qtdGrupoAmeaca || 2}× no Campo de Batalha.`
+              : 'Sem marcar "é um grupo?" é sempre gerada 1 criatura só, com o VD escolhido acima.'}
           </div>
         </>
       )}
@@ -897,21 +681,30 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
         </div>
       )}
 
-      {resultado && !editando && (resultado.tipo === 'ameaca'
-        ? <FichaAmeacaPrevia
+      {resultado && !editando && (
+        resultado.tipo === 'ameaca' ? (
+          <FichaAmeacaCard
             a={resultado}
             aoVerDetalhe={setItemDetalhe}
-            editando={false}
-            onAtualizarCampo={handleAtualizarCampo}
-            aoUploadImagem={handleUploadImagem}
           />
-        : <Resumo
+        ) : resultado.tipo === 'npc' ? (
+          <FichaNpcCard
             p={resultado}
             aoVerDetalhe={setItemDetalhe}
             editando={false}
             onAtualizarCampo={handleAtualizarCampo}
             aoUploadImagem={handleUploadImagem}
-          />)}
+          />
+        ) : (
+          <Resumo
+            p={resultado}
+            aoVerDetalhe={setItemDetalhe}
+            editando={false}
+            onAtualizarCampo={handleAtualizarCampo}
+            aoUploadImagem={handleUploadImagem}
+          />
+        )
+      )}
 
       {/* Modal de Detalhe Genérico */}
       {itemDetalhe && (

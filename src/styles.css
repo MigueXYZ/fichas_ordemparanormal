@@ -1771,6 +1771,19 @@ body.bate-forte .barra-recurso .preenchido::before {
 
 .painel-vazio { color: var(--txt-fraco); text-align: center; padding: 48px 12px; font-family: var(--display); letter-spacing: .08em; }
 
+/* Margem esquerda vazia (o mesmo espaço de .espaco-token) em qualquer ecrã
+   sem token de agente ali — início, wizard, Modo Mestre, fichas de NPC ou
+   ameaça. Renderizado a par do EspacoToken em App.jsx (nunca os dois ao
+   mesmo tempo), com a mesma geometria fixa para não empurrar o conteúdo. */
+.gerador-vazio {
+  position: fixed; left: 0; top: 60px; bottom: 0;
+  width: calc((100vw - 1240px) / 2);
+  z-index: 3; display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.gerador-vazio img { max-width: min(220px, 85%); width: 100%; height: auto; border-radius: 10px; opacity: .8; }
+@media (max-width: 1300px) { .gerador-vazio { display: none; } }
+
 /* Contador de quantidade (− nº +) — botão de escolher item do inventário e
    linha de cada item na lista, para dar stack ao mesmo item. */
 .seletor-quantidade { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; }
@@ -1974,8 +1987,13 @@ body.bate-forte .barra-recurso .preenchido::before {
 .inicio .aviso.ok-aviso { border-color: var(--ok); color: var(--txt); }
 .inicio .lembrete-copia {
   max-width: 760px; margin: 18px auto 0; text-align: left; line-height: 1.5;
-  font-size: 14px; position: relative; z-index: 1;
+  font-size: 14px; position: relative; z-index: 1; padding-right: 34px;
 }
+.inicio .lembrete-copia .fechar {
+  position: absolute; top: 6px; right: 8px;
+  background: none; border: none; color: var(--txt-dim); font-size: 20px; line-height: 1; padding: 4px 6px; cursor: pointer;
+}
+.inicio .lembrete-copia .fechar:hover { color: var(--sangue-claro); }
 
 .elementos { display: flex; gap: 26px; justify-content: center; margin: 18px 0 4px; }
 .elementos span, .elementos button {
@@ -2780,6 +2798,168 @@ body.bate-forte .barra-recurso .preenchido::before {
   border: 1px solid var(--linha-forte); border-radius: 2px; padding: 0 4px;
 }
 .previa-pericias .pb { font-family: var(--numeros); color: var(--txt); white-space: nowrap; }
+
+/* ---------------------------------------------------------- ficha de npc ("ficha 4") */
+.ficha-npc {
+  max-width: 1040px; margin: 18px auto 0; border: 1px solid var(--linha-forte); border-radius: var(--raio);
+  background: linear-gradient(180deg, var(--bg-3), var(--bg-2)); padding: 20px;
+}
+.ficha-npc-cabecalho { border-bottom: 1px solid var(--linha); padding-bottom: 12px; margin-bottom: 14px; }
+.ficha-npc-nome { font-family: var(--display); font-size: 26px; }
+.ficha-npc-breve { color: var(--txt-dim); font-size: 13.5px; margin-top: 4px; }
+.ficha-npc-historia { color: var(--txt-dim); font-size: 13.5px; line-height: 1.55; margin-top: 10px; max-width: 68ch; white-space: pre-wrap; }
+.ficha-npc-cabecalho textarea { min-height: 60px; }
+.ficha-npc-corpo { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; align-items: start; }
+@media (max-width: 760px) { .ficha-npc-corpo { grid-template-columns: 1fr; } }
+/* min-width:0 nos filhos da grid — sem isto, um campo de texto comprido
+   (ou um input que não quebra linha) força a coluna a alargar além do
+   espaço disponível e o conteúdo fica cortado na borda do ecrã. */
+.ficha-npc-stats, .ficha-npc-coluna-direita { min-width: 0; }
+.ficha-npc-stats { display: flex; flex-direction: column; gap: 12px; }
+/* Coluna direita = caixa do roleplay (com moldura) + token solto por baixo,
+   fora da moldura — são dois blocos irmãos, não um dentro do outro. */
+.ficha-npc-coluna-direita { display: flex; flex-direction: column; gap: 14px; align-self: stretch; }
+.ficha-npc-stat-bloco { margin-top: 0 !important; }
+.ficha-npc-attrs { display: flex; gap: 16px; flex-wrap: wrap; }
+.ficha-npc-attrs span { font-size: 11px; letter-spacing: .08em; color: var(--txt-fraco); }
+.ficha-npc-attrs b { font-family: var(--numeros); font-size: 20px; color: var(--txt); margin-right: 5px; }
+
+.ficha-npc-tabela { width: 100%; border-collapse: collapse; }
+.ficha-npc-tabela th, .ficha-npc-tabela td {
+  border: 1px solid var(--linha); text-align: center; padding: 5px 6px;
+}
+.ficha-npc-tabela th {
+  font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--txt-fraco);
+  font-weight: normal; background: rgba(255,255,255,.03);
+}
+.ficha-npc-tabela td { font-family: var(--numeros); font-size: 16px; color: var(--txt); }
+
+.ficha-npc-roleplay {
+  border: 1px solid var(--linha-forte); border-radius: var(--raio); background: var(--bg);
+  padding: 14px; display: flex; flex-direction: column; gap: 12px;
+}
+.ficha-npc-rp-cabecalho {
+  font-family: var(--display); font-size: 15px; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--sangue-claro); border-bottom: 1px solid var(--linha); padding-bottom: 8px;
+}
+.ficha-npc-rp-campo { padding-bottom: 8px; border-bottom: 1px dotted rgba(255,255,255,.08); }
+.ficha-npc-rp-campo:last-of-type { border-bottom: none; }
+.ficha-npc-rp-rotulo {
+  font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--sangue-claro);
+  margin-bottom: 3px;
+}
+.ficha-npc-rp-texto { font-size: 13px; color: var(--txt-dim); line-height: 1.45; }
+.ficha-npc-roleplay textarea { min-height: 52px; }
+
+.ficha-npc-token { flex: 1; min-height: 200px; padding-top: 4px; display: flex; }
+/* Sem moldura — o token fica solto no espaço da coluna, não dentro de uma
+   caixa com borda/fundo. */
+.ficha-npc-token-caixa {
+  position: relative; width: 100%; flex: 1;
+}
+.ficha-npc-token-caixa img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.ficha-npc-token-vazio {
+  width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+}
+.ficha-npc-token-placeholder { opacity: .85; }
+/* A própria imagem/placeholder é o botão em modo de editar — sem botão à
+   parte por cima. Só um leve destaque ao passar o rato, para se perceber
+   que é clicável. */
+.ficha-npc-token-caixa.editavel { cursor: pointer; border-radius: 8px; transition: filter .12s; }
+.ficha-npc-token-caixa.editavel:hover,
+.ficha-npc-token-caixa.editavel:focus-visible { filter: brightness(1.18); outline: none; }
+
+/* ---------------------------------------------------------- Campo de Batalha: cartões de combatente
+   Mesma linguagem visual do Overlay de OBS (retrato circular com brilho,
+   nome grande com glow) mas com barras de progresso em vez de números soltos
+   — simples e direto, só isso: sem elementos que o overlay não tem. */
+.cartao-combatente {
+  border-radius: 10px; cursor: pointer; background: var(--bg-3);
+  border: 1px solid var(--linha-forte); transition: border-color .15s, box-shadow .15s, transform .1s;
+  padding: 14px; display: flex; flex-direction: column; gap: 12px;
+}
+.cartao-combatente:hover { border-color: var(--sangue-claro); transform: translateY(-1px); }
+.cartao-combatente.ativo { border-color: var(--sangue-claro); box-shadow: 0 0 0 2px rgba(239,68,68,.28); }
+
+.cartao-combatente-topo { display: flex; align-items: center; gap: 12px; position: relative; }
+
+.cartao-combatente-retrato {
+  width: 64px; height: 64px; flex: 0 0 auto; border-radius: 50%;
+  background-position: center; background-size: cover; background-repeat: no-repeat;
+  border: 2px solid rgba(240,70,83,.8); box-shadow: 0 6px 16px rgba(0,0,0,.7);
+  background-color: rgba(8,5,6,.8);
+}
+
+.cartao-combatente-nome {
+  font-family: var(--display); font-size: 17px; font-weight: bold; color: #fff;
+  text-shadow: 0 2px 6px #000, 0 0 16px rgba(240,70,83,.55);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.cartao-combatente-acoes { position: absolute; top: -6px; right: -6px; display: flex; gap: 4px; }
+.cartao-combatente-remover {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(0,0,0,.55); color: #fff; border: none; cursor: pointer; font-size: 14px;
+  line-height: 20px; padding: 0; opacity: 0; transition: opacity .15s;
+}
+.cartao-combatente:hover .cartao-combatente-remover { opacity: 1; }
+
+.cartao-combatente-efeito {
+  font-size: 10.5px; font-weight: bold; border-radius: 5px;
+  padding: 2px 7px; border: none; cursor: pointer; color: #fff; background: rgba(0,0,0,.45);
+}
+.cartao-combatente-efeito.tem { background: rgba(239,68,68,.72); }
+
+.cartao-combatente-barras { display: flex; flex-direction: column; gap: 7px; }
+.cartao-combatente-barra-topo {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 10px; font-weight: bold; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--cor, #fff); text-shadow: 0 2px 4px #000;
+}
+.cartao-combatente-barra-topo span:last-child { font-family: var(--numeros); font-size: 12px; }
+.cartao-combatente-barra-trilho {
+  width: 100%; height: 8px; background: rgba(10,6,8,.85);
+  border: 1px solid rgba(255,255,255,.15); border-radius: 4px; overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,.8) inset;
+}
+.cartao-combatente-barra-preenchimento {
+  height: 100%; background: var(--cor, var(--sangue)); border-radius: 2px;
+  transition: width .2s ease-out; box-shadow: 0 0 8px var(--cor);
+}
+.cartao-combatente-barra-pv { --cor: #f04653; }
+.cartao-combatente-barra-san { --cor: #ad74f0; }
+.cartao-combatente-barra-pe { --cor: #f5a636; }
+
+/* Trilha de Iniciativa — retratos em ordem de turno; só quem está na vez
+   fica em destaque, quem já jogou e quem ainda vai jogar ficam esbatidos. */
+.trilha-iniciativa {
+  display: flex; gap: 16px; overflow-x: auto; justify-content: center; flex-wrap: wrap;
+  padding: 16px 10px; margin-bottom: 16px;
+}
+.trilha-iniciativa-item {
+  flex: none; width: 76px; display: flex; flex-direction: column; align-items: center; gap: 5px;
+  opacity: .4; transition: opacity .2s, transform .15s;
+}
+.trilha-iniciativa-item.ativo { opacity: 1; transform: translateY(-5px); }
+
+.trilha-iniciativa-retrato {
+  width: 62px; height: 62px; border-radius: 50%; background: var(--bg-4) center / cover no-repeat;
+  border: 2px solid var(--linha-forte); color: var(--txt-fraco); font-family: var(--display); font-size: 22px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
+}
+.trilha-iniciativa-item.ativo .trilha-iniciativa-retrato {
+  border-color: var(--sangue-claro); box-shadow: 0 0 0 3px rgba(239,68,68,.32);
+}
+.trilha-iniciativa-nome {
+  font-size: 10.5px; color: var(--txt-dim); text-align: center; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; width: 100%;
+}
+.trilha-iniciativa-ini { display: flex; align-items: center; gap: 3px; }
+.trilha-iniciativa-ini button {
+  width: 20px; height: 20px; font-size: 11px; line-height: 1; padding: 0; border-radius: 4px;
+  background: rgba(255,255,255,.06); border: 1px solid var(--linha); color: #fff; cursor: pointer;
+}
+.trilha-iniciativa-ini input { width: 36px; font-size: 11px; padding: 2px 3px; text-align: center; }
 
 /* ---------------------------------------------------------- histórico */
 .resumo-historico { display: flex; gap: 22px; flex-wrap: wrap; margin-bottom: 12px; color: var(--txt-dim); font-size: 13px; }

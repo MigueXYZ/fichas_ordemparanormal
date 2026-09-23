@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { CLASSES_POR_ID, TRILHAS_POR_ID } from '../data/classes.js';
 import { ORIGENS_POR_ID } from '../data/origens.js';
-import { listarAgentes, apagarAgente, apagarVariosAgentes, duplicarAgente, guardarAgente, exportarTudo, precisaDeCopia, ultimaCopia, marcarCopiaFeita } from '../engine/armazenamento.js';
+import { listarAgentes, apagarAgente, apagarVariosAgentes, duplicarAgente, guardarAgente, exportarTudo, precisaDeCopia, ultimaCopia, marcarCopiaFeita, dispensarAvisoCopia } from '../engine/armazenamento.js';
 import EditorTags from './EditorTags.jsx';
 import { IconeCopiar, IconeLixo, IconeTag } from './Icones.jsx';
 import { ELEMENTOS, ORDEM_ELEMENTOS } from '../data/rituais.js';
@@ -22,11 +22,11 @@ function normalizar(texto) {
 }
 
 /**
- * As amea\u00e7as/criaturas vivem no Besti\u00e1rio do Modo Mestre, n\u00e3o aqui \u2014 este
- * ecr\u00e3 \u00e9 s\u00f3 para os agentes (personagens dos jogadores e NPCs "normais").
+ * As amea\u00e7as vivem no Besti\u00e1rio do Modo Mestre e os NPCs no Elenco \u2014 este
+ * ecr\u00e3 \u00e9 s\u00f3 para os personagens dos jogadores.
  */
 function listarSoAgentes() {
-  return listarAgentes().filter((a) => a.tipo !== 'ameaca');
+  return listarAgentes().filter((a) => a.tipo !== 'ameaca' && a.tipo !== 'npc');
 }
 
 export default function Inicio({ aoCriar, aoAbrir, aoAbrirMestre, tema = TEMA_PADRAO, aoTrocarTema }) {
@@ -190,6 +190,15 @@ export default function Inicio({ aoCriar, aoAbrir, aoAbrirMestre, tema = TEMA_PA
 
       {lembrete && (
         <div className="aviso lembrete-copia">
+          <button
+            type="button"
+            className="fechar"
+            title="Não mostrar mais este aviso"
+            aria-label="Dispensar aviso"
+            onClick={() => { dispensarAvisoCopia(); setLembrete(false); }}
+          >
+            ×
+          </button>
           <strong>As tuas fichas vivem só neste browser.</strong> Limpar os dados do site, trocar de
           computador ou abrir numa janela privada faz desaparecer tudo — não há servidor nenhum a
           segurar. {ultimaCopia() ? 'A última cópia já vai com algum tempo.' : 'Ainda não fizeste nenhuma cópia.'}
@@ -330,11 +339,7 @@ export default function Inicio({ aoCriar, aoAbrir, aoAbrirMestre, tema = TEMA_PA
                 {!a.imagem && (a.nome?.[0]?.toUpperCase() || '?')}
               </div>
               <div className="info">
-                <div className="nome">
-                  {a.nome || 'Sem nome'}
-                  {a.tipo === 'ameaca' && <span className="pill" style={{ marginLeft: 8 }}>Ameaça</span>}
-                  {a.tipo === 'npc' && <span className="pill" style={{ marginLeft: 8 }}>NPC</span>}
-                </div>
+                <div className="nome">{a.nome || 'Sem nome'}</div>
                 <div className="det">{descrever(a)}</div>
 
                 {/* Chips de tags no cartão */}

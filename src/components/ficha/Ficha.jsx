@@ -12,7 +12,9 @@ import { ORIGENS } from '../../data/origens.js';
 import { REGRAS_ATRIBUTOS } from '../../data/atributos.js';
 import { calcMaximos, calcDefesas, defesaDasProtecoes, calcPePorRodada, calcDeslocamento, calcDeslocamentos, degrauNex, nexEfetivo, NEX_TRACK } from '../../engine/calc.js';
 import { PROTECOES, PROFICIENCIAS_OP } from '../../data/itens.js';
-import { TIPOS_DANO } from '../../engine/danoRecetor.js';
+import { PATENTES, PATENTES_POR_ID, patentePorPrestigio } from '../../data/patentes.js';
+import { TIPOS_DANO, estadoResistencia, definirResistencia, TIPOS_DANO_RESISTIVEIS } from '../../engine/danoRecetor.js';
+import InputNumeroScroll from '../InputNumeroScroll.jsx';
 import RegrasOpcionais from './RegrasOpcionais.jsx';
 import Alteracoes from './Alteracoes.jsx';
 import GuiaCombate from './GuiaCombate.jsx';
@@ -45,37 +47,6 @@ import ModalSubidaNex from './ModalSubidaNex.jsx';
 import { resumoSubida } from '../../engine/subirNex.js';
 import { IconeEngrenagem } from '../Icones.jsx';
 
-function InputNumeroScroll({ value, onChange, ...props }) {
-  const ref = useRef(null);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    const handleWheel = (e) => {
-      if (document.activeElement !== el) return;
-      e.preventDefault();
-      e.stopPropagation();
-      const delta = e.deltaY < 0 ? 1 : -1;
-      const atual = Number(el.value) || 0;
-      onChange(atual + delta);
-    };
-
-    el.addEventListener('wheel', handleWheel, { passive: false });
-    return () => el.removeEventListener('wheel', handleWheel);
-  }, [onChange]);
-
-  return (
-    <input
-      ref={ref}
-      type="number"
-      value={value ?? ''}
-      onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
-      {...props}
-    />
-  );
-}
-
 const ABAS = [
   { id: 'combate', nome: 'Combate' },
   { id: 'habilidades', nome: 'Habilidades/Poderes' },
@@ -83,36 +54,6 @@ const ABAS = [
   { id: 'inventario', nome: 'Inventário' },
   { id: 'descricao', nome: 'Descrição' },
 ];
-
-// Medo (entre os TIPOS_DANO de engine/danoRecetor.js) ignora Resistências por
-// definição — fica fora da lista de checkboxes.
-const TIPOS_DANO_FICHA = TIPOS_DANO.filter((t) => !t.ignoraRd);
-
-/**
- * Lê o estado de Resistência de `tipo` na lista da ficha (`personagem.resistencias`):
- * `null` = não marcada; `{ valor: null }` = marcada sem número (½ dano);
- * `{ valor: N }` = marcada com número (desconta N ao dano, em vez da metade).
- */
-function estadoResistencia(lista, tipo) {
-  const arr = Array.isArray(lista) ? lista : [];
-  if (arr.includes(tipo.id)) return { valor: null };
-  const entrada = arr.find((e) => e === tipo.nome || e.startsWith(tipo.nome + ' '));
-  if (!entrada) return null;
-  const m = entrada.match(/(\d+)\s*$/);
-  return { valor: m ? Number(m[1]) : null };
-}
-
-/**
- * Marca/desmarca ou muda o número da Resistência de `tipo` na lista.
- * `valor`: `null` = desmarcar; `undefined` = marcar sem número (½ dano);
- * um número = marcar com esse número (RD fixa).
- */
-function definirResistencia(lista, tipo, valor) {
-  const atual = (Array.isArray(lista) ? lista : []).filter((e) => e !== tipo.id && e !== tipo.nome && !e.startsWith(tipo.nome + ' '));
-  if (valor === null) return atual;
-  if (valor === undefined) return [...atual, tipo.id];
-  return [...atual, `${tipo.nome} ${valor}`];
-}
 
 export default function Ficha({ personagem, setPersonagem, onRolar }) {
   const [aba, setAba] = useState('combate');
@@ -596,7 +537,7 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
               {abertaResistencias && (
                 <>
                   {['Físico', 'Elemental', 'Mental', 'Geral'].map((categoria) => {
-                    const doGrupo = TIPOS_DANO_FICHA.filter((t) => t.categoria === categoria);
+                    const doGrupo = TIPOS_DANO_RESISTIVEIS.filter((t) => t.categoria === categoria);
                     if (doGrupo.length === 0) return null;
                     return (
                       <div key={categoria}>
@@ -891,7 +832,12 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
           </div>
           <div className="campo-linha">
             <label>Patente</label>
-            <input type="text" value={personagem.patente} onChange={(e) => set({ patente: e.target.value })} />
+            <select
+              value={personagem.patenteId || patentePorPrestigio(personagem.pontosPrestigio).id}
+              onChange={(e) => set({ patenteId: e.target.value, patente: PATENTES_POR_ID[e.target.value]?.nome || '' })}
+            >
+              {PATENTES.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </select>
           </div>
         </div>
 

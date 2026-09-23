@@ -30,10 +30,18 @@ export const APELIDOS = [
   'Tavares', 'Teixeira', 'Torres', 'Valente', 'Vasconcelos', 'Vaz', 'Veloso', 'Vicente', 'Vieira',
 ];
 
-/** Animais e bichos, para o arquétipo mundano do gerador de ameaças. */
+/** Animais e bichos individuais, para o arquétipo "Animal" do gerador de ameaças
+ * quando NÃO é gerado como grupo — cada entrada é sempre um único bicho. */
 export const ANIMAIS = [
-  'Cão de guarda', 'Matilha de rafeiros', 'Javali', 'Lobo ibérico', 'Corvo', 'Bando de gaivotas',
-  'Touro bravo', 'Lince', 'Enxame de ratos', 'Cavalo assustado', 'Cobra-de-água', 'Aranha da cave',
+  'Cão de guarda', 'Javali', 'Lobo ibérico', 'Corvo', 'Touro bravo', 'Lince',
+  'Cavalo assustado', 'Cobra-de-água', 'Aranha da cave', 'Raposa', 'Morcego', 'Texugo',
+];
+
+/** Nomes coletivos de animais, usados só quando o mestre marca "é um grupo?"
+ * no gerador — nunca aparecem para uma única criatura. */
+export const ANIMAIS_GRUPO = [
+  'Matilha de rafeiros', 'Bando de gaivotas', 'Enxame de ratos', 'Alcateia de lobos',
+  'Colónia de morcegos', 'Revoada de corvos', 'Vara de javalis', 'Ninhada de aranhas',
 ];
 
 /** Sítios portugueses para dar nome às criaturas. */
