@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { CLASSES } from '../../data/classes.js';
 import { ORIGENS } from '../../data/origens.js';
 import { PERICIAS, GRAUS_TREINO } from '../../data/pericias.js';
@@ -7,6 +7,8 @@ import { quantidadeDados } from '../../engine/dados.js';
 import tokenPlaceholder from '../../assets/token-placeholder.png';
 import CabecalhoSeta from '../ficha/CabecalhoSeta.jsx';
 import InputNumeroScroll from '../InputNumeroScroll.jsx';
+import AvatarAjustavel from '../AvatarAjustavel.jsx';
+import ModalEditarAvatar from '../ModalEditarAvatar.jsx';
 import { TIPOS_DANO_RESISTIVEIS, estadoResistencia, definirResistencia } from '../../engine/danoRecetor.js';
 import { ROTULO_GRAU, BlocoStat, TabelaLinha, CampoRoleplay } from './FichaCardBlocos.jsx';
 
@@ -31,7 +33,7 @@ const GRAUS_ATRIBUIVEIS = GRAUS_TREINO.filter((g) => g.id !== 'destreinado');
  * "extra" / manuais ao lado.
  */
 export default function FichaNpcCard({ p, aoVerDetalhe, editando, onAtualizarCampo, aoUploadImagem }) {
-  const fileInputRef = useRef(null);
+  const [modalAvatarAberto, setModalAvatarAberto] = useState(false);
   const [abertaResistencias, setAbertaResistencias] = useState(false);
   const classe = CLASSES.find((c) => c.id === p.classeId);
   const origem = ORIGENS.find((o) => o.id === p.origemId);
@@ -47,12 +49,12 @@ export default function FichaNpcCard({ p, aoVerDetalhe, editando, onAtualizarCam
   const poderes = p.poderes || [];
   const rp = p.comoInterpretar || {};
 
-  function handleFileChange(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => aoUploadImagem(reader.result);
-    reader.readAsDataURL(file);
+  function aplicarAvatar(patch) {
+    aoUploadImagem(patch.imagem);
+    onAtualizarCampo('imagemPosX', patch.imagemPosX);
+    onAtualizarCampo('imagemPosY', patch.imagemPosY);
+    onAtualizarCampo('imagemZoom', patch.imagemZoom);
+    setModalAvatarAberto(false);
   }
 
   // --------------------------------------------------- perícias do livro (oficiais)
@@ -564,23 +566,34 @@ export default function FichaNpcCard({ p, aoVerDetalhe, editando, onAtualizarCam
               o botão: em modo de editar, clicar nela abre o seletor de ficheiro
               — não há um botão à parte por cima. */}
           <div className="ficha-npc-token">
-            <div
+            <AvatarAjustavel
               className={'ficha-npc-token-caixa' + (editando ? ' editavel' : '')}
+              imagem={p.imagem}
+              alt={p.nome}
+              posX={p.imagemPosX ?? 50}
+              posY={p.imagemPosY ?? 50}
+              zoom={p.imagemZoom ?? 1}
+              editavel={false}
+              onClick={editando ? () => setModalAvatarAberto(true) : undefined}
+              title={editando ? (p.imagem ? 'Clica para trocar o avatar' : 'Clica para adicionares um avatar') : undefined}
               role={editando ? 'button' : undefined}
               tabIndex={editando ? 0 : undefined}
-              title={editando ? (p.imagem ? 'Clica para trocar o token' : 'Clica para adicionares um token') : undefined}
-              onClick={editando ? () => fileInputRef.current?.click() : undefined}
-              onKeyDown={editando ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click(); } } : undefined}
+              onKeyDown={editando ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setModalAvatarAberto(true); } } : undefined}
             >
-              {p.imagem ? (
-                <img src={p.imagem} alt={p.nome} />
-              ) : (
-                <div className="ficha-npc-token-vazio">
-                  <img src={tokenPlaceholder} alt="" className="ficha-npc-token-placeholder" />
-                </div>
-              )}
-              <input type="file" accept="image/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
-            </div>
+              <div className="ficha-npc-token-vazio">
+                <img src={tokenPlaceholder} alt="" className="ficha-npc-token-placeholder" />
+              </div>
+            </AvatarAjustavel>
+            {modalAvatarAberto && (
+              <ModalEditarAvatar
+                imagem={p.imagem}
+                posX={p.imagemPosX ?? 50}
+                posY={p.imagemPosY ?? 50}
+                zoom={p.imagemZoom ?? 1}
+                aoAplicar={aplicarAvatar}
+                aoCancelar={() => setModalAvatarAberto(false)}
+              />
+            )}
           </div>
         </div>
       </div>

@@ -1317,35 +1317,37 @@ textarea { resize: vertical; min-height: 92px; }
 .retrato:hover { border-color: var(--sangue); color: var(--sangue-claro); }
 .retrato input { display: none; }
 
-.menu-avatar {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  width: 104px;
-  margin-top: 6px;
-  background: var(--bg-3);
-  border: 1px solid var(--linha-forte);
-  border-radius: var(--raio);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7);
-  z-index: 60;
-  padding: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+/* ------------------------------------------------- AvatarAjustavel (pan + zoom) */
+/* Só para avatares (retrato do agente, imagem na ficha de NPC/criatura) — nunca
+   para tokens (EspacoToken, Campo de Batalha, Cartões de Batalha), onde a
+   imagem continua a mostrar-se tal como foi carregada. */
+/* Sem tamanho próprio de propósito — a caixa que usa isto (`.retrato`,
+   `.ficha-npc-token-caixa`, `.modal-avatar-preview`) é sempre quem manda no
+   tamanho. Um width/height:100% aqui ganhava ao width/height:104px do
+   `.retrato` só por vir depois no ficheiro (mesma especificidade, uma
+   classe cada) e encolhia o avatar a um ícone minúsculo — foi o que
+   aconteceu da primeira vez. */
+.avatar-ajustavel {
+  position: relative; overflow: hidden; touch-action: none;
+  display: grid; place-items: center;
 }
-.menu-avatar button {
-  background: var(--bg-4);
-  border: 1px solid var(--linha);
-  color: var(--txt);
-  padding: 6px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  cursor: pointer;
-  text-align: left;
-  transition: all .15s ease;
+.avatar-ajustavel.tem-imagem img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; display: block; pointer-events: none; user-select: none;
 }
-.menu-avatar button:hover { border-color: var(--sangue); background: rgba(var(--sangue-rgb), 0.25); color: #fff; }
-.menu-avatar button.remover:hover { border-color: var(--sangue-claro); background: rgba(var(--sangue-rgb), 0.35); }
+.avatar-ajustavel.arrastavel { cursor: grab; }
+.avatar-ajustavel.arrastavel.a-arrastar { cursor: grabbing; }
+
+/* ------------------------------------------------- ModalEditarAvatar */
+.modal.modal-avatar { width: min(420px, 100%); }
+.modal-avatar-corpo { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.modal-avatar-preview {
+  width: 260px; height: 260px; border-radius: 14px;
+  border: 2px solid var(--linha-forte); background: var(--bg-3);
+  color: var(--txt-fraco); font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+}
+.modal-avatar-controlos { display: flex; align-items: center; gap: 10px; width: 100%; }
+.avatar-zoom-slider { flex: 1; height: 4px; margin: 0; accent-color: var(--sangue); }
 
 .campo-linha { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 10px; margin-bottom: 9px; }
 .campo-linha input, .campo-linha select {
