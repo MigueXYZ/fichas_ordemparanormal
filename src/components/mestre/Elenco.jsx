@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { IconeLixo } from '../Icones.jsx';
-import { personagemVazio } from '../../engine/character.js';
+import { fichaLivreVazia } from '../../engine/fichaLivre.js';
+import BotaoImportarFichas from './BotaoImportarFichas.jsx';
 
 function normalizar(texto) {
   return String(texto || '')
@@ -10,11 +11,11 @@ function normalizar(texto) {
 }
 
 /**
- * Aba "Elenco" do Modo Mestre — onde ficam guardados os NPCs (gerados na aba
- * "Gerar" ou criados aqui do zero), ao lado do Bestiário que guarda as
- * ameaças. Cada NPC usa sempre a estrutura da "ficha 4" (ver FichaNpcCard.jsx):
- * atributos, saúde, perícias, deslocamento, proteção, resistências, ataques,
- * habilidades especiais e o guia "Como Interpretar".
+ * Aba "Elenco" do Modo Mestre — onde ficam guardados os NPCs, ao lado do
+ * Bestiário que guarda as ameaças. Os NPCs criados aqui ou importados da
+ * ficha editável são de ficha livre (ver engine/fichaLivre.js e
+ * FichaLivreCard.jsx): valores escritos à mão, sem classe nem cálculos. Os
+ * gerados na aba "Gerar" continuam na "ficha 4" (FichaNpcCard.jsx).
  */
 export default function Elenco({ lista, aoAbrir, aoApagar, aoGuardar }) {
   const [busca, setBusca] = useState('');
@@ -42,10 +43,10 @@ export default function Elenco({ lista, aoAbrir, aoApagar, aoGuardar }) {
   }
 
   function criarNpc() {
-    // Ficha em branco — nada pré-preenchido. Só a aba "Gerar" produz um NPC
-    // já com atributos, perícias e guia de interpretação sorteados. Abre
-    // logo em modo de editar, para escreveres direto sem cliques extra.
-    const novo = { ...personagemVazio(), tipo: 'npc', jogador: 'NPC' };
+    // Ficha livre em branco. Só a aba "Gerar" produz um NPC já com
+    // atributos, perícias e guia de interpretação sorteados. Abre logo em
+    // modo de editar, para escreveres direto sem cliques extra.
+    const novo = { ...fichaLivreVazia('npc'), jogador: 'NPC' };
     const guardado = aoGuardar ? aoGuardar(novo) : novo;
     aoAbrir(guardado, { editando: true });
   }
@@ -53,9 +54,9 @@ export default function Elenco({ lista, aoAbrir, aoApagar, aoGuardar }) {
   return (
     <div>
       <p className="dica" style={{ marginTop: 0 }}>
-        Os teus NPCs — aliados, rivais, vilões — todos na "ficha 4" (atributos, saúde, perícias, ataques e o
-        guia "Como Interpretar"). "+ Criar NPC" dá-te uma ficha em branco para preencheres à mão; para um NPC
-        já sorteado (atributos, perícias, guia de interpretação), usa a aba "Gerar".
+        Os teus NPCs — aliados, rivais, vilões. "Importar ficha" traz as fichas feitas na ficha editável de
+        NPC/Ameaça (as ameaças vão direto para o Bestiário); "+ Criar NPC" dá-te uma ficha em branco para
+        preencheres aqui. Para um NPC já sorteado, usa a aba "Gerar".
       </p>
 
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -70,6 +71,7 @@ export default function Elenco({ lista, aoAbrir, aoApagar, aoGuardar }) {
             <button type="button" className="limpar-pesquisa" onClick={() => setBusca('')} title="Limpar pesquisa">×</button>
           )}
         </div>
+        <BotaoImportarFichas aoGuardar={aoGuardar} />
         <button type="button" className="btn" onClick={criarNpc}>+ Criar NPC</button>
       </div>
 
@@ -86,7 +88,7 @@ export default function Elenco({ lista, aoAbrir, aoApagar, aoGuardar }) {
               </div>
               <div className="info">
                 <div className="nome">{n.nome || 'Sem nome'}</div>
-                <div className="det">{n.breveDescricao || `NEX ${n.nex}%`}</div>
+                <div className="det">{n.breveDescricao || (n.fichaLivre ? (n.vd ? `VD ${n.vd}` : 'NPC') : `NEX ${n.nex}%`)}</div>
                 <div className="cartao-acoes">
                   <button
                     type="button"

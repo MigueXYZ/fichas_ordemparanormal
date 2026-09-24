@@ -17,8 +17,9 @@ import {
 import { COMPENDIO_AMEACAS, clonarAmeacaOficial } from '../../data/ameacas/index.js';
 import { calcMaximos, calcDefesas } from '../../engine/calc.js';
 import Ficha from '../ficha/Ficha.jsx';
-import FichaAmeaca from '../ficha/FichaAmeaca.jsx';
 import FichaNpcCard from './FichaNpcCard.jsx';
+import FichaLivreCard from './FichaLivreCard.jsx';
+import { vitaisLivre } from '../../engine/fichaLivre.js';
 import ModalDetalheGenerico from './ModalDetalheGenerico.jsx';
 import PainelRolagem from '../PainelRolagem.jsx';
 import PainelDetalheUnidade from './PainelDetalheUnidade.jsx';
@@ -191,6 +192,18 @@ export default function CampoDeBatalha({
   }
 
   function adicionarFicha(equipaId, ficha) {
+    if (ficha.fichaLivre) {
+      // NPC de ficha livre: os números vêm escritos na ficha, não do cálculo
+      // de personagem. Conta para o balanço pelo VD (se o tiver).
+      const v = vitaisLivre(ficha);
+      setEstado((est) => adicionarCombatente(est, {
+        id: ficha.id, nome: ficha.nome,
+        tipo: 'npc', subtipo: 'livre', equipaId,
+        vd: Number(ficha.vd) || 0, agi: v.agi,
+        pv: v.pv, san: v.san, pe: v.pe, defesa: v.defesa, ficha,
+      }));
+      return;
+    }
     const max = calcMaximos(ficha);
     const defesas = calcDefesas(ficha);
     setEstado((est) => adicionarCombatente(est, {
@@ -233,6 +246,7 @@ export default function CampoDeBatalha({
       setEditandoNpcCard(false);
       setNpcCompletaId(c.id);
     } else {
+      setEditandoNpcCard(false);
       setFichaCompleta({ combatenteId: c.id, tipo: c.ficha.tipo === 'ameaca' ? 'ameaca' : 'agente', ficha: c.ficha });
     }
   }
@@ -257,9 +271,13 @@ export default function CampoDeBatalha({
     : null;
 
   function atualizarCampoNpcCompleta(campo, valor) {
+    atualizarNpcCompleta({ [campo]: valor });
+  }
+
+  function atualizarNpcCompleta(patch) {
     const c = combatentes.find((x) => x.id === npcCompletaId);
     if (!c?.ficha) return;
-    const novaFicha = { ...c.ficha, [campo]: valor };
+    const novaFicha = { ...c.ficha, ...patch };
     aoGuardar(novaFicha);
     setEstado((est) => editarCombatente(est, npcCompletaId, { ficha: novaFicha, nome: novaFicha.nome || c.nome }));
   }
@@ -418,11 +436,18 @@ export default function CampoDeBatalha({
           <div className="modal" style={{ maxWidth: 960, width: '95vw', maxHeight: '92vh', overflowY: 'auto' }}>
             <div className="modal-topo">
               <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>{fichaCompleta.ficha.nome}</h3>
-              <button className="fechar" onClick={() => setFichaCompleta(null)}>×</button>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {fichaCompleta.tipo === 'ameaca' && (
+                  <button type="button" className={`btn ghost sm ${editandoNpcCard ? 'ativo' : ''}`} onClick={() => setEditandoNpcCard((v) => !v)}>
+                    {editandoNpcCard ? 'Concluir Edição' : 'Editar Ameaça'}
+                  </button>
+                )}
+                <button className="fechar" onClick={() => setFichaCompleta(null)}>×</button>
+              </div>
             </div>
             <div className="modal-corpo" style={{ padding: 16 }}>
               {fichaCompleta.tipo === 'ameaca'
-                ? <FichaAmeaca ameaca={fichaCompleta.ficha} setAmeaca={(f) => setFichaCompleta((ant) => ({ ...ant, ficha: f }))} onRolar={onRolar} aoConcluir={() => setFichaCompleta(null)} />
+                ? <FichaLivreCard f={fichaCompleta.ficha} editando={editandoNpcCard} onAtualizar={(patch) => setFichaCompleta((ant) => ({ ...ant, ficha: { ...ant.ficha, ...patch } }))} onRolar={onRolar} />
                 : <Ficha personagem={fichaCompleta.ficha} setPersonagem={(f) => setFichaCompleta((ant) => ({ ...ant, ficha: f }))} onRolar={onRolar} />}
             </div>
           </div>
@@ -437,19 +462,23 @@ export default function CampoDeBatalha({
               <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>{npcCompletaFicha.nome}</h3>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <button type="button" className={`btn ghost sm ${editandoNpcCard ? 'ativo' : ''}`} onClick={() => setEditandoNpcCard((v) => !v)}>
-                  {editandoNpcCard ? 'Concluir Edição' : 'Editar Guia'}
+                  {editandoNpcCard ? 'Concluir Edição' : npcCompletaFicha.fichaLivre ? 'Editar NPC' : 'Editar Guia'}
                 </button>
                 <button className="fechar" onClick={() => setNpcCompletaId(null)}>×</button>
               </div>
             </div>
             <div className="modal-corpo" style={{ padding: 16 }}>
-              <FichaNpcCard
-                p={npcCompletaFicha}
-                aoVerDetalhe={setNpcDetalhe}
-                editando={editandoNpcCard}
-                onAtualizarCampo={atualizarCampoNpcCompleta}
-                aoUploadImagem={(dataUrl) => atualizarCampoNpcCompleta('imagem', dataUrl)}
-              />
+              {npcCompletaFicha.fichaLivre ? (
+                <FichaLivreCard f={npcCompletaFicha} editando={editandoNpcCard} onAtualizar={atualizarNpcCompleta} onRolar={onRolar} />
+              ) : (
+                <FichaNpcCard
+                  p={npcCompletaFicha}
+                  aoVerDetalhe={setNpcDetalhe}
+                  editando={editandoNpcCard}
+                  onAtualizarCampo={atualizarCampoNpcCompleta}
+                  aoUploadImagem={(dataUrl) => atualizarCampoNpcCompleta('imagem', dataUrl)}
+                />
+              )}
             </div>
           </div>
         </div>

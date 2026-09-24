@@ -48,7 +48,9 @@ export function prepararAtaques(unidade) {
   if (!ficha) return [];
   const nomeUnidade = unidade.nome || ficha.nome || '';
 
-  if (unidade.tipo === 'ameaca' || (unidade.tipo === 'npc' && unidade.subtipo === 'ocultista')) {
+  // Ameaças, ocultistas gerados e NPCs de ficha livre (ver engine/fichaLivre.js)
+  // atacam pelas ações escritas na ficha, não por armas de inventário.
+  if (unidade.tipo === 'ameaca' || ficha.fichaLivre === true || (unidade.tipo === 'npc' && unidade.subtipo === 'ocultista')) {
     return acoesDeAmeaca(ficha).map((acao, i) => ({
       id: acao.nome ? `${acao.nome}-${i}` : `acao-${i}`,
       nome: acao.nome || 'Ação',

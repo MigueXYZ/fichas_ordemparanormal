@@ -2871,6 +2871,36 @@ body.bate-forte .barra-recurso .preenchido::before {
 .ficha-npc-token-caixa.editavel:hover,
 .ficha-npc-token-caixa.editavel:focus-visible { filter: brightness(1.18); outline: none; }
 
+/* ---------------------------------------------------------- ficha livre (NPC livre / ameaça)
+   Mesma moldura da ficha 4; só acrescenta o que ela não tinha: ações com
+   números lado a lado, habilidades com custo, o segredo do mestre e o "?"
+   no lugar do token de uma ameaça sem imagem. */
+.ficha-livre-mini { display: flex; align-items: center; gap: 6px; font-size: 11px; letter-spacing: .1em; color: var(--txt-fraco); }
+.ficha-livre-mini input { width: 64px; text-align: center; }
+.ficha-livre-linha { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--txt-fraco); letter-spacing: .06em; text-transform: uppercase; }
+.ficha-livre-linha b { font-family: var(--numeros); font-size: 15px; color: var(--txt); text-transform: none; letter-spacing: 0; }
+.ficha-livre-acoes { display: flex; flex-direction: column; gap: 8px; }
+.ficha-livre-acao { border-left: 2px solid var(--sangue-claro); padding: 4px 0 4px 10px; }
+.ficha-livre-acao-topo { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.ficha-livre-acao-topo b { font-family: var(--display); font-size: 15px; color: var(--txt); }
+.ficha-livre-acao-numeros { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin-top: 3px; font-size: 11px; letter-spacing: .06em; color: var(--txt-fraco); text-transform: uppercase; }
+.ficha-livre-acao-numeros b { font-family: var(--numeros); font-size: 14px; color: var(--txt); text-transform: none; letter-spacing: 0; margin-left: 3px; }
+.ficha-livre-acao-botoes { display: inline-flex; gap: 6px; margin-left: auto; text-transform: none; letter-spacing: 0; }
+.ficha-livre-tag {
+  font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--sangue-claro);
+  border: 1px solid var(--linha-forte); border-radius: 2px; padding: 0 5px; margin-left: 6px; white-space: nowrap;
+}
+.ficha-livre-det { font-size: 12.5px; color: var(--txt-dim); line-height: 1.45; white-space: pre-wrap; }
+.ficha-livre-habilidades { display: flex; flex-direction: column; gap: 10px; }
+.ficha-livre-habilidades b { font-family: var(--display); font-size: 14px; color: var(--txt); }
+.ficha-livre-segredo { border: 1px dashed var(--sangue-claro); border-radius: 6px; padding: 8px 10px; background: rgba(0,0,0,.18); }
+.ficha-livre-interrogacao {
+  width: min(78%, 220px); aspect-ratio: 3 / 4; display: grid; place-items: center;
+  border: 2px dashed var(--linha-forte); border-radius: 50% 50% 12px 12px / 38% 38% 12px 12px;
+  font-family: var(--display); font-size: clamp(90px, 14vw, 150px); line-height: 1; color: var(--sangue-claro);
+  opacity: .7; text-shadow: 0 0 24px var(--sangue-claro); background: radial-gradient(circle at 50% 40%, rgba(255,255,255,.05), transparent 70%);
+}
+
 /* ---------------------------------------------------------- Campo de Batalha: cartões de combatente
    Mesma linguagem visual do Overlay de OBS (retrato circular com brilho,
    nome grande com glow) mas com barras de progresso em vez de números soltos

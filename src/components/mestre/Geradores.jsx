@@ -11,10 +11,9 @@ import {
 } from '../../engine/geradores.js';
 import ModalDetalheGenerico from './ModalDetalheGenerico.jsx';
 import Ficha from '../ficha/Ficha.jsx';
-import FichaAmeaca from '../ficha/FichaAmeaca.jsx';
+import FichaLivreCard from './FichaLivreCard.jsx';
 import PainelRolagem from '../PainelRolagem.jsx';
 import FichaNpcCard from './FichaNpcCard.jsx';
-import FichaAmeacaCard from './FichaAmeacaCard.jsx';
 
 const SEPARADORES = [
   { id: 'ficha', nome: 'Ficha aleatória' },
@@ -676,17 +675,14 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
             e o treino das perícias — tudo o que já dá para fazer numa ficha guardada.
           </div>
           {resultado.tipo === 'ameaca'
-            ? <FichaAmeaca ameaca={resultado} setAmeaca={setResultado} onRolar={onRolar} aoConcluir={() => setEditando(false)} />
+            ? <FichaLivreCard f={resultado} editando onAtualizar={(patch) => setResultado((a) => ({ ...a, ...patch }))} onRolar={onRolar} />
             : <Ficha personagem={resultado} setPersonagem={setResultado} onRolar={onRolar} />}
         </div>
       )}
 
       {resultado && !editando && (
         resultado.tipo === 'ameaca' ? (
-          <FichaAmeacaCard
-            a={resultado}
-            aoVerDetalhe={setItemDetalhe}
-          />
+          <FichaLivreCard f={resultado} onAtualizar={(patch) => setResultado((a) => ({ ...a, ...patch }))} onRolar={onRolar} />
         ) : resultado.tipo === 'npc' ? (
           <FichaNpcCard
             p={resultado}

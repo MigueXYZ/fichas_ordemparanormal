@@ -10,8 +10,9 @@ import gifMargemVazia from './assets/gerador-vazio.gif';
 import HistoricoRolagens from './components/HistoricoRolagens.jsx';
 import PainelOverlay from './components/PainelOverlay.jsx';
 import EditorOverlay from './components/EditorOverlay.jsx';
-import FichaAmeaca from './components/ficha/FichaAmeaca.jsx';
 import FichaNpcCard from './components/mestre/FichaNpcCard.jsx';
+import FichaLivreCard from './components/mestre/FichaLivreCard.jsx';
+import { ehFichaLivre, fichaParaExportar } from './engine/fichaLivre.js';
 import ModalDetalheGenerico from './components/mestre/ModalDetalheGenerico.jsx';
 import ModoMestre from './components/mestre/ModoMestre.jsx';
 import ModalDefinicoes from './components/ModalDefinicoes.jsx';
@@ -417,10 +418,27 @@ export default function App() {
       {vista === 'wizard' && personagem && (
         <Wizard personagem={personagem} setPersonagem={setPersonagem} onRolar={rolar} onFinalizar={() => setVista('ficha')} onSair={sairDoWizard} />
       )}
-      {vista === 'ficha' && personagem && personagem.tipo === 'ameaca' && (
-        <FichaAmeaca ameaca={personagem} setAmeaca={setPersonagem} onRolar={rolar} aoConcluir={fecharFicha} />
+      {/* Ameaças e NPCs de ficha livre (importados da ficha editável ou
+          criados com "+ Criar NPC"): mesmo cartão, editável no sítio. */}
+      {vista === 'ficha' && personagem && ehFichaLivre(personagem) && (
+        <div className="container">
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+            <button type="button" className="btn ghost sm" onClick={() => exportarJson(fichaParaExportar(personagem))} title="Descarregar a ficha em .json (abre na ficha editável ou noutro computador)">
+              Exportar .json
+            </button>
+            <button type="button" className={`btn sm ${editandoNpcCard ? '' : 'ghost'}`} onClick={() => setEditandoNpcCard((v) => !v)}>
+              {editandoNpcCard ? 'Concluir Edição' : personagem.tipo === 'ameaca' ? 'Editar Ameaça' : 'Editar NPC'}
+            </button>
+          </div>
+          <FichaLivreCard
+            f={personagem}
+            editando={editandoNpcCard}
+            onAtualizar={(patch) => setPersonagem((ant) => ({ ...ant, ...patch }))}
+            onRolar={rolar}
+          />
+        </div>
       )}
-      {vista === 'ficha' && personagem && personagem.tipo === 'npc' && (
+      {vista === 'ficha' && personagem && personagem.tipo === 'npc' && !ehFichaLivre(personagem) && (
         <div className="container">
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
             <button type="button" className={`btn sm ${editandoNpcCard ? '' : 'ghost'}`} onClick={() => setEditandoNpcCard((v) => !v)}>

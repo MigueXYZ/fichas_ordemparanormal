@@ -1,41 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import { IconeLixo } from '../Icones.jsx';
-import { novoId } from '../../engine/armazenamento.js';
+import { fichaLivreVazia } from '../../engine/fichaLivre.js';
 import CompendioOficial from './CompendioOficial.jsx';
+import BotaoImportarFichas from './BotaoImportarFichas.jsx';
 
 function normalizar(texto) {
   return String(texto || '')
     .toLowerCase()
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '');
-}
-
-/** Ficha em branco para uma ameaça totalmente custom, no mesmo formato rico das oficiais. */
-function ameacaCustomVazia() {
-  return {
-    id: novoId(),
-    tipo: 'ameaca',
-    nome: 'Nova Ameaça',
-    tags: [],
-    vd: 20,
-    descritores: [],
-    tamanho: 'Médio',
-    categoria: '',
-    defesa: 15,
-    pv: 20,
-    pvMachucado: 10,
-    deslocamento: '9m | 6',
-    sentidos: { percepcao: '1d20+0', iniciativa: '1d20+0' },
-    testes: { fortitude: '1d20+0', reflexos: '1d20+0', vontade: '1d20+0' },
-    atributos: { agi: 1, for: 1, int: 1, pre: 1, vig: 1 },
-    resistencias: [],
-    pericias: [],
-    habilidades: [],
-    acoes: [
-      { tipo: 'Padrão', nome: 'Agredir', detalhe: 'Corpo a corpo', teste: '1d20+0', dano: '1d6', critico: '', descricao: '' },
-    ],
-    notas: '',
-  };
 }
 
 /**
@@ -72,9 +45,12 @@ export default function Bestiario({ lista, aoAbrir, aoApagar, aoGuardar }) {
   }
 
   function criarCustom() {
-    const nova = ameacaCustomVazia();
+    const nova = {
+      ...fichaLivreVazia('ameaca'),
+      acoes: [{ tipo: 'Padrão', nome: 'Agredir', detalhe: 'Corpo a corpo', teste: '1d20+0', dano: '1d6', critico: '', descricao: '' }],
+    };
     const guardada = aoGuardar ? aoGuardar(nova) : nova;
-    aoAbrir(guardada);
+    aoAbrir(guardada, { editando: true });
   }
 
   return (
@@ -100,6 +76,7 @@ export default function Bestiario({ lista, aoAbrir, aoApagar, aoGuardar }) {
                 <button type="button" className="limpar-pesquisa" onClick={() => setBusca('')} title="Limpar pesquisa">×</button>
               )}
             </div>
+            <BotaoImportarFichas aoGuardar={aoGuardar} />
             <button type="button" className="btn" onClick={criarCustom}>+ Criar Ameaça Custom</button>
           </div>
 

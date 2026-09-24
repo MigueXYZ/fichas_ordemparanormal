@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node tests/calc.test.js && node tests/campanhas.test.js",
+    "test": "node --test \"tests/*.test.js\"",
     "verificar-roda": "node tests/roda.visual.mjs",
     "tauri": "tauri"
   },
