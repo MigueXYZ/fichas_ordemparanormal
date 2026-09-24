@@ -44,8 +44,9 @@ export const ELEMENTOS = ['Sangue', 'Morte', 'Conhecimento', 'Energia', 'Medo'];
 export const TAMANHOS = ['Minúsculo', 'Pequeno', 'Médio', 'Grande', 'Enorme', 'Colossal'];
 export const CLASSES_NPC = ['Combatente', 'Especialista', 'Ocultista', 'Sobrevivente', 'Civil'];
 
-/** As perícias com que um NPC novo começa — no sistema, Iniciativa,
- * Percepção e os testes de resistência são perícias como as outras. */
+/** As perícias que quase todo o NPC tem — no sistema, Iniciativa, Percepção
+ * e os testes de resistência são perícias como as outras. A ficha começa
+ * sem nenhuma; o botão "+ perícias comuns" junta estas de uma vez. */
 export const PERICIAS_BASE_NPC = ['Iniciativa', 'Percepção', 'Fortitude', 'Reflexos', 'Vontade'];
 
 export function fichaLivreVazia(tipo = 'npc') {
@@ -56,9 +57,10 @@ export function fichaLivreVazia(tipo = 'npc') {
       descritores: [], tamanho: 'Médio', categoria: 'Criatura',
       imagem: null,
       presencaPerturbadora: null,
-      sentidos: { percepcao: '1d20+0', iniciativa: '1d20+0', extra: '' },
+      // vazios de propósito: escreve-se só o que a criatura tiver
+      sentidos: { percepcao: '', iniciativa: '', extra: '' },
       defesa: 15,
-      testes: { fortitude: '1d20+0', reflexos: '1d20+0', vontade: '1d20+0' },
+      testes: { fortitude: '', reflexos: '', vontade: '' },
       pv: 20, pvMachucado: 10,
       resistencias: [], vulnerabilidades: [], imunidades: [],
       atributos: { agi: 1, for: 1, int: 1, pre: 1, vig: 1 },
@@ -77,7 +79,7 @@ export function fichaLivreVazia(tipo = 'npc') {
     imagem: null,
     atributos: { agi: 1, for: 1, int: 1, pre: 1, vig: 1 },
     pv: 20, pe: '', san: '', defesa: 10, bloqueio: '', esquiva: '', deslocamento: '9m',
-    pericias: PERICIAS_BASE_NPC.map((nome) => ({ nome, dados: 1, bonus: 0 })),
+    pericias: [], // "+ perícias comuns" acrescenta PERICIAS_BASE_NPC num clique
     resistencias: [],
     acoes: [], habilidades: [], rituais: [], equipamento: [],
     roleplay: Object.fromEntries(ROLEPLAY_NPC.map(([k]) => [k, ''])),

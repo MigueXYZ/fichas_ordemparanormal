@@ -58,7 +58,7 @@ teste('uma ameaça entra com o bloco oficial completo', () => {
   assert.equal(f.pvMachucado, 100, 'sem Machucado escrito, fica metade dos PV');
   assert.equal(f.presencaPerturbadora.dt, 25);
   assert.equal(f.sentidos.extra, 'Percepção às cegas');
-  assert.equal(f.testes.fortitude, '1d20+0', 'testes em falta ficam no valor base');
+  assert.equal(f.testes.fortitude, '', 'testes em falta ficam vazios, não inventados');
   assert.equal(f.enigmaDoMedo, 'Chamar o nome do dono.');
   assert.equal(roleplayDe(f).comportamento, 'Só ataca sob ordens');
 });
@@ -110,12 +110,16 @@ teste('exportar e voltar a importar dá a mesma ficha', () => {
   }
 });
 
-teste('fichas vazias: NPC começa com as perícias base, ameaça com o bloco oficial', () => {
+teste('fichas vazias: nada inventado — NPC sem perícias, ameaça com sentidos/testes em branco', () => {
   const n = fichaLivreVazia('npc');
-  assert.deepEqual(n.pericias.map((p) => p.nome), PERICIAS_BASE_NPC);
+  assert.deepEqual(n.pericias, []);
   assert.equal('sentidos' in n, false);
+  assert.equal(PERICIAS_BASE_NPC.length, 5, 'o atalho "+ perícias comuns" continua disponível');
   const a = fichaLivreVazia('ameaca');
-  assert.ok(a.sentidos && a.testes && 'enigmaDoMedo' in a && 'presencaPerturbadora' in a);
+  assert.ok('enigmaDoMedo' in a && 'presencaPerturbadora' in a);
+  assert.deepEqual(a.sentidos, { percepcao: '', iniciativa: '', extra: '' });
+  assert.deepEqual(a.testes, { fortitude: '', reflexos: '', vontade: '' });
+  for (const k of ['pe', 'san', 'bloqueio', 'esquiva']) assert.equal(k in a, false, `uma ameaça não tem ${k}`);
 });
 
 teste('ehFichaLivre: ameaças sempre, NPCs só com a marca', () => {

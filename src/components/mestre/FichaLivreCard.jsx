@@ -3,7 +3,7 @@ import tokenPlaceholder from '../../assets/token-placeholder.png';
 import EditorTags from '../EditorTags.jsx';
 import { rolarTeste, rolarDano, quantidadeDados } from '../../engine/dados.js';
 import { acoesDeAmeaca, parseTesteTexto, parseDanoTexto } from '../../engine/combateAtaques.js';
-import { roleplayDe, camposRoleplay, ELEMENTOS, TAMANHOS, CLASSES_NPC } from '../../engine/fichaLivre.js';
+import { roleplayDe, camposRoleplay, ELEMENTOS, TAMANHOS, CLASSES_NPC, PERICIAS_BASE_NPC } from '../../engine/fichaLivre.js';
 import { BlocoStat, TabelaLinha, CampoRoleplay } from './FichaCardBlocos.jsx';
 import TokenFicha from './TokenFicha.jsx';
 
@@ -13,6 +13,8 @@ const ATRIBUTOS = ['agi', 'for', 'int', 'pre', 'vig'];
 /** "20" → 20, "" → "", "20 (grupo)" fica texto. */
 const numOuTexto = (v) => (v === '' ? '' : /^-?\d+$/.test(v.trim()) ? Number(v) : v);
 const temValor = (v) => v !== '' && v !== null && v !== undefined;
+/** "30/65" durante o combate, "65" fora dele. */
+const atualDe = (atual, max) => (temValor(atual) && atual !== max ? `${atual}/${max}` : max);
 
 /**
  * Ficha livre (ver engine/fichaLivre.js) com a moldura da "ficha 4": coluna
@@ -76,9 +78,11 @@ function Atributos({ f, editando, set }) {
 
 /** Linhas "Nome ... teste" que rolam ao clicar (sentidos, testes de resistência). */
 function ListaRolavel({ linhas, rolarTexto, onRolar }) {
+  const comValor = linhas.filter(([, v]) => v);
+  if (comValor.length === 0) return <span className="dica">—</span>;
   return (
     <ul className="previa-pericias">
-      {linhas.filter(([, v]) => v).map(([rotulo, v]) => (
+      {comValor.map(([rotulo, v]) => (
         <li key={rotulo} style={{ cursor: onRolar ? 'pointer' : undefined }} onClick={() => rolarTexto(rotulo, v)} title={onRolar ? `Rolar ${rotulo}` : undefined}>
           <span className="pn">{rotulo}</span><span className="pb">{v}</span>
         </li>
@@ -87,8 +91,10 @@ function ListaRolavel({ linhas, rolarTexto, onRolar }) {
   );
 }
 
-function Pericias({ f, editando, h, onRolar }) {
+function Pericias({ f, editando, h, onRolar, comuns }) {
   const pericias = Array.isArray(f.pericias) ? f.pericias : [];
+  // atalho: junta as perícias comuns que ainda faltam
+  const emFalta = (comuns || []).filter((n) => !pericias.some((p) => p.nome.toLowerCase() === n.toLowerCase()));
   return (
     <BlocoStat titulo="Perícias" extra={pericias.length ? `${pericias.length}` : null}>
       {editando ? (
@@ -102,7 +108,13 @@ function Pericias({ f, editando, h, onRolar }) {
               <button type="button" className="btn-remover-linha" onClick={() => h.removerItem('pericias', pericias, i)}>×</button>
             </div>
           ))}
-          <button type="button" className="btn ghost sm" style={{ marginTop: 4 }} onClick={() => h.set('pericias', [...pericias, { nome: 'Nova perícia', dados: 1, bonus: 0 }])}>+ Perícia</button>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+            <button type="button" className="btn ghost sm" onClick={() => h.set('pericias', [...pericias, { nome: 'Nova perícia', dados: 1, bonus: 0 }])}>+ Perícia</button>
+            {emFalta.length > 0 && (
+              <button type="button" className="btn ghost sm" title={emFalta.join(', ')}
+                onClick={() => h.set('pericias', [...pericias, ...emFalta.map((nome) => ({ nome, dados: 1, bonus: 0 }))])}>+ Perícias comuns</button>
+            )}
+          </div>
         </>
       ) : pericias.length === 0 ? (
         <span className="dica">Sem perícias.</span>
@@ -429,8 +441,8 @@ function CartaoAmeaca({ f, editando, onAtualizar, onRolar }) {
           <BlocoStat titulo="Sentidos">
             {editando ? (
               <div className="grelha-editor" style={{ gridTemplateColumns: '1fr 1fr 1.4fr' }}>
-                <Campo rotulo="Percepção" valor={f.sentidos?.percepcao} placeholder="1d20+0" onChange={(v) => set('sentidos', { ...(f.sentidos || {}), percepcao: v })} />
-                <Campo rotulo="Iniciativa" valor={f.sentidos?.iniciativa} placeholder="1d20+0" onChange={(v) => set('sentidos', { ...(f.sentidos || {}), iniciativa: v })} />
+                <Campo rotulo="Percepção" valor={f.sentidos?.percepcao} placeholder="ex.: 2d20+5" onChange={(v) => set('sentidos', { ...(f.sentidos || {}), percepcao: v })} />
+                <Campo rotulo="Iniciativa" valor={f.sentidos?.iniciativa} placeholder="ex.: 2d20+5" onChange={(v) => set('sentidos', { ...(f.sentidos || {}), iniciativa: v })} />
                 <Campo rotulo="Especial" valor={f.sentidos?.extra} placeholder="Percepção às cegas…" onChange={(v) => set('sentidos', { ...(f.sentidos || {}), extra: v })} />
               </div>
             ) : (
@@ -446,7 +458,7 @@ function CartaoAmeaca({ f, editando, onAtualizar, onRolar }) {
               <div className="grelha-editor" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
                 <Campo rotulo="Defesa" valor={f.defesa} onChange={(v) => set('defesa', numOuTexto(v))} />
                 {[['fortitude', 'Fortitude'], ['reflexos', 'Reflexos'], ['vontade', 'Vontade']].map(([k, r]) => (
-                  <Campo key={k} rotulo={r} valor={f.testes?.[k]} placeholder="1d20+0" onChange={(v) => set('testes', { ...(f.testes || {}), [k]: v })} />
+                  <Campo key={k} rotulo={r} valor={f.testes?.[k]} placeholder="ex.: 2d20+5" onChange={(v) => set('testes', { ...(f.testes || {}), [k]: v })} />
                 ))}
               </div>
             ) : (
@@ -564,33 +576,45 @@ function CartaoNpc({ f, editando, onAtualizar, onRolar }) {
         <div className="ficha-npc-stats">
           <Atributos f={f} editando={editando} set={set} />
 
-          <BlocoStat titulo="Recursos & Defesa">
+          <BlocoStat titulo="Vida & Recursos">
             {editando ? (
-              <div className="grelha-editor" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-                {[['pv', 'PV'], ['pe', 'PE'], ['san', 'SAN'], ['deslocamento', 'Desloc.'], ['defesa', 'Defesa'], ['bloqueio', 'Bloqueio'], ['esquiva', 'Esquiva']].map(([k, r]) => (
-                  <Campo key={k} rotulo={r} valor={f[k]} placeholder={k === 'deslocamento' ? '9m' : '—'} onChange={(v) => set(k, k === 'deslocamento' ? v : numOuTexto(v))} />
+              <div className="grelha-editor" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                {[['pv', 'PV'], ['pe', 'PE'], ['san', 'SAN']].map(([k, r]) => (
+                  <Campo key={k} rotulo={r} valor={f[k]} placeholder="—" onChange={(v) => set(k, numOuTexto(v))} />
                 ))}
               </div>
             ) : (
-              <>
-                <TabelaLinha colunas={[
-                  { rotulo: 'PV', valor: temValor(f.pvAtual) && f.pvAtual !== f.pv ? `${f.pvAtual}/${f.pv}` : f.pv },
-                  temValor(f.pe) && { rotulo: 'PE', valor: temValor(f.peAtual) && f.peAtual !== f.pe ? `${f.peAtual}/${f.pe}` : f.pe },
-                  temValor(f.san) && { rotulo: 'SAN', valor: temValor(f.sanAtual) && f.sanAtual !== f.san ? `${f.sanAtual}/${f.san}` : f.san },
-                ].filter(Boolean)} />
-                <div style={{ marginTop: 8 }}>
-                  <TabelaLinha colunas={[
-                    { rotulo: 'Defesa', valor: f.defesa ?? '—' },
-                    temValor(f.bloqueio) && { rotulo: 'Bloqueio', valor: f.bloqueio },
-                    temValor(f.esquiva) && { rotulo: 'Esquiva', valor: f.esquiva },
-                    { rotulo: 'Desloc.', valor: f.deslocamento || '—' },
-                  ].filter(Boolean)} />
-                </div>
-              </>
+              <TabelaLinha colunas={[
+                { rotulo: 'PV', valor: atualDe(f.pvAtual, f.pv) },
+                { rotulo: 'PE', valor: temValor(f.pe) ? atualDe(f.peAtual, f.pe) : '—' },
+                { rotulo: 'SAN', valor: temValor(f.san) ? atualDe(f.sanAtual, f.san) : '—' },
+              ]} />
             )}
           </BlocoStat>
 
-          <Pericias f={f} editando={editando} h={h} onRolar={onRolar} />
+          <BlocoStat titulo="Defesa">
+            {editando ? (
+              <div className="grelha-editor" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                {[['defesa', 'Defesa'], ['bloqueio', 'Bloqueio'], ['esquiva', 'Esquiva']].map(([k, r]) => (
+                  <Campo key={k} rotulo={r} valor={f[k]} placeholder="—" onChange={(v) => set(k, numOuTexto(v))} />
+                ))}
+              </div>
+            ) : (
+              <TabelaLinha colunas={[
+                { rotulo: 'Defesa', valor: temValor(f.defesa) ? f.defesa : '—' },
+                { rotulo: 'Bloqueio', valor: temValor(f.bloqueio) ? f.bloqueio : '—' },
+                { rotulo: 'Esquiva', valor: temValor(f.esquiva) ? f.esquiva : '—' },
+              ]} />
+            )}
+          </BlocoStat>
+
+          <BlocoStat titulo="Deslocamento">
+            {editando
+              ? <Campo rotulo="" valor={f.deslocamento} placeholder="9m" onChange={(v) => set('deslocamento', v)} largura={220} />
+              : <div className="ficha-livre-linha" style={{ marginTop: 0 }}><b>{f.deslocamento || '—'}</b></div>}
+          </BlocoStat>
+
+          <Pericias f={f} editando={editando} h={h} onRolar={onRolar} comuns={PERICIAS_BASE_NPC} />
           <ListaTexto f={f} campo="resistencias" rotulo="Resistências" placeholder="Mental 5, Balístico 2…" editando={editando} h={h} />
           <Acoes f={f} editando={editando} h={h} onRolar={onRolar} titulo="Ataques" novo="Novo ataque" />
           <Habilidades f={f} editando={editando} h={h} titulo="Habilidades & Poderes" />
