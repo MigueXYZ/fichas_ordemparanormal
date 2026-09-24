@@ -146,6 +146,9 @@ export function fichaLivreVazia(tipo = 'npc') {
     atributos: { agi: 1, for: 1, int: 1, pre: 1, vig: 1 },
     pv: 20, pe: '', san: '', defesa: 10, bloqueio: '', esquiva: '', deslocamento: '9m',
     pericias: [], // "+ perícias comuns" acrescenta PERICIAS_BASE_NPC num clique
+    // conjuração: DT de ritual = 10 + limite de PE + Presença (Livro Base, p. 78
+    // e cap. 5); `dtRitual` só se preenche para a fixar à mão
+    limitePe: '', dtRitual: '',
     resistencias: [],
     acoes: [], habilidades: [], rituais: [], equipamento: [],
     roleplay: Object.fromEntries(ROLEPLAY_NPC.map(([k]) => [k, ''])),
@@ -275,6 +278,8 @@ export function paraFichaOrdo(dados) {
     bloqueio: numeroOu(dados.bloqueio, ''),
     esquiva: numeroOu(dados.esquiva, ''),
     nex: numeroOu(dados.nex, ''),
+    limitePe: numeroOu(dados.limitePe, ''),
+    dtRitual: numeroOu(dados.dtRitual, ''),
     habilidades: [...comum.habilidades, ...lista(dados.poderes).map(habLimpa)],
     equipamento: lista(dados.equipamento).map(texto),
   };
@@ -296,6 +301,20 @@ export function fichaParaExportar(f) {
   // eslint-disable-next-line no-unused-vars
   const { id, atualizadoEm, versao, pvAtual, peAtual, sanAtual, pvTemp, imagemPosX, imagemPosY, imagemZoom, ...resto } = f;
   return { formato: FORMATO_FICHA_LIVRE, versao: VERSAO_FICHA_LIVRE, ...resto };
+}
+
+/**
+ * DT para resistir aos rituais de um NPC: a regra do livro é
+ * 10 + limite de PE + Presença (Livro Base, "DT de Testes de Resistência",
+ * p. 78, e cap. 5 — "Dificuldade" dos rituais). Bate com os cultistas do livro:
+ * Iniciado 10 + 3 + 2 = 15, Investido 10 + 5 + 2 = 17. Um valor escrito em
+ * `dtRitual` manda sobre a conta. Devolve null se não houver como calcular.
+ */
+export function dtRitualNpc(f) {
+  const pre = Number(f?.atributos?.pre) || 0;
+  if (temNumero(f?.dtRitual)) return { total: Number(f.dtRitual), manual: true, pre };
+  if (temNumero(f?.limitePe)) return { total: 10 + Number(f.limitePe) + pre, manual: false, limite: Number(f.limitePe), pre };
+  return null;
 }
 
 /** Valores de combate de uma ficha livre (PV/PE/SAN/Defesa/AGI). */

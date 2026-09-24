@@ -132,7 +132,10 @@ teste('NPC gerado: habilidades próprias, balanceadas pelo VD', () => {
   // Um NPC de VD 10 não recebe habilidades de VD alto (ex.: Ordens, VD 100)
   const fracos = Array.from({ length: 80 }, () => gerarNpcAgente({ vd: 10 }));
   assert.ok(fracos.every((n) => [...n.habilidades, ...n.acoes].length <= 3));
-  assert.ok(!fracos.some((n) => n.acoes.some((a) => a.nome === 'Ordens')));
+  assert.ok(!fracos.some((n) => n.habilidades.some((a) => a.nome === 'Ordens')));
+  // Ataques só com o que tem teste e dano; Movimento/Reação/… vão para Habilidades com o tipo na etiqueta
+  assert.ok(todas.every((n) => n.acoes.every((a) => a.teste && a.dano)));
+  assert.ok(todas.some((n) => n.habilidades.some((hb) => ['Movimento', 'Reação', 'Livre', 'Padrão', 'Completa'].includes(hb.custo))));
 });
 
 teste('Confirmação mecânica: Personagem já treinado em Ocultismo que escolhe Monstruoso fica com exatamente +7', () => {

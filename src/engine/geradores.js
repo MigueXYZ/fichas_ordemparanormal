@@ -391,15 +391,12 @@ function quantasHabilidadesNpc(vd) {
   return vd < 20 ? entre(0, 1) : vd < 60 ? entre(1, 2) : vd < 120 ? entre(1, 3) : entre(2, 4);
 }
 
-/** Separa as habilidades escolhidas como no livro: passivas à parte, o resto nas ações. */
-function repartirHabilidades(escolhidas, e) {
-  const habilidades = [];
-  const acoes = [];
-  for (const h of escolhidas.map((x) => formatarHabilidadeNpc(x, e))) {
-    if (h.tipo === 'Passiva') habilidades.push({ nome: h.nome, custo: '', descricao: h.descricao });
-    else acoes.push({ tipo: h.tipo, nome: h.nome, detalhe: '', teste: '', dano: '', critico: '', descricao: h.descricao });
-  }
-  return { habilidades, acoes };
+/** As habilidades escolhidas, prontas para "Habilidades & Poderes": as que
+ * gastam uma ação levam o tipo (Movimento, Reação…) na etiqueta. Os Ataques
+ * da ficha ficam só para o que tem teste e dano. */
+function habilidadesParaFicha(escolhidas, e) {
+  return escolhidas.map((x) => formatarHabilidadeNpc(x, e))
+    .map((h) => ({ nome: h.nome, custo: h.tipo === 'Passiva' ? '' : h.tipo, descricao: h.descricao }));
 }
 
 const ARMAS_CORPO_A_CORPO = /corpo a corpo|desarmado|improvisada/i;
@@ -488,9 +485,9 @@ export function gerarNpcAgente({ vd = 20, conceito = 'surpresa', perfilId = null
     disponivel(ASSINATURAS_PERFIL[pf.id]),
     ...(pf.temas || []).map((t) => disponivel(HABILIDADES_TEMA[t])),
   ]);
-  const { habilidades, acoes: acoesEspeciais } = repartirHabilidades(escolhidas, e);
+  const habilidades = habilidadesParaFicha(escolhidas, e);
 
-  const pertences = [...pf.pertences].sort(() => Math.random() - 0.5).slice(0, entre(2, 3)).map(g);
+  const pertences =[...pf.pertences].sort(() => Math.random() - 0.5).slice(0, entre(2, 3)).map(g);
   const itens = ITENS_GERAIS.filter((i) => pf.itens.includes(i.nome)).map((i) => i.nome);
   const equipamento = [...new Set([...ataques.map((a) => a.nome), ...pertences, ...itens])];
   const [idadeMin, idadeMax] = pf.idade || [22, 55];
@@ -513,7 +510,7 @@ export function gerarNpcAgente({ vd = 20, conceito = 'surpresa', perfilId = null
     defesa: e.defesa, bloqueio: '', esquiva: '',
     deslocamento: '9m',
     pericias,
-    acoes: [...ataques, ...acoesEspeciais],
+    acoes: ataques,
     habilidades,
     rituais: [],
     equipamento,
@@ -1167,10 +1164,12 @@ export function gerarOcultista({ vd = 40, elemento = null, patente = null } = {}
   }
   const elementosRituais = [el, segundo].filter(Boolean).join(' e ');
   const limitePE = LIMITE_PE_CONJURADOR[pat.circuloMax - 1];
+  // DT de ritual pela regra do livro: 10 + limite de PE + Presença (Iniciado 15, Investido 17)
+  const dtRitual = 10 + limitePE + atributos.pre;
   const conjurador = {
     nome: 'Conjurador',
     custo: '',
-    descricao: `Conjura os rituais abaixo (${elementosRituais}) sem pagar o custo em PE, até um limite de ${limitePE} PE por conjuração, usando a ação apropriada para cada ritual. A DT para resistir aos seus rituais é ${e.dt}.`,
+    descricao: `Conjura os rituais abaixo (${elementosRituais}) sem pagar o custo em PE, até um limite de ${limitePE} PE por conjuração, usando a ação apropriada para cada ritual. A DT para resistir aos seus rituais é ${dtRitual} (10 + ${limitePE} + Presença ${atributos.pre}).`,
   };
 
   const pericias = periciasPessoa(atributos, e, {
@@ -1196,7 +1195,7 @@ export function gerarOcultista({ vd = 40, elemento = null, patente = null } = {}
   const disponivel = (lista) => (lista || []).filter((h) => h.vdMin <= v);
   const qtd = v < 40 ? entre(0, 1) : v < 100 ? entre(1, 2) : v < 180 ? entre(1, 3) : entre(2, 4);
   const escolhidas = selecionarHabilidades(qtd, [disponivel(HABILIDADES_ELEMENTO_CULTO[el]), disponivel(HABILIDADES_PAPEL_CULTO[papel.id])]);
-  const { habilidades, acoes: acoesEspeciais } = repartirHabilidades(escolhidas, e);
+  const habilidades = habilidadesParaFicha(escolhidas, e);
 
   return paraFichaOrdo({
     formato: FORMATO_FICHA_LIVRE,
@@ -1220,13 +1219,15 @@ export function gerarOcultista({ vd = 40, elemento = null, patente = null } = {}
     deslocamento: '9m',
     pericias,
     resistencias: [],
-    acoes: [...ataques, ...acoesEspeciais],
+    acoes: ataques,
     habilidades: [conjurador, ...habilidades],
+    limitePe: limitePE,
+    dtRitual: '', // vazio = automática (10 + limite de PE + Presença)
     rituais: rituais.map((r) => ({
       nome: r.nome,
       circulo: String(r.circulo),
       elemento: elementoRitual(r.elemento),
-      dt: String(e.dt),
+      dt: '', // vazio = a DT de ritual da ficha
       custo: CUSTO_RITUAL[r.circulo] || '',
       execucao: r.execucao || 'Padrão',
       alcance: r.alcance || '',

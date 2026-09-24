@@ -2928,6 +2928,24 @@ body.bate-forte .barra-recurso .preenchido::before {
   opacity: .7; text-shadow: 0 0 24px var(--sangue-claro); background: radial-gradient(circle at 50% 40%, rgba(255,255,255,.05), transparent 70%);
 }
 
+/* Blocos das fichas que se recolhem (clicar no título) */
+.bloco-stat-cabeca { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.bloco-stat-cabeca.recolhivel { cursor: pointer; user-select: none; }
+.bloco-stat-cabeca.recolhivel:hover h4 { color: var(--txt); }
+.bloco-stat-cabeca.recolhivel:focus-visible { outline: 1px solid var(--sangue-claro); outline-offset: 3px; border-radius: 2px; }
+.bloco-stat-seta { display: inline-block; width: 1.1em; font-size: .85em; color: var(--txt-fraco); }
+.ficha-npc-stat-bloco.recolhido { padding-bottom: 10px; }
+
+/* Rituais: fechados mostram só o nome e as etiquetas */
+.ritual-linha-topo { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; cursor: pointer; user-select: none; }
+.ritual-linha-topo:hover b { text-decoration: underline; text-underline-offset: 3px; }
+.ficha-livre-dt-ritual {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;
+  padding: 8px 10px; border: 1px solid var(--linha); border-radius: 6px; background: rgba(255,255,255,.03);
+}
+.ficha-livre-dt-ritual b { font-family: var(--numeros); font-size: 20px; color: var(--txt); }
+.ficha-livre-dt-ritual .conta { font-size: 12px; color: var(--txt-fraco); }
+
 /* ---------------------------------------------------------- Campo de Batalha: cartões de combatente
    Mesma linguagem visual do Overlay de OBS (retrato circular com brilho,
    nome grande com glow) mas com barras de progresso em vez de números soltos

@@ -5,8 +5,11 @@ import { rolarTeste, rolarDano, quantidadeDados } from '../../engine/dados.js';
 import { acoesDeAmeaca, parseTesteTexto, parseDanoTexto } from '../../engine/combateAtaques.js';
 import {
   roleplayDe, camposRoleplay, ELEMENTOS, TAMANHOS, CLASSES_NPC, PERICIAS_BASE_NPC,
-  lerPool, poolTexto, textoDeslocamento, lerDeslocamento, normalizarSentidos,
+  lerPool, poolTexto, textoDeslocamento, lerDeslocamento, normalizarSentidos, dtRitualNpc,
 } from '../../engine/fichaLivre.js';
+
+/** Uma ação que é mesmo um ataque (tem teste ou dano) — o resto são habilidades de ação. */
+const ehAtaque = (a) => Boolean(String(a?.teste || '').trim() || String(a?.dano || '').trim());
 import { BlocoStat, TabelaLinha, CampoRoleplay } from './FichaCardBlocos.jsx';
 import TokenFicha from './TokenFicha.jsx';
 
@@ -193,8 +196,11 @@ function ListaTexto({ f, campo, rotulo, placeholder, editando, h, sempre }) {
   );
 }
 
-function Acoes({ f, editando, h, onRolar, titulo, novo }) {
-  const acoes = acoesDeAmeaca(f);
+function Acoes({ f, editando, h, onRolar, titulo, novo, soAtaques }) {
+  const todas = acoesDeAmeaca(f);
+  // Nos NPCs, ao ler, só os ataques ficam aqui; Movimento/Reação/Livre… sem
+  // teste nem dano aparecem em Habilidades & Poderes (ver Habilidades).
+  const acoes = !editando && soAtaques ? todas.filter(ehAtaque) : todas;
   return (
     <BlocoStat titulo={titulo} extra={acoes.length ? `${acoes.length}` : null}>
       {editando ? (
@@ -256,10 +262,14 @@ function Acoes({ f, editando, h, onRolar, titulo, novo }) {
   );
 }
 
-function Habilidades({ f, editando, h, titulo }) {
+function Habilidades({ f, editando, h, titulo, comAcoesNaoAtaque }) {
   const habilidades = Array.isArray(f.habilidades) ? f.habilidades : [];
-  // "poderes" das ameaças/ocultistas gerados — só se mostram, junto às habilidades
-  const extra = Array.isArray(f.poderes) ? f.poderes : [];
+  // "poderes" das ameaças/ocultistas gerados — só se mostram, junto às habilidades;
+  // nos NPCs, também as ações sem teste nem dano (ex.: "Ponto Fraco", Movimento)
+  const extra = [
+    ...(Array.isArray(f.poderes) ? f.poderes : []),
+    ...(comAcoesNaoAtaque ? acoesDeAmeaca(f).filter((a) => !ehAtaque(a)).map((a) => ({ nome: a.nome, custo: a.tipo, descricao: a.descricao })) : []),
+  ];
   if (!editando && habilidades.length + extra.length === 0) return null;
   return (
     <BlocoStat titulo={titulo} extra={habilidades.length + extra.length ? `${habilidades.length + extra.length}` : null}>
@@ -295,11 +305,42 @@ function Habilidades({ f, editando, h, titulo }) {
   );
 }
 
-function Rituais({ f, editando, h }) {
+/** A DT para resistir aos rituais do NPC: 10 + limite de PE + Presença (ou o valor fixado à mão). */
+function DtRitual({ f, editando, set }) {
+  const dt = dtRitualNpc(f);
+  if (editando) {
+    return (
+      <div className="ficha-livre-dt-ritual" style={{ display: 'block' }}>
+        <div className="grelha-editor" style={{ gridTemplateColumns: '1fr 1fr' }}>
+          <Campo rotulo="Limite de PE por conjuração" valor={f.limitePe} placeholder="ex.: 3" onChange={(v) => set('limitePe', numOuTexto(v))} />
+          <Campo rotulo="DT de Ritual (vazio = automática)" valor={f.dtRitual} placeholder={dt && !dt.manual ? String(dt.total) : '—'} onChange={(v) => set('dtRitual', numOuTexto(v))} />
+        </div>
+        <div className="dica" style={{ fontSize: 11, marginTop: 6 }}>
+          Regra do livro: DT = 10 + limite de PE + Presença.{dt && !dt.manual ? ` Agora: 10 + ${dt.limite} + ${dt.pre} = ${dt.total}.` : ''}
+        </div>
+      </div>
+    );
+  }
+  if (!dt) return null;
+  return (
+    <div className="ficha-livre-dt-ritual" title="A DT que os alvos têm de passar para resistir aos rituais deste NPC">
+      <span>DT de Ritual</span>
+      <b>{dt.total}</b>
+      <span className="conta">{dt.manual ? 'fixada na ficha' : `10 + limite de PE ${dt.limite} + Presença ${dt.pre}`}</span>
+    </div>
+  );
+}
+
+function Rituais({ f, editando, h, comDt }) {
   const rituais = Array.isArray(f.rituais) ? f.rituais : [];
+  const [abertos, setAbertos] = React.useState(() => new Set());
   if (!editando && rituais.length === 0) return null;
+  const dtFicha = comDt ? dtRitualNpc(f)?.total : null;
+  const alternar = (i) => setAbertos((antes) => { const s = new Set(antes); if (s.has(i)) s.delete(i); else s.add(i); return s; });
+  const todosAbertos = rituais.length > 0 && abertos.size === rituais.length;
   return (
     <BlocoStat titulo="Rituais" extra={rituais.length ? `${rituais.length}` : null}>
+      {comDt && <DtRitual f={f} editando={editando} set={h.set} />}
       {editando ? (
         <>
           {rituais.map((r, i) => (
@@ -333,16 +374,36 @@ function Rituais({ f, editando, h }) {
             onClick={() => h.set('rituais', [...rituais, { nome: 'Novo ritual', circulo: '1', elemento: '', dt: '', custo: '', execucao: '', alcance: '', descricao: '' }])}>+ Ritual</button>
         </>
       ) : (
-        <div className="ficha-livre-habilidades">
-          {rituais.map((r, i) => (
-            <div key={i}>
-              <b>{r.nome}</b>
-              <span className="ficha-livre-tag">{[r.circulo && `${r.circulo}º círculo`, r.elemento, r.custo, temValor(r.dt) && `DT ${r.dt}`].filter(Boolean).join(' · ')}</span>
-              {(r.execucao || r.alcance) && <div className="ficha-livre-det">{[r.execucao && `Execução: ${r.execucao}`, r.alcance && `Alcance: ${r.alcance}`].filter(Boolean).join(' · ')}</div>}
-              {r.descricao && <div className="ficha-livre-det">{r.descricao}</div>}
-            </div>
-          ))}
-        </div>
+        <>
+          {rituais.length > 1 && (
+            <button type="button" className="btn ghost sm" style={{ marginBottom: 8 }}
+              onClick={() => setAbertos(todosAbertos ? new Set() : new Set(rituais.map((_, i) => i)))}>
+              {todosAbertos ? '▴ Fechar todos' : '▾ Abrir todos'}
+            </button>
+          )}
+          <div className="ficha-livre-habilidades">
+            {rituais.map((r, i) => {
+              const aberto = abertos.has(i);
+              const dt = temValor(r.dt) ? r.dt : dtFicha;
+              return (
+                <div key={i}>
+                  <div className="ritual-linha-topo" onClick={() => alternar(i)} role="button" tabIndex={0} aria-expanded={aberto}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); alternar(i); } }}>
+                    <span className="bloco-stat-seta" aria-hidden="true">{aberto ? '▾' : '▸'}</span>
+                    <b>{r.nome}</b>
+                    <span className="ficha-livre-tag">{[r.circulo && `${r.circulo}º círculo`, r.elemento, r.custo, temValor(dt) && `DT ${dt}`].filter(Boolean).join(' · ')}</span>
+                  </div>
+                  {aberto && (
+                    <>
+                      {(r.execucao || r.alcance) && <div className="ficha-livre-det">{[r.execucao && `Execução: ${r.execucao}`, r.alcance && `Alcance: ${r.alcance}`].filter(Boolean).join(' · ')}</div>}
+                      {r.descricao && <div className="ficha-livre-det" style={{ whiteSpace: 'pre-line' }}>{r.descricao}</div>}
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
     </BlocoStat>
   );
@@ -669,9 +730,9 @@ function CartaoNpc({ f, editando, onAtualizar, onRolar }) {
           </BlocoStat>
 
           <Pericias f={f} editando={editando} h={h} onRolar={onRolar} comuns={PERICIAS_BASE_NPC} />
-          <Acoes f={f} editando={editando} h={h} onRolar={onRolar} titulo="Ataques" novo="Novo ataque" />
-          <Habilidades f={f} editando={editando} h={h} titulo="Habilidades & Poderes" />
-          <Rituais f={f} editando={editando} h={h} />
+          <Acoes f={f} editando={editando} h={h} onRolar={onRolar} titulo="Ataques" novo="Novo ataque" soAtaques />
+          <Habilidades f={f} editando={editando} h={h} titulo="Habilidades & Poderes" comAcoesNaoAtaque />
+          <Rituais f={f} editando={editando} h={h} comDt />
         </div>
 
         <ColunaDireita f={f} editando={editando} set={set} onAtualizar={onAtualizar} titulo="Roleplay"
