@@ -260,3 +260,38 @@ export const INFORMACOES_UTEIS_AGENTES = [
   'Testemunhou algo que contradiz a versão oficial de um evento recente, mas tem medo de o admitir.',
   'Tem um pressentimento fundado sobre quem será o próximo alvo — mas não sabe como o provar.',
 ];
+
+// Guia de interpretação dos ocultistas/cultistas gerados (NPCs de ficha livre)
+
+export const TRACOS_CULTISTAS = [
+  'Um sigilo queimado na palma da mão que nunca cicatriza por completo.',
+  'Olhos sempre injetados, como quem não dorme há dias — e talvez não durma.',
+  'Unhas pintadas de negro com um símbolo diferente em cada dedo.',
+  'Um colar de dentes pequenos, que jura serem de "voluntários".',
+  'Voz rouca e baixa, gasta por anos de cânticos.',
+  'Cheira sempre a cera queimada e a ferro.',
+];
+
+export const MANEIRISMOS_CULTISTAS = [
+  'Traça o símbolo do culto no ar antes de falar com um estranho.',
+  'Murmura orações em voz baixa sempre que alguém o contradiz.',
+  'Toca na lâmina ritual como quem acaricia um animal de estimação.',
+  'Nunca vira as costas a uma porta aberta.',
+  'Ri-se no momento errado, como se soubesse o fim de uma piada que mais ninguém ouviu.',
+];
+
+export const MOTIVACOES_CULTISTAS = [
+  'Subir na hierarquia do culto, custe quantas vidas custar.',
+  'Completar o ritual a tempo — a data está marcada e não pode falhar.',
+  'Provar a sua devoção depois de um fracasso que o culto não esqueceu.',
+  'Proteger o líder do culto, a quem deve a vida (ou o que resta dela).',
+  'Trazer de volta alguém que perdeu, convencido de que o Outro Lado lho devolverá.',
+];
+
+export const INFORMACOES_CULTISTAS = [
+  'Sabe onde o culto se reúne e a senha para entrar.',
+  'Conhece a data e o local do próximo ritual.',
+  'Sabe quem, fora do culto, lhes fornece dinheiro e proteção.',
+  'Guarda um objeto do ritual que o culto precisa de recuperar.',
+  'Conhece o ponto fraco da entidade que o culto serve — e tem medo de o dizer.',
+];

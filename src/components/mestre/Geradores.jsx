@@ -12,6 +12,7 @@ import {
 import ModalDetalheGenerico from './ModalDetalheGenerico.jsx';
 import Ficha from '../ficha/Ficha.jsx';
 import FichaLivreCard from './FichaLivreCard.jsx';
+import { ehFichaLivre } from '../../engine/fichaLivre.js';
 import PainelRolagem from '../PainelRolagem.jsx';
 import FichaNpcCard from './FichaNpcCard.jsx';
 
@@ -464,7 +465,7 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
         <>
           <p className="dica" style={{ marginTop: 0 }}>
             {aba === 'npc'
-              ? 'Um NPC jogável — atributos, perícias, equipamento e, consoante o NEX escolhido, poderes, trilha e rituais — mais comportamento fora do comum e dicas de RP. Não implica que seja um agente da Ordem: serve para qualquer pessoa com ficha completa.'
+              ? 'Um NPC com ficha de NPC já preenchida — PV/PE/SAN, Defesa, perícias, ataques, poderes, rituais (consoante o NEX), equipamento e guia de interpretação. Não implica que seja um agente da Ordem.'
               : 'Uma ficha jogável inteira: atributos, origem, classe, trilha, poderes de NEX, rituais, comportamento e equipamento.'}
           </p>
           <div className="grelha-editor" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
@@ -519,7 +520,7 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
       {aba === 'ocultista' && (
         <>
           <p className="dica" style={{ marginTop: 0 }}>
-            Ocultistas e cultistas não-agentes: rituais prontos com DT, poderes paranormais do culto, armas amaldiçoadas e dicas de interpretação macabra.
+            Ocultistas e cultistas não-agentes: saem como NPC (vão para o Elenco) — rituais prontos com DT, poderes paranormais do culto, armas amaldiçoadas, equipamento e guia de interpretação.
           </p>
           <div className="grelha-editor" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
             <div className="campo">
@@ -658,32 +659,34 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
             >
               {editando ? 'Concluir Edição' : 'Editar Ficha'}
             </button>
-            <button className="btn ghost" onClick={() => aoGuardar(resultado)}>Guardar</button>
-            {resultado.tipo !== 'ameaca' && (
-              <button className="btn" onClick={() => { const g = aoGuardar(resultado); aoAbrir(g || resultado); }}>
-                Guardar e abrir
-              </button>
-            )}
+            <button className="btn ghost" onClick={() => aoGuardar(resultado)}
+              title={ehFichaLivre(resultado) ? (resultado.tipo === 'ameaca' ? 'Guarda no Bestiário' : 'Guarda no Elenco') : 'Guarda nas fichas'}>
+              Guardar
+            </button>
+            <button className="btn" onClick={() => { const g = aoGuardar(resultado); aoAbrir(g || resultado); }}>
+              Guardar e abrir
+            </button>
           </>
         )}
       </div>
 
-      {resultado && editando && (
+      {/* NPCs, ocultistas e criaturas: ficha livre — ler e editar no próprio cartão */}
+      {resultado && ehFichaLivre(resultado) && (
+        <FichaLivreCard f={resultado} editando={editando} onAtualizar={(patch) => setResultado((a) => ({ ...a, ...patch }))} onRolar={onRolar} />
+      )}
+
+      {resultado && !ehFichaLivre(resultado) && editando && (
         <div className="gerador-editor-completo" style={{ marginTop: 10 }}>
           <div className="dica" style={{ marginBottom: 8 }}>
             Edição completa: troca armas e itens no Inventário, habilidades e poderes do catálogo ou escritos à mão,
             e o treino das perícias — tudo o que já dá para fazer numa ficha guardada.
           </div>
-          {resultado.tipo === 'ameaca'
-            ? <FichaLivreCard f={resultado} editando onAtualizar={(patch) => setResultado((a) => ({ ...a, ...patch }))} onRolar={onRolar} />
-            : <Ficha personagem={resultado} setPersonagem={setResultado} onRolar={onRolar} />}
+          <Ficha personagem={resultado} setPersonagem={setResultado} onRolar={onRolar} />
         </div>
       )}
 
-      {resultado && !editando && (
-        resultado.tipo === 'ameaca' ? (
-          <FichaLivreCard f={resultado} onAtualizar={(patch) => setResultado((a) => ({ ...a, ...patch }))} onRolar={onRolar} />
-        ) : resultado.tipo === 'npc' ? (
+      {resultado && !ehFichaLivre(resultado) && !editando && (
+        resultado.tipo === 'npc' ? (
           <FichaNpcCard
             p={resultado}
             aoVerDetalhe={setItemDetalhe}

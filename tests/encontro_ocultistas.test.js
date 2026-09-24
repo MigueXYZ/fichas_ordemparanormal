@@ -9,23 +9,30 @@ function teste(nome, fn) {
   catch (e) { console.error('  FALHOU  ' + nome + '\n    ' + e.message); process.exitCode = 1; }
 }
 
-teste('Geração de Ocultista Inimigo não-agente com VD, rituais, poderes e elemento', () => {
+teste('Ocultista gerado é uma pessoa (NPC de ficha livre) com VD, rituais, poderes e elemento', () => {
   const o = gerarOcultistaInimigo({ vd: 60, elemento: 'Sangue' });
 
-  assert.equal(o.tipo, 'ameaca');
-  assert.equal(o.subtipo, 'ocultista');
-  assert.equal(o.elemento, 'Sangue');
+  assert.equal(o.tipo, 'npc', 'ocultistas vão para o Elenco, não para o Bestiário');
+  assert.equal(o.fichaLivre, true);
+  assert.equal(o.classe, 'Ocultista');
+  assert.equal(o.elementoPrincipal, 'Sangue');
   assert.equal(o.vd, 60);
+  assert.equal('sentidos' in o, false, 'NPCs não têm sentidos/presença/enigma');
 
   // Rituais e Poderes
   assert.ok(o.rituais.length >= 2, 'Ocultista VD 60 deve ter rituais preparados');
+  assert.ok(o.rituais.every((r) => r.nome && r.circulo && Number(r.dt) >= 15), 'rituais com círculo e DT escalada com o VD');
   assert.ok(o.habilidades.length >= 1, 'Ocultista VD 60 deve ter poderes paranormais');
-  assert.ok(o.dt >= 15, 'DT de rituais deve ser escalada com o VD');
+  assert.ok(o.acoes.length === 1 && /^\d+d20\+\d+$/.test(o.acoes[0].teste), 'ataque com teste Nd20+B');
+  assert.ok(o.pericias.some((p) => p.nome === 'Ocultismo'));
+  assert.ok(o.equipamento.length >= 2);
 
   // Interpretação e Detalhes do Culto
   assert.ok(o.culto && o.culto.length > 3, 'Deve pertencer a um culto paranormal');
-  assert.ok(o.comportamento && o.comportamento.length > 5, 'Deve possuir comportamento fanático');
-  assert.ok(o.dicaRp && o.dicaRp.length > 5, 'Deve possuir dica de interpretação para o Mestre');
+  assert.equal(o.afiliacao, o.culto);
+  for (const k of ['aparencia', 'traco', 'personalidade', 'maneirismos', 'motivacao', 'informacao', 'notasMestre']) {
+    assert.ok(o.roleplay[k] && o.roleplay[k].length > 5, `roleplay.${k} preenchido`);
+  }
 });
 
 teste('Cálculo de VD para múltiplos agentes e múltiplos inimigos', () => {

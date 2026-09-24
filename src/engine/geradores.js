@@ -15,9 +15,10 @@ import { ITENS_GERAIS } from '../data/itens/geral.js';
 import { RITUAIS, circuloMaximoPorNex } from '../data/rituais.js';
 import { NOMES_M, NOMES_F, APELIDOS, OCUPACOES, CIDADES, ANIMAIS, ANIMAIS_GRUPO, SITIOS } from '../data/nomesPt.js';
 import { personagemVazio, normalizarRecursos } from './character.js';
-import { orcamentoPericias, NEX_TRACK } from './calc.js';
+import { orcamentoPericias, NEX_TRACK, calcMaximos, calcDefesas, calcPericias, calcDtRitual } from './calc.js';
 import { aplicarConcessoes } from './concessoes.js';
-import { interpretarCritico } from './armas.js';
+import { interpretarCritico, estatisticasArma } from './armas.js';
+import { FORMATO_FICHA_LIVRE, PERICIAS_BASE_NPC, paraFichaOrdo, poolTexto, textoDeslocamento } from './fichaLivre.js';
 import {
   COMPORTAMENTOS_ESTRANHOS_AGENTES,
   APARENCIAS_AGENTES,
@@ -306,43 +307,89 @@ function equipamentoInicial() {
 
 // ------------------------------------------------------------------ NPCs
 
-/** NPC com ficha de agente — aliado da Ordem, rival, vilão com ficha a sério. */
+const capitalizar = (s) => (s ? String(s).charAt(0).toUpperCase() + String(s).slice(1) : '');
+/** Elemento de um ritual: 'sangue' → 'Sangue'; vários (['morte','sangue']) → 'Variável'. */
+const elementoRitual = (el) => (Array.isArray(el) ? (el.length === 1 ? capitalizar(el[0]) : 'Variável') : el === 'variavel' ? 'Variável' : capitalizar(el));
+
+/**
+ * NPC gerado — uma pessoa com ficha livre (engine/fichaLivre.js), com os
+ * números já calculados a partir de uma ficha de agente gerada ao acaso
+ * (gerarFicha): PV/PE/SAN, Defesa/Bloqueio/Esquiva, perícias treinadas,
+ * ataques das armas, poderes, rituais com DT e equipamento. Não implica que
+ * seja agente da Ordem.
+ */
 export function gerarNpcAgente(opcoes = {}) {
   const p = gerarFicha(opcoes);
-  p.tipo = 'npc';
-  p.jogador = 'NPC';
   const ocupacaoAnterior = ao(OCUPACOES);
-  p.descricao = {
-    ...p.descricao,
-    personalidade: `${p.comportamento} ${ocupacaoAnterior} antes de entrar na Ordem. ${p.dicaRp}`,
-  };
+  const classe = CLASSES_POR_ID[p.classeId];
+  const origem = ORIGENS.find((o) => o.id === p.origemId);
+  const trilha = TRILHAS_POR_ID[p.trilhaId];
+  const max = calcMaximos(p);
+  const def = calcDefesas(p);
 
-  // Breve descrição de uma linha (usada no topo da ficha de NPC — "ficha 4"
-  // e nos cartões do Elenco) e a história em parágrafo (mesma zona, por
-  // baixo) — as duas só vêm preenchidas quando o NPC nasce deste gerador;
-  // um NPC criado em branco no Elenco fica com ambas vazias para o mestre
-  // escrever à mão.
-  const classeNome = CLASSES_POR_ID[p.classeId]?.nome || '';
-  const origemNome = ORIGENS.find((o) => o.id === p.origemId)?.nome || '';
-  p.breveDescricao = [origemNome, classeNome, ocupacaoAnterior ? `ex-${ocupacaoAnterior.toLowerCase()}` : null, `NEX ${p.nex}%`]
-    .filter(Boolean)
-    .join(' · ');
-  p.historia = `${p.aparencia} ${p.descricao.personalidade}`.trim();
+  // Perícias: as treinadas, mais Iniciativa/Percepção/testes de resistência
+  // (toda a gente os rola, treinado ou não)
+  const todas = calcPericias(p);
+  const escolhidas = todas.filter((x) => x.grau !== 'destreinado' || PERICIAS_BASE_NPC.includes(x.nome));
+  const ordem = (x) => { const i = PERICIAS_BASE_NPC.indexOf(x.nome); return i < 0 ? 99 : i; };
+  const pericias = escolhidas
+    .sort((a, b) => ordem(a) - ordem(b) || b.bonus - a.bonus)
+    .map((x) => ({ nome: x.nome, dados: x.dados, bonus: x.bonus }));
 
-  // Guia de interpretação — os 6 campos da "ficha 4": Descrição Física,
-  // Traço Distintivo, Personalidade e Tom de Voz, Maneirismo, Motivação
-  // Principal e Informação Útil. Aparência e dica de RP já vinham de
-  // gerarFicha(); os restantes são exclusivos do NPC.
-  p.comoInterpretar = {
-    descricaoFisica: p.aparencia,
-    tracoDistintivo: ao(TRACOS_DISTINTIVOS_AGENTES),
-    personalidadeTom: p.dicaRp,
-    maneirismo: ao(MANEIRISMOS_AGENTES),
-    motivacaoPrincipal: ao(MOTIVACOES_AGENTES),
-    informacaoUtil: ao(INFORMACOES_UTEIS_AGENTES),
-  };
+  const acoes = (p.ataques || []).map((arma) => {
+    const e = estatisticasArma(p, arma);
+    const corpo = arma.pericia === 'luta';
+    const bonusDano = Number(e.bonusDano) || 0;
+    return {
+      tipo: 'Padrão',
+      nome: arma.nome,
+      detalhe: [corpo ? 'Corpo a corpo' : 'À distância', arma.alcance && !corpo ? String(arma.alcance).toLowerCase() : ''].filter(Boolean).join(', '),
+      teste: poolTexto(e.dados, e.bonusAtaque),
+      dano: `${e.dano}${bonusDano ? (bonusDano > 0 ? '+' : '') + bonusDano : ''}${arma.tipo ? ' ' + String(arma.tipo).toLowerCase() : ''}`,
+      critico: `${e.margem}/x${e.multiplicador}`,
+      descricao: '',
+    };
+  });
 
-  return p;
+  const habilidades = [...(p.habilidades || []), ...(p.poderes || [])].map((h) => ({ nome: h.nome, custo: h.origem || '', descricao: h.descricao || '' }));
+  const rituais = (p.rituais || []).map((r) => ({
+    nome: r.nome, circulo: String(r.circulo ?? ''), elemento: elementoRitual(r.elemento),
+    dt: String(calcDtRitual(p, r) ?? ''), custo: r.custo || '', execucao: r.execucao || '', alcance: r.alcance || '', descricao: r.descricao || '',
+  }));
+  const equipamento = [...(p.ataques || []).map((a) => a.nome), ...(p.inventario || []).map((i) => i.nome)];
+
+  return paraFichaOrdo({
+    formato: FORMATO_FICHA_LIVRE,
+    tipo: 'npc',
+    fichaLivre: true,
+    jogador: 'NPC',
+    nome: p.nome,
+    breveDescricao: ocupacaoAnterior ? `Ex-${ocupacaoAnterior.toLowerCase()}` : '',
+    historia: origem?.descricao ? `${p.aparencia} ${origem.descricao}` : p.aparencia,
+    classe: classe?.nome || '',
+    origem: origem?.nome || '',
+    trilha: trilha?.nome || '',
+    afiliacao: '',
+    nex: p.nex,
+    vd: p.nex, // para o balanço do combate, um NPC pesa o que o seu NEX pesaria
+    atributos: { ...p.atributos },
+    pv: max.pv, pe: max.pe, san: max.san,
+    defesa: def.defesa,
+    bloqueio: def.bloqueio?.disponivel ? def.bloqueio.valor : '',
+    esquiva: def.esquiva?.disponivel ? def.esquiva.valor : '',
+    deslocamento: `${p.deslocamento ?? 9}m`,
+    pericias, acoes, habilidades, rituais, equipamento,
+    roleplay: {
+      aparencia: p.aparencia,
+      traco: ao(TRACOS_DISTINTIVOS_AGENTES),
+      personalidade: p.dicaRp,
+      maneirismos: ao(MANEIRISMOS_AGENTES),
+      motivacao: ao(MOTIVACOES_AGENTES),
+      informacao: ao(INFORMACOES_UTEIS_AGENTES),
+      notasMestre: p.comportamento,
+    },
+    tags: [],
+  });
 }
 
 // ---------------------------------------------------------------- ameaças
@@ -784,8 +831,37 @@ export function gerarAmeaca({ vd = 20, categoria = null, elementos = [], tamanho
     ? `Grupo de ${qtdGrupo} criaturas idênticas: cada uma tem VD ${vdCada} (Defesa, PV e dano já refletem isso); o grupo todo soma VD ${vdTotalPedido}. Duplica este cartão ${qtdGrupo}× no Campo de Batalha.`
     : '';
 
-  return {
+  // Sentidos: as criaturas paranormais do livro veem no escuro quase sempre, e
+  // as mais altas sentem sem ver ("Percepção às cegas"); animais mundanos não.
+  const paranormal = elementosEscolhidos.length > 0;
+  const sentidos = {
+    percepcao: poolTexto(e.dadosTeste, e.bonusTeste),
+    iniciativa: poolTexto(e.dadosTeste, e.bonusTeste),
+    visaoNoEscuro: paranormal || cat.id === 'animal',
+    percepcaoAsCegas: paranormal && vdCada >= 100,
+    extra: cat.id === 'animal' ? 'Faro' : '',
+  };
+
+  // Presença Perturbadora — só as paranormais. Calibrada pelas fichas do livro
+  // (Aberração de Carne VD 40: DT 15, 3d6, NEX 30%; Carente VD 300: DT 35,
+  // 7d8, NEX 90%; Aniquilação VD 380: DT 45, 9d8).
+  const presencaPerturbadora = paranormal ? {
+    dt: Math.round(12 + vdCada * 0.085),
+    dano: vdCada <= 100 ? `${2 + Math.round(vdCada / 40)}d6 mental` : `${3 + Math.round(vdCada / 80)}d8 mental`,
+    nex: Math.min(95, Math.round((vdCada * 0.25 + 20) / 5) * 5),
+  } : null;
+
+  // Deslocamento por tipo: Animal pode trepar; algumas criaturas voam.
+  const deslocamentos = {
+    terrestre: deslocamento,
+    escalada: cat.id === 'animal' && Math.random() < 0.35 ? deslocamento : '',
+    voo: cat.id === 'criatura' && paranormal && Math.random() < 0.2 ? deslocamento + 3 : '',
+  };
+
+  return paraFichaOrdo({
+    formato: FORMATO_FICHA_LIVRE,
     tipo: 'ameaca',
+    fichaLivre: true,
     nome: nomeAmeaca,
     tags: [],
     arquetipo: cat.id,
@@ -793,46 +869,43 @@ export function gerarAmeaca({ vd = 20, categoria = null, elementos = [], tamanho
     conceito: conceitoLimpo || null,
     vd: vdCada,
     grupo: ehGrupo ? { quantidade: qtdGrupo, vdTotal: vdTotalPedido, vdCada } : null,
-    descritores,
+    // descritores = elementos (o primeiro é o principal); a forma vai para a categoria
+    descritores: descritores.filter((d) => d !== cat.nome),
+    categoria: cat.nome,
     tamanho: tamanho || (vdCada >= 300 ? 'Enorme' : vdCada >= 160 ? 'Grande' : 'Médio'),
-    ocupacao: null,
+    historia: conceitoLimpo ? `${conceitoLimpo.charAt(0).toUpperCase()}${conceitoLimpo.slice(1)}.` : '',
     atributos: atributosAmeaca,
+    presencaPerturbadora,
+    sentidos,
     defesa: e.defesa,
+    testes: {
+      fortitude: poolTexto(e.dadosTeste, e.bonusTeste),
+      reflexos: poolTexto(e.dadosTeste, Math.max(0, e.bonusTeste - 5)),
+      vontade: poolTexto(e.dadosTeste, e.bonusTeste),
+    },
     pv: e.pv,
     pvMachucado: Math.round(e.pv / 2),
     dt: e.dt,
-    deslocamento,
-    sentidos: { percepcao: `${e.dadosTeste}d20+${e.bonusTeste}`, iniciativa: `${e.dadosTeste}d20+${e.bonusTeste}` },
     resistencias: resistenciasFlavor,
-    testes: {
-      fortitude: `${e.dadosTeste}d20+${e.bonusTeste}`,
-      reflexos: `${e.dadosTeste}d20+${Math.max(0, e.bonusTeste - 5)}`,
-      vontade: `${e.dadosTeste}d20+${e.bonusTeste}`,
-    },
+    deslocamentos,
+    deslocamento: textoDeslocamento(deslocamentos),
     pericias,
-    habilidades,
-    comportamento,
-    aparencia,
-    dicaRp,
-    // Ações no esquema oficial (Livro Base, cap. 7 — "Padrão/Movimento/Livre/
-    // Reação/Completa" antes do nome, x2 para múltiplos ataques): a mesma
-    // lista que a ficha completa (FichaAmeaca.jsx) e o Campo de Batalha já
-    // sabem ler (engine/combateAtaques.js → acoesDeAmeaca).
+    habilidades: habilidades.map((h) => ({ ...h, custo: /Machucada/.test(h.descricao) ? 'Ao ficar Machucada' : 'Passiva' })),
+    // Ações no esquema oficial (Livro Base, cap. 7): "Agredir — Garras",
+    // "Corpo a corpo" (x2 quando há mais de um ataque), dano com o tipo.
     acoes: acoesEscolhidas.map((at) => ({
       tipo: 'Padrão',
-      nome: at.nome,
-      detalhe: at.tipo,
-      teste: `${e.dadosTeste}d20+${e.bonusTeste}`,
-      dano: `${e.dadosDano}d${at.dado}+${e.bonusDano}`,
-      critico: 'x2',
+      nome: `Agredir — ${at.nome}`,
+      detalhe: acoesEscolhidas.length > 1 ? 'Corpo a corpo x2' : 'Corpo a corpo',
+      teste: poolTexto(e.dadosTeste, e.bonusTeste),
+      dano: `${e.dadosDano}d${at.dado}+${e.bonusDano} ${String(at.tipo).toLowerCase()}`,
+      critico: '20/x2',
       descricao: '',
     })),
-    // Nota livre do mestre — mostrada como descrição no topo do cartão
-    // (ficha-npc-historia, tal como a "história" do NPC) e editável na ficha
-    // completa (FichaAmeaca.jsx). Não repete comportamento/aparência/dica —
-    // esses já vivem só no painel Roleplay, para não duplicar texto.
-    notas: [conceitoLimpo ? `Conceito: "${conceitoLimpo}".` : '', notaGrupo].filter(Boolean).join(' '),
-  };
+    enigmaDoMedo: null,
+    roleplay: { aparencia, comportamento, notasMestre: dicaRp },
+    notas: notaGrupo,
+  });
 }
 
 /** Ajuda o mestre: que VD total usar para um grupo. */
@@ -850,6 +923,10 @@ import {
   COMPORTAMENTOS_CULTISTAS,
   APARENCIAS_CULTISTAS,
   DICAS_RP_CULTISTAS,
+  TRACOS_CULTISTAS,
+  MANEIRISMOS_CULTISTAS,
+  MOTIVACOES_CULTISTAS,
+  INFORMACOES_CULTISTAS,
 } from '../data/roleplayTabelas.js';
 
 export const ELEMENTOS_CULTISTAS = ['Sangue', 'Morte', 'Conhecimento', 'Energia', 'Medo'];
@@ -920,53 +997,67 @@ export function gerarOcultista({ vd = 40, elemento = null, patente = null } = {}
   const ataqueNome = armasNomes[el] || 'Lâmina Cerimonial';
   const tipoDano = el === 'Sangue' ? 'Corte / Sangue' : el === 'Morte' ? 'Perfuração / Morte' : el === 'Conhecimento' ? 'Impacto / Mental' : el === 'Energia' ? 'Energia' : 'Medo';
 
-  return {
-    tipo: 'ameaca',
-    subtipo: 'ocultista',
-    nome: nomeCompleto,
-    culto,
-    elemento: el,
-    patente: pat.nome,
+  // Um ocultista é uma pessoa: sai como NPC de ficha livre (Elenco), com
+  // rituais, poderes e equipamento — não como ameaça (as ameaças não têm
+  // rituais). Os atributos sobem com a patente, puxados para PRE/INT.
+  const nivel = PATENTES_CULTISTAS.indexOf(pat);
+  const atributos = { agi: 1 + (Math.random() < 0.5 ? 1 : 0), for: 1, int: 2 + Math.floor(nivel / 2), pre: 3 + Math.ceil(nivel / 2), vig: 1 + (nivel >= 2 ? 1 : 0) };
+
+  return paraFichaOrdo({
+    formato: FORMATO_FICHA_LIVRE,
+    tipo: 'npc',
+    fichaLivre: true,
+    jogador: 'NPC',
+    nome,
+    breveDescricao: `${pat.nome} d’${culto}`,
+    historia: '',
+    classe: 'Ocultista',
+    origem: '',
+    trilha: '',
+    afiliacao: culto,
+    nex: '',
     vd: v,
-    descritores: ['Humano', 'Ocultista', el],
-    tamanho: 'Médio',
-    defesa,
-    pv,
-    pvMachucado: Math.round(pv / 2),
-    pe,
-    dt,
-    deslocamento: 9,
-    sentidos: { percepcao: `${dadosTeste}d20+${bonusTeste}`, iniciativa: `${dadosTeste}d20+${bonusTeste}` },
-    resistencias: [`${el} 10`, 'Mental 5'],
-    testes: {
-      fortitude: `${dadosTeste}d20+${Math.max(0, bonusTeste - 2)}`,
-      reflexos: `${dadosTeste}d20+${Math.max(0, bonusTeste - 2)}`,
-      vontade: `${dadosTeste}d20+${bonusTeste + 3}`,
-    },
+    culto,
+    elementoPrincipal: el,
+    patente: pat.nome,
+    atributos,
+    pv, pe, san: Math.round(v * 0.4 + 10),
+    defesa, bloqueio: '', esquiva: '',
+    deslocamento: '9m',
     pericias: [
-      { nome: 'Ocultismo', dados: dadosTeste, bonus: bonusTeste + 5 },
-      { nome: 'Vontade', dados: dadosTeste, bonus: bonusTeste + 3 },
-      { nome: 'Enganação', dados: dadosTeste, bonus: bonusTeste },
-      { nome: 'Iniciativa', dados: dadosTeste, bonus: bonusTeste },
-    ],
-    habilidades: poderes,
-    rituais,
-    comportamento,
-    aparencia,
-    dicaRp,
-    ataque: {
+      { nome: 'Iniciativa', dados: atributos.agi, bonus: bonusTeste - 5 },
+      { nome: 'Percepção', dados: atributos.pre, bonus: bonusTeste - 5 },
+      { nome: 'Fortitude', dados: atributos.vig, bonus: Math.max(0, bonusTeste - 7) },
+      { nome: 'Reflexos', dados: atributos.agi, bonus: Math.max(0, bonusTeste - 7) },
+      { nome: 'Vontade', dados: atributos.pre, bonus: bonusTeste + 3 },
+      { nome: 'Ocultismo', dados: atributos.int, bonus: bonusTeste + 5 },
+      { nome: 'Enganação', dados: atributos.pre, bonus: bonusTeste },
+    ].map((p) => ({ ...p, dados: Math.max(1, Math.max(p.dados, dadosTeste - 1)) })),
+    resistencias: [`${el} 10`, 'Mental 5'],
+    acoes: [{
+      tipo: 'Padrão',
       nome: ataqueNome,
-      teste: `${dadosTeste}d20+${bonusTeste}`,
-      dados: dadosTeste,
-      bonus: bonusTeste,
-      dano: `${dadosDano}d6+${bonusDano}`,
-      tipo: tipoDano,
+      detalhe: el === 'Energia' ? 'À distância, curto' : 'Corpo a corpo',
+      teste: poolTexto(dadosTeste, bonusTeste),
+      dano: `${dadosDano}d6+${bonusDano} ${tipoDano.toLowerCase()}`,
       critico: '19/x2',
+      descricao: '',
+    }],
+    habilidades: poderes.map((pd) => ({ nome: pd.nome, custo: pd.custo || 'Poder paranormal', descricao: pd.descricao || '' })),
+    rituais: rituais.map((r) => ({ ...r, circulo: String(r.circulo), elemento: elementoRitual(r.elemento), dt: String(r.dt) })),
+    equipamento: [ataqueNome, `Símbolo de ${culto}`, 'Componentes ritualísticos'],
+    roleplay: {
+      aparencia,
+      traco: ao(TRACOS_CULTISTAS),
+      personalidade: comportamento,
+      maneirismos: ao(MANEIRISMOS_CULTISTAS),
+      motivacao: ao(MOTIVACOES_CULTISTAS),
+      informacao: ao(INFORMACOES_CULTISTAS),
+      notasMestre: dicaRp,
     },
-    // Não repete comportamento/dicaRp aqui — já vivem só no painel Roleplay
-    // (mesma razão da nota em gerarAmeaca, acima).
-    notas: `Culto: ${culto}.`,
-  };
+    tags: [],
+    notas: '',
+  });
 }
 
 export const gerarOcultistaInimigo = gerarOcultista;
