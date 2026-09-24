@@ -1,9 +1,7 @@
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { CLASSES, TRILHAS } from '../../data/classes.js';
 import { ORIGENS } from '../../data/origens.js';
-import { PERICIAS_TEXTO } from '../../data/periciasTexto.js';
-import { NEX_TRACK, calcMaximos, calcDefesas, calcPericias } from '../../engine/calc.js';
-import { quantidadeDados } from '../../engine/dados.js';
+import { NEX_TRACK } from '../../engine/calc.js';
 import {
   CONCEITOS, CATEGORIAS_AMEACA, ELEMENTOS_AMEACA, VD_SUGERIDOS, TAMANHOS,
   ELEMENTOS_CULTISTAS, PATENTES_CULTISTAS,
@@ -14,7 +12,6 @@ import Ficha from '../ficha/Ficha.jsx';
 import FichaLivreCard from './FichaLivreCard.jsx';
 import { ehFichaLivre } from '../../engine/fichaLivre.js';
 import PainelRolagem from '../PainelRolagem.jsx';
-import FichaNpcCard from './FichaNpcCard.jsx';
 
 const SEPARADORES = [
   { id: 'ficha', nome: 'Ficha aleatória' },
@@ -22,346 +19,6 @@ const SEPARADORES = [
   { id: 'ocultista', nome: 'Ocultista' },
   { id: 'ameaca', nome: 'Criatura / Ameaça' },
 ];
-
-const ROTULO_GRAU = { treinado: 'T', veterano: 'V', expert: 'E' };
-
-function Resumo({ p, aoVerDetalhe, editando, onAtualizarCampo, aoUploadImagem }) {
-  const fileInputRef = useRef(null);
-  const classe = CLASSES.find((c) => c.id === p.classeId);
-  const trilha = TRILHAS.find((t) => t.id === p.trilhaId);
-  const origem = ORIGENS.find((o) => o.id === p.origemId);
-  const max = calcMaximos(p);
-  const defesas = calcDefesas(p);
-  const treinadas = calcPericias(p)
-    .filter((x) => x.grau !== 'destreinado')
-    .sort((a, b) => b.bonus - a.bonus || a.nome.localeCompare(b.nome, 'pt'));
-
-  const habilidades = p.habilidades || [];
-  const poderes = p.poderes || [];
-  const rituais = p.rituais || [];
-
-  function handleFileChange(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      aoUploadImagem(reader.result);
-    };
-    reader.readAsDataURL(file);
-  }
-
-  return (
-    <div className="previa" style={{ marginTop: 16 }}>
-      {/* Bloco de Imagem e Identificação */}
-      <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
-        {/* Avatar / Imagem */}
-        <div style={{ position: 'relative', width: 90, height: 90, borderRadius: 8, overflow: 'hidden', border: '2px solid var(--borda)', background: '#0e0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {p.imagem ? (
-            <img src={p.imagem} alt={p.nome} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            <span style={{ fontSize: 11, color: 'var(--txt-fraco)', textAlign: 'center', padding: 4 }}>Sem Imagem</span>
-          )}
-          {editando && (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              style={{
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                background: 'rgba(0,0,0,0.75)',
-                color: '#fff',
-                border: 'none',
-                fontSize: 10,
-                padding: '3px 0',
-                cursor: 'pointer',
-              }}
-            >
-              Trocar
-            </button>
-          )}
-          <input type="file" accept="image/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
-        </div>
-
-        <div style={{ flex: 1, minWidth: 200 }}>
-          {editando ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <input
-                type="text"
-                value={p.nome}
-                onChange={(e) => onAtualizarCampo('nome', e.target.value)}
-                placeholder="Nome do agente"
-                style={{ fontSize: 18, fontWeight: 'bold', width: '100%' }}
-              />
-              <div style={{ display: 'flex', gap: 6 }}>
-                <input
-                  type="text"
-                  placeholder="URL da Imagem"
-                  value={p.imagem || ''}
-                  onChange={(e) => onAtualizarCampo('imagem', e.target.value)}
-                  style={{ fontSize: 12, flex: 1 }}
-                />
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="previa-nome" style={{ margin: 0 }}>{p.nome}</div>
-              <div className="previa-linha" style={{ marginTop: 4 }}>
-                {[
-                  origem?.nome,
-                  classe?.nome,
-                  trilha ? `Trilha: ${trilha.nome}` : null,
-                  `NEX ${p.nex}%`,
-                ].filter(Boolean).join(' · ')}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Atributos */}
-      {editando ? (
-        <div className="grelha-editor" style={{ gridTemplateColumns: 'repeat(5, 1fr)', marginBottom: 10 }}>
-          {['for', 'agi', 'int', 'pre', 'vig'].map((k) => (
-            <div className="campo" key={k}>
-              <label>{k.toUpperCase()}</label>
-              <input
-                type="number"
-                value={p.atributos?.[k] ?? 1}
-                onChange={(e) =>
-                  onAtualizarCampo('atributos', {
-                    ...(p.atributos || {}),
-                    [k]: Number(e.target.value),
-                  })
-                }
-              />
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="previa-attrs">
-          {Object.entries(p.atributos || {}).map(([k, v]) => (
-            <span key={k}><b>{v}</b> {k.toUpperCase()}</span>
-          ))}
-        </div>
-      )}
-
-      {/* Vitais */}
-      <div className="previa-attrs">
-        <span><b>{max.pv}</b> PV</span>
-        <span><b>{max.san}</b> SAN</span>
-        <span><b>{max.pe}</b> PE</span>
-        <span><b>{defesas.defesa}</b> DEFESA</span>
-      </div>
-
-      {/* Comportamento e Roleplay */}
-      {editando ? (
-        <div className="previa-bloco" style={{ background: 'rgba(255,255,255,0.03)', padding: 10, borderRadius: 4, marginTop: 10 }}>
-          <div className="previa-rotulo">Editar Interpretação & RP</div>
-          <div className="campo" style={{ marginBottom: 6 }}>
-            <label>Comportamento fora do comum</label>
-            <input
-              type="text"
-              value={p.comportamento || ''}
-              onChange={(e) => onAtualizarCampo('comportamento', e.target.value)}
-            />
-          </div>
-          <div className="campo" style={{ marginBottom: 6 }}>
-            <label>Aparência marcante</label>
-            <input
-              type="text"
-              value={p.aparencia || ''}
-              onChange={(e) => onAtualizarCampo('aparencia', e.target.value)}
-            />
-          </div>
-          <div className="campo">
-            <label>Dica de RP</label>
-            <input
-              type="text"
-              value={p.dicaRp || ''}
-              onChange={(e) => onAtualizarCampo('dicaRp', e.target.value)}
-            />
-          </div>
-        </div>
-      ) : (
-        (p.comportamento || p.aparencia || p.dicaRp) && (
-          <div className="previa-bloco" style={{ background: 'rgba(255,255,255,0.03)', padding: 8, borderRadius: 4, marginTop: 10 }}>
-            <div className="previa-rotulo" style={{ color: 'var(--txt)' }}>Interpretação & RP</div>
-            {p.comportamento && (
-              <div style={{ fontSize: 12, marginBottom: 4 }}>
-                <b style={{ color: 'var(--energia-claro)' }}>Comportamento:</b> {p.comportamento}
-              </div>
-            )}
-            {p.aparencia && (
-              <div style={{ fontSize: 12, marginBottom: 4 }}>
-                <b style={{ color: 'var(--txt-dim)' }}>Aparência:</b> {p.aparencia}
-              </div>
-            )}
-            {p.dicaRp && (
-              <div style={{ fontSize: 12 }}>
-                <b style={{ color: 'var(--conhecimento-claro)' }}>Dica de RP:</b> {p.dicaRp}
-              </div>
-            )}
-          </div>
-        )
-      )}
-
-      {/* Perícias Treinadas (Clicáveis) */}
-      <div className="previa-bloco">
-        <div className="previa-rotulo" style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Perícias treinadas ({treinadas.length})</span>
-          <span style={{ fontSize: 11, color: 'var(--txt-fraco)' }}>Clica para ver detalhes</span>
-        </div>
-        {treinadas.length === 0 ? (
-          <div className="previa-linha">nenhuma</div>
-        ) : (
-          <ul className="previa-pericias">
-            {treinadas.map((x) => (
-              <li
-                key={x.id}
-                style={{ cursor: 'pointer', transition: 'background 0.15s' }}
-                onClick={() =>
-                  aoVerDetalhe({
-                    nome: x.nome,
-                    tipo: `Perícia (${ROTULO_GRAU[x.grau] || 'T'})`,
-                    subtitulo: `Atributo-base: ${x.attr.toUpperCase()} · Bónus: ${x.bonus >= 0 ? '+' : ''}${x.bonus}`,
-                    tags: [
-                      { rotulo: 'Dados', valor: `${quantidadeDados(x.dados)}d20` },
-                      { rotulo: 'Bónus', valor: `${x.bonus >= 0 ? '+' : ''}${x.bonus}` },
-                      { rotulo: 'Grau', valor: x.grau },
-                    ],
-                    descricao: PERICIAS_TEXTO[x.id]?.sumario || PERICIAS_TEXTO[x.id]?.descricao || 'Perícia oficial de Ordem Paranormal RPG.',
-                  })
-                }
-              >
-                <span className="pn" style={{ textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>{x.nome}</span>
-                <span className="pg" title={x.grau}>{ROTULO_GRAU[x.grau] || ''}</span>
-                <span className="pb">{quantidadeDados(x.dados)}d20 {x.bonus >= 0 ? '+' : '−'}{Math.abs(x.bonus)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      {/* Habilidades e Poderes (Clicáveis) */}
-      {(habilidades.length > 0 || poderes.length > 0) && (
-        <div className="previa-bloco">
-          <div className="previa-rotulo" style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>Habilidades & Poderes ({habilidades.length + poderes.length})</span>
-            <span style={{ fontSize: 11, color: 'var(--txt-fraco)' }}>Clica para ler o texto</span>
-          </div>
-          <ul className="previa-pericias">
-            {habilidades.map((h, i) => (
-              <li
-                key={'h-' + i}
-                style={{ cursor: 'pointer', transition: 'background 0.15s' }}
-                onClick={() =>
-                  aoVerDetalhe({
-                    nome: h.nome,
-                    tipo: 'Habilidade',
-                    subtitulo: `Origem: ${h.origem}`,
-                    descricao: h.descricao || 'Habilidade oficial de personagem.',
-                  })
-                }
-              >
-                <span className="pn" style={{ textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>
-                  {h.nome} <span style={{ color: 'var(--txt-fraco)', fontSize: 11 }}>({h.origem})</span>
-                </span>
-              </li>
-            ))}
-            {poderes.map((pod, i) => (
-              <li
-                key={'p-' + i}
-                style={{ cursor: 'pointer', transition: 'background 0.15s' }}
-                onClick={() =>
-                  aoVerDetalhe({
-                    nome: pod.nome,
-                    tipo: 'Poder de Classe',
-                    subtitulo: `Origem: ${pod.origem}`,
-                    descricao: pod.descricao || 'Poder de classe oficial.',
-                  })
-                }
-              >
-                <span className="pn" style={{ textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>
-                  {pod.nome} <span style={{ color: 'var(--txt-fraco)', fontSize: 11 }}>({pod.origem})</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Rituais Conhecidos (Clicáveis) */}
-      {rituais.length > 0 && (
-        <div className="previa-bloco">
-          <div className="previa-rotulo" style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>Rituais Conhecidos ({rituais.length})</span>
-            <span style={{ fontSize: 11, color: 'var(--txt-fraco)' }}>Clica para ver efeitos</span>
-          </div>
-          <ul className="previa-pericias">
-            {rituais.map((r, i) => (
-              <li
-                key={'r-' + i}
-                style={{ cursor: 'pointer', transition: 'background 0.15s' }}
-                onClick={() =>
-                  aoVerDetalhe({
-                    nome: r.nome,
-                    tipo: `Ritual de ${r.circulo}º Círculo`,
-                    subtitulo: `Elemento: ${r.elemento} · Custo: ${r.custo}`,
-                    tags: [
-                      { rotulo: 'Círculo', valor: `${r.circulo}º Círculo` },
-                      { rotulo: 'Elemento', valor: r.elemento },
-                      { rotulo: 'Execução', valor: r.execucao || 'Padrão' },
-                      { rotulo: 'Alcance', valor: r.alcance || 'Curto' },
-                      { rotulo: 'Duração', valor: r.duracao || 'Instantânea' },
-                    ],
-                    descricao: r.descricao || 'Ritual oficial do Outro Lado.',
-                  })
-                }
-              >
-                <span className="pn" style={{ textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>{r.nome}</span>
-                <span className="pb" style={{ textTransform: 'capitalize' }}>{r.circulo}º Círculo · {r.elemento}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Ataques (Clicáveis) */}
-      {p.ataques?.length > 0 && (
-        <div className="previa-bloco">
-          <div className="previa-rotulo">Ataques</div>
-          <ul className="previa-pericias">
-            {p.ataques.map((at, i) => (
-              <li
-                key={i}
-                style={{ cursor: 'pointer' }}
-                onClick={() =>
-                  aoVerDetalhe({
-                    nome: at.nome,
-                    tipo: 'Ataque / Arma',
-                    subtitulo: `Perícia: ${at.pericia?.toUpperCase()} · Dano: ${at.dano} ${at.tipo || ''}`,
-                    tags: [
-                      { rotulo: 'Dano', valor: at.dano },
-                      { rotulo: 'Tipo', valor: at.tipo || 'Impacto' },
-                      { rotulo: 'Crítico', valor: `${at.margem || 20}/x${at.multiplicador || 2}` },
-                      { rotulo: 'Alcance', valor: at.alcance || 'Curto' },
-                    ],
-                    descricao: at.notas || 'Arma / ataque equipado no personagem.',
-                  })
-                }
-              >
-                <span className="pn" style={{ textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,0.2)' }}>{at.nome}</span>
-                <span className="pb">{at.dano}{at.tipo ? ' ' + at.tipo : ''}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default function Geradores({ aoGuardar, aoAbrir }) {
   const [aba, setAba] = useState('ficha');
@@ -430,20 +87,6 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
       origemId: origemId || null,
     };
     setResultado(aba === 'npc' ? gerarNpcAgente(opcoes) : gerarFicha(opcoes));
-  }
-
-  function handleAtualizarCampo(campo, valor) {
-    setResultado((ant) => ({
-      ...ant,
-      [campo]: valor,
-    }));
-  }
-
-  function handleUploadImagem(dataUrl) {
-    setResultado((ant) => ({
-      ...ant,
-      imagem: dataUrl,
-    }));
   }
 
   return (
@@ -652,13 +295,15 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
         {resultado && <button className="btn ghost" onClick={gerar}>Outra vez</button>}
         {resultado && (
           <>
-            <button
-              type="button"
-              className={`btn ${editando ? '' : 'ghost'}`}
-              onClick={() => setEditando(!editando)}
-            >
-              {editando ? 'Concluir Edição' : 'Editar Ficha'}
-            </button>
+            {ehFichaLivre(resultado) && (
+              <button
+                type="button"
+                className={`btn ${editando ? '' : 'ghost'}`}
+                onClick={() => setEditando(!editando)}
+              >
+                {editando ? 'Concluir Edição' : 'Editar Ficha'}
+              </button>
+            )}
             <button className="btn ghost" onClick={() => aoGuardar(resultado)}
               title={ehFichaLivre(resultado) ? (resultado.tipo === 'ameaca' ? 'Guarda no Bestiário' : 'Guarda no Elenco') : 'Guarda nas fichas'}>
               Guardar
@@ -675,34 +320,12 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
         <FichaLivreCard f={resultado} editando={editando} onAtualizar={(patch) => setResultado((a) => ({ ...a, ...patch }))} onRolar={onRolar} />
       )}
 
-      {resultado && !ehFichaLivre(resultado) && editando && (
+      {/* Ficha aleatória (agente): a ficha a sério, igual à de um agente aberto —
+          já é editável, por isso não precisa de modo de edição à parte */}
+      {resultado && !ehFichaLivre(resultado) && resultado.tipo !== 'npc' && (
         <div className="gerador-editor-completo" style={{ marginTop: 10 }}>
-          <div className="dica" style={{ marginBottom: 8 }}>
-            Edição completa: troca armas e itens no Inventário, habilidades e poderes do catálogo ou escritos à mão,
-            e o treino das perícias — tudo o que já dá para fazer numa ficha guardada.
-          </div>
           <Ficha personagem={resultado} setPersonagem={setResultado} onRolar={onRolar} />
         </div>
-      )}
-
-      {resultado && !ehFichaLivre(resultado) && !editando && (
-        resultado.tipo === 'npc' ? (
-          <FichaNpcCard
-            p={resultado}
-            aoVerDetalhe={setItemDetalhe}
-            editando={false}
-            onAtualizarCampo={handleAtualizarCampo}
-            aoUploadImagem={handleUploadImagem}
-          />
-        ) : (
-          <Resumo
-            p={resultado}
-            aoVerDetalhe={setItemDetalhe}
-            editando={false}
-            onAtualizarCampo={handleAtualizarCampo}
-            aoUploadImagem={handleUploadImagem}
-          />
-        )
       )}
 
       {/* Modal de Detalhe Genérico */}

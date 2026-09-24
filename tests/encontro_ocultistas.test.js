@@ -29,7 +29,8 @@ teste('Ocultista gerado é uma pessoa (NPC de ficha livre) com VD, rituais, pode
 
   // Interpretação e Detalhes do Culto
   assert.ok(o.culto && o.culto.length > 3, 'Deve pertencer a um culto paranormal');
-  assert.equal(o.afiliacao, o.culto);
+  assert.ok(o.afiliacao.startsWith(o.culto), 'afiliação = culto (+ o disfarce, para recrutadores/infiltrados)');
+  assert.ok(o.papelCulto && o.breveDescricao.includes('·'), 'papel no culto na linha de descrição');
   for (const k of ['aparencia', 'traco', 'personalidade', 'maneirismos', 'motivacao', 'informacao', 'notasMestre']) {
     assert.ok(o.roleplay[k] && o.roleplay[k].length > 5, `roleplay.${k} preenchido`);
   }

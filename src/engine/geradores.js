@@ -13,23 +13,17 @@ import { CLASSES, CLASSES_POR_ID, TRILHAS_POR_ID } from '../data/classes.js';
 import { ARMAS } from '../data/itens/armas.js';
 import { ITENS_GERAIS } from '../data/itens/geral.js';
 import { RITUAIS, circuloMaximoPorNex } from '../data/rituais.js';
-import { NOMES_M, NOMES_F, APELIDOS, OCUPACOES, CIDADES, ANIMAIS, ANIMAIS_GRUPO, SITIOS } from '../data/nomesPt.js';
+import { NOMES_M, NOMES_F, APELIDOS, CIDADES, ANIMAIS, ANIMAIS_GRUPO, SITIOS } from '../data/nomesPt.js';
 import { personagemVazio, normalizarRecursos } from './character.js';
 import { orcamentoPericias, NEX_TRACK, calcMaximos, calcDefesas, calcPericias, calcDtRitual } from './calc.js';
 import { aplicarConcessoes } from './concessoes.js';
 import { interpretarCritico, estatisticasArma } from './armas.js';
 import { FORMATO_FICHA_LIVRE, PERICIAS_BASE_NPC, paraFichaOrdo, poolTexto, textoDeslocamento } from './fichaLivre.js';
+import { PERFIS_NPC, SEGREDOS_NPC, ESTILO_CULTO, PAPEIS_CULTO, comGenero } from '../data/perfisNpc.js';
 import {
-  COMPORTAMENTOS_ESTRANHOS_AGENTES,
-  APARENCIAS_AGENTES,
-  DICAS_RP_AGENTES,
   COMPORTAMENTOS_CRIATURAS,
   APARENCIAS_CRIATURAS,
   DICAS_RP_CRIATURAS,
-  TRACOS_DISTINTIVOS_AGENTES,
-  MANEIRISMOS_AGENTES,
-  MOTIVACOES_AGENTES,
-  INFORMACOES_UTEIS_AGENTES,
 } from '../data/roleplayTabelas.js';
 
 const ao = (lista) => (lista && lista.length ? lista[Math.floor(Math.random() * lista.length)] : null);
@@ -111,18 +105,34 @@ function distribuirAtributos(conceito) {
 /**
  * Gera uma ficha jogável com habilidades, poderes, rituais e detalhes de RP.
  */
-export function gerarFicha({ nex = 5, conceito = 'surpresa', classeId = null, trilhaId = null, origemId = null, jogador = '' } = {}) {
-  const conc = conceito === 'surpresa' ? ao(CONCEITOS.filter((c) => c.id !== 'surpresa')) : CONCEITOS_POR_ID[conceito];
+/** Perfil compatível com o que o mestre escolheu (conceito/classe), ou qualquer um. */
+export function escolherPerfil({ conceito = 'surpresa', classeId = null } = {}) {
+  const porConceito = conceito && conceito !== 'surpresa' ? PERFIS_NPC.filter((pf) => pf.conceito === conceito) : PERFIS_NPC;
+  const porClasse = classeId ? porConceito.filter((pf) => pf.classes.includes(classeId)) : porConceito;
+  return ao(porClasse.length ? porClasse : porConceito.length ? porConceito : PERFIS_NPC);
+}
+
+export function gerarFicha({ nex = 5, conceito = 'surpresa', classeId = null, trilhaId = null, origemId = null, jogador = '', perfil = null } = {}) {
+  // O perfil dá coerência a tudo (ocupação, perícias, arma, equipamento, RP);
+  // o que o mestre escolher à mão (conceito, classe, origem) manda sempre.
+  const pf = perfil || escolherPerfil({ conceito, classeId });
+  const conc = conceito === 'surpresa'
+    ? { id: 'perfil', atributos: pf.atributos, pericias: pf.pericias, classe: ao(pf.classes) }
+    : { ...CONCEITOS_POR_ID[conceito], pericias: [...new Set([...pf.pericias, ...CONCEITOS_POR_ID[conceito].pericias])] };
   const { nome, genero } = nomePortugues();
 
   let p = personagemVazio();
   p.nome = nome;
+  p.genero = genero;
+  p.perfilId = pf.id;
+  p.ocupacao = pf.ocupacao[genero === 'f' ? 1 : 0];
   p.jogador = jogador;
   p.nex = NEX_TRACK.includes(Number(nex)) ? Number(nex) : 5;
   p.atributos = distribuirAtributos(conc);
 
-  // Origem
-  const origem = origemId ? ORIGENS.find((o) => o.id === origemId) : ao(ORIGENS);
+  // Origem (do perfil, se não foi escolhida)
+  const origensPerfil = ORIGENS.filter((o) => pf.origens.includes(o.id));
+  const origem = origemId ? ORIGENS.find((o) => o.id === origemId) : ao(origensPerfil.length ? origensPerfil : ORIGENS);
   if (origem) {
     p.origemId = origem.id;
     p = aplicarConcessoes(p, 'origem', origem.pericias || []);
@@ -133,7 +143,7 @@ export function gerarFicha({ nex = 5, conceito = 'surpresa', classeId = null, tr
   }
 
   // Classe
-  const classe = CLASSES_POR_ID[classeId] || CLASSES_POR_ID[conc?.classe] || ao(CLASSES.filter((c) => c.id !== 'sobrevivente'));
+  const classe = CLASSES_POR_ID[classeId] || CLASSES_POR_ID[conc?.classe] || CLASSES_POR_ID[ao(pf.classes)] || ao(CLASSES.filter((c) => c.id !== 'sobrevivente'));
   p.classeId = classe.id;
   p.proficiencias = [...(classe.proficiencias || [])];
 
@@ -239,15 +249,24 @@ export function gerarFicha({ nex = 5, conceito = 'surpresa', classeId = null, tr
     p.rituais = [];
   }
 
-  // Equipamento
-  p.ataques = [armaAleatoria(p, conc)];
-  p.inventario = equipamentoInicial();
+  // Equipamento — a arma e os itens do perfil (um detetive com revólver e
+  // algemas, não uma espingarda e uma pistola de dardos)
+  const nomeArma = ao(pf.armas.filter((n) => ARMAS.some((a) => a.nome === n)));
+  const armaPerfil = ARMAS.find((a) => a.nome === nomeArma);
+  p.ataques = [armaPerfil ? armaDe(armaPerfil) : armaAleatoria(p, conc)];
+  const itensPerfil = ITENS_GERAIS.filter((i) => pf.itens.includes(i.nome))
+    .map((item) => ({ nome: item.nome, categoria: String(item.categoria ?? ''), espacos: item.espacos ?? 1, descricao: item.descricao || '' }));
+  p.inventario = itensPerfil.length ? itensPerfil : equipamentoInicial();
   p.patenteId = p.nex >= 50 ? 'especial' : p.nex >= 20 ? 'operador' : 'recruta';
 
-  // Comportamento Estranho, Descrição Visual e Dicas de RP
-  const comportamento = ao(COMPORTAMENTOS_ESTRANHOS_AGENTES);
-  const aparencia = `${ao(APARENCIAS_AGENTES)} Natural de ${ao(CIDADES)}, ${entre(22, 55)} anos.`;
-  const dicaRp = ao(DICAS_RP_AGENTES);
+  // Comportamento, Descrição Visual e Dicas de RP — só do perfil (os poços
+  // gerais são de agentes de combate e escritos no masculino, e destoavam:
+  // uma psicóloga "a procurar ângulos de tiro")
+  const g = (t) => comGenero(t, genero);
+  const comportamento = g(ao(pf.comportamentos));
+  const [idadeMin, idadeMax] = pf.idade || [22, 55];
+  const aparencia = `${g(ao(pf.aparencias))} Natural de ${ao(CIDADES)}, ${entre(idadeMin, idadeMax)} anos.`;
+  const dicaRp = g(ao(pf.personalidades));
 
   p.comportamento = comportamento;
   p.aparencia = aparencia;
@@ -281,7 +300,11 @@ function armaAleatoria(p, conc) {
     (corpoACorpo ? /corpo a corpo/i.test(a.grupo || '') : /distância|fogo|disparo/i.test(a.grupo || '')) &&
     (a.categoria ?? 0) <= (p.nex >= 20 ? 2 : 1)
   );
-  const arma = candidatas.length ? ao(candidatas) : ao(ARMAS);
+  return armaDe(candidatas.length ? ao(candidatas) : ao(ARMAS));
+}
+
+/** Uma arma do catálogo no formato de ataque da ficha. */
+function armaDe(arma) {
   const c = interpretarCritico(arma.critico);
   const corpo = /corpo a corpo/i.test(arma.grupo || '');
   return {
@@ -320,7 +343,9 @@ const elementoRitual = (el) => (Array.isArray(el) ? (el.length === 1 ? capitaliz
  */
 export function gerarNpcAgente(opcoes = {}) {
   const p = gerarFicha(opcoes);
-  const ocupacaoAnterior = ao(OCUPACOES);
+  const pf = PERFIS_NPC.find((x) => x.id === p.perfilId) || ao(PERFIS_NPC);
+  const g = (t) => comGenero(t, p.genero);
+  const doPerfil = (lista) => g(ao(lista));
   const classe = CLASSES_POR_ID[p.classeId];
   const origem = ORIGENS.find((o) => o.id === p.origemId);
   const trilha = TRILHAS_POR_ID[p.trilhaId];
@@ -356,7 +381,10 @@ export function gerarNpcAgente(opcoes = {}) {
     nome: r.nome, circulo: String(r.circulo ?? ''), elemento: elementoRitual(r.elemento),
     dt: String(calcDtRitual(p, r) ?? ''), custo: r.custo || '', execucao: r.execucao || '', alcance: r.alcance || '', descricao: r.descricao || '',
   }));
-  const equipamento = [...(p.ataques || []).map((a) => a.nome), ...(p.inventario || []).map((i) => i.nome)];
+  // arma + 2 a 3 pertences próprios do perfil + os itens da ficha
+  const pertences = [...pf.pertences].sort(() => Math.random() - 0.5).slice(0, entre(2, 3)).map(g);
+  const equipamento = [...new Set([...(p.ataques || []).map((a) => a.nome), ...pertences, ...(p.inventario || []).map((i) => i.nome)])];
+  const segredo = Math.random() < 0.34 ? g(ao(SEGREDOS_NPC)) : '';
 
   return paraFichaOrdo({
     formato: FORMATO_FICHA_LIVRE,
@@ -364,12 +392,12 @@ export function gerarNpcAgente(opcoes = {}) {
     fichaLivre: true,
     jogador: 'NPC',
     nome: p.nome,
-    breveDescricao: ocupacaoAnterior ? `Ex-${ocupacaoAnterior.toLowerCase()}` : '',
-    historia: origem?.descricao ? `${p.aparencia} ${origem.descricao}` : p.aparencia,
+    breveDescricao: p.ocupacao,
+    historia: '', // a aparência e o resto já vão no roleplay; a história fica para o Mestre
     classe: classe?.nome || '',
     origem: origem?.nome || '',
     trilha: trilha?.nome || '',
-    afiliacao: '',
+    afiliacao: g(ao(pf.afiliacoes) || ''),
     nex: p.nex,
     vd: p.nex, // para o balanço do combate, um NPC pesa o que o seu NEX pesaria
     atributos: { ...p.atributos },
@@ -381,12 +409,12 @@ export function gerarNpcAgente(opcoes = {}) {
     pericias, acoes, habilidades, rituais, equipamento,
     roleplay: {
       aparencia: p.aparencia,
-      traco: ao(TRACOS_DISTINTIVOS_AGENTES),
+      traco: doPerfil(pf.tracos),
       personalidade: p.dicaRp,
-      maneirismos: ao(MANEIRISMOS_AGENTES),
-      motivacao: ao(MOTIVACOES_AGENTES),
-      informacao: ao(INFORMACOES_UTEIS_AGENTES),
-      notasMestre: p.comportamento,
+      maneirismos: doPerfil(pf.maneirismos),
+      motivacao: doPerfil(pf.motivacoes),
+      informacao: doPerfil(pf.informacoes),
+      notasMestre: [p.comportamento, segredo].filter(Boolean).join('\n'),
     },
     tags: [],
   });
@@ -920,11 +948,7 @@ export function vdParaGrupo(nexTotal, dificuldade = 'equilibrado') {
 import {
   NOMES_CULTOS,
   PODERES_PARANORMAIS_CULTISTAS,
-  COMPORTAMENTOS_CULTISTAS,
-  APARENCIAS_CULTISTAS,
   DICAS_RP_CULTISTAS,
-  TRACOS_CULTISTAS,
-  MANEIRISMOS_CULTISTAS,
   MOTIVACOES_CULTISTAS,
   INFORMACOES_CULTISTAS,
 } from '../data/roleplayTabelas.js';
@@ -945,9 +969,15 @@ export function gerarOcultista({ vd = 40, elemento = null, patente = null } = {}
     v >= 180 ? PATENTES_CULTISTAS[3] : v >= 100 ? PATENTES_CULTISTAS[2] : v >= 40 ? PATENTES_CULTISTAS[1] : PATENTES_CULTISTAS[0]
   );
 
-  const { nome } = nomePortugues();
+  const { nome, genero } = nomePortugues();
+  const g = (t) => comGenero(t, genero);
   const culto = ao(NOMES_CULTOS);
-  const nomeCompleto = `${nome} (${pat.nome} d’${culto})`;
+  // Estilo do elemento (arma, aparência, comportamento…) + papel no culto
+  // (atributos, perícias, pertences, motivação) — dois cultistas do mesmo
+  // elemento já não saem iguais, e tudo o que se lê bate certo entre si.
+  const estilo = ESTILO_CULTO[el];
+  const papel = ao(PAPEIS_CULTO);
+  const nomePapel = papel.nome[genero === 'f' ? 1 : 0];
 
   const defesa = Math.round(14 + v * 0.08);
   const pv = Math.round((v * 1.5 + 20) / 5) * 5;
@@ -981,27 +1011,41 @@ export function gerarOcultista({ vd = 40, elemento = null, patente = null } = {}
   const poderesBaralhados = [...PODERES_PARANORMAIS_CULTISTAS].sort(() => Math.random() - 0.5);
   const poderes = poderesBaralhados.slice(0, pat.poderes);
 
-  // Detalhes de RP
-  const comportamento = ao(COMPORTAMENTOS_CULTISTAS);
-  const aparencia = ao(APARENCIAS_CULTISTAS);
-  const dicaRp = ao(DICAS_RP_CULTISTAS);
+  // Detalhes de RP — do estilo do elemento (o poço geral de cultistas puxa
+  // para Sangue — "corta a própria carne" — e destoava num cultista de Energia)
+  const doEstilo = (lista) => g(ao(lista));
+  const comportamento = doEstilo(estilo.comportamentos);
+  const aparencia = doEstilo(estilo.aparencias);
+  const dicaRp = [g(ao(estilo.dicas)), Math.random() < 0.5 ? ao(DICAS_RP_CULTISTAS) : ''].filter(Boolean).join(' ');
 
-  const armasNomes = {
-    Sangue: 'Lâmina Sacrificial de Sangue',
-    Morte: 'Foice Ritualística de Morte',
-    Conhecimento: 'Adaga Rúnica de Conhecimento',
-    Energia: 'Foco de Energia Caótica',
-    Medo: 'Adaga do Medo Profundo',
-  };
-
-  const ataqueNome = armasNomes[el] || 'Lâmina Cerimonial';
-  const tipoDano = el === 'Sangue' ? 'Corte / Sangue' : el === 'Morte' ? 'Perfuração / Morte' : el === 'Conhecimento' ? 'Impacto / Mental' : el === 'Energia' ? 'Energia' : 'Medo';
+  const arma = ao(estilo.armas);
+  const ataqueNome = arma.nome;
+  const tipoDano = arma.tipo === el || arma.tipo === 'Mental' || arma.tipo === 'Energia' || arma.tipo === 'Morte' ? arma.tipo : `${arma.tipo} + ${el}`;
 
   // Um ocultista é uma pessoa: sai como NPC de ficha livre (Elenco), com
   // rituais, poderes e equipamento — não como ameaça (as ameaças não têm
-  // rituais). Os atributos sobem com a patente, puxados para PRE/INT.
+  // rituais). Os atributos sobem com a patente (puxados para PRE/INT) e o
+  // papel no culto acrescenta os seus.
   const nivel = PATENTES_CULTISTAS.indexOf(pat);
-  const atributos = { agi: 1 + (Math.random() < 0.5 ? 1 : 0), for: 1, int: 2 + Math.floor(nivel / 2), pre: 3 + Math.ceil(nivel / 2), vig: 1 + (nivel >= 2 ? 1 : 0) };
+  const base = { agi: 1 + (Math.random() < 0.5 ? 1 : 0), for: 1, int: 2 + Math.floor(nivel / 2), pre: 2 + Math.ceil(nivel / 2), vig: 1 + (nivel >= 2 ? 1 : 0) };
+  const atributos = Object.fromEntries(Object.entries(base).map(([k, v]) => [k, Math.min(5, v + (papel.atributos[k] || 0))]));
+
+  const periciasBase = [
+    { nome: 'Iniciativa', dados: atributos.agi, bonus: bonusTeste - 5 },
+    { nome: 'Percepção', dados: atributos.pre, bonus: bonusTeste - 5 },
+    { nome: 'Fortitude', dados: atributos.vig, bonus: Math.max(0, bonusTeste - 7) },
+    { nome: 'Reflexos', dados: atributos.agi, bonus: Math.max(0, bonusTeste - 7) },
+    { nome: 'Vontade', dados: atributos.pre, bonus: bonusTeste },
+    { nome: 'Ocultismo', dados: atributos.int, bonus: bonusTeste + 5 },
+  ];
+  // as perícias do papel: sobem as que já existem, acrescentam as outras
+  const ATRIBUTO_PERICIA = { Diplomacia: 'pre', Enganação: 'pre', Intuição: 'pre', Luta: 'for', Intimidação: 'pre', Fortitude: 'vig', Investigação: 'int', Religião: 'pre', Percepção: 'pre', Pontaria: 'agi', Reflexos: 'agi', Vontade: 'pre', Furtividade: 'agi', Crime: 'agi', Ocultismo: 'int' };
+  const pericias = [...periciasBase];
+  for (const [nomeP, peso] of papel.pericias) {
+    const existente = pericias.find((x) => x.nome === nomeP);
+    if (existente) existente.bonus += peso * 3;
+    else pericias.push({ nome: nomeP, dados: atributos[ATRIBUTO_PERICIA[nomeP] || 'pre'], bonus: bonusTeste - 5 + peso * 3 });
+  }
 
   return paraFichaOrdo({
     formato: FORMATO_FICHA_LIVRE,
@@ -1009,12 +1053,13 @@ export function gerarOcultista({ vd = 40, elemento = null, patente = null } = {}
     fichaLivre: true,
     jogador: 'NPC',
     nome,
-    breveDescricao: `${pat.nome} d’${culto}`,
+    breveDescricao: `${nomePapel} · ${pat.nome} d’${culto}`,
     historia: '',
     classe: 'Ocultista',
     origem: '',
     trilha: '',
-    afiliacao: culto,
+    afiliacao: papel.afiliacaoExtra ? `${culto} (${papel.afiliacaoExtra})` : culto,
+    papelCulto: papel.id,
     nex: '',
     vd: v,
     culto,
@@ -1024,20 +1069,12 @@ export function gerarOcultista({ vd = 40, elemento = null, patente = null } = {}
     pv, pe, san: Math.round(v * 0.4 + 10),
     defesa, bloqueio: '', esquiva: '',
     deslocamento: '9m',
-    pericias: [
-      { nome: 'Iniciativa', dados: atributos.agi, bonus: bonusTeste - 5 },
-      { nome: 'Percepção', dados: atributos.pre, bonus: bonusTeste - 5 },
-      { nome: 'Fortitude', dados: atributos.vig, bonus: Math.max(0, bonusTeste - 7) },
-      { nome: 'Reflexos', dados: atributos.agi, bonus: Math.max(0, bonusTeste - 7) },
-      { nome: 'Vontade', dados: atributos.pre, bonus: bonusTeste + 3 },
-      { nome: 'Ocultismo', dados: atributos.int, bonus: bonusTeste + 5 },
-      { nome: 'Enganação', dados: atributos.pre, bonus: bonusTeste },
-    ].map((p) => ({ ...p, dados: Math.max(1, Math.max(p.dados, dadosTeste - 1)) })),
+    pericias: pericias.map((p) => ({ ...p, dados: Math.max(1, Math.max(p.dados, dadosTeste - 1)) })),
     resistencias: [`${el} 10`, 'Mental 5'],
     acoes: [{
       tipo: 'Padrão',
       nome: ataqueNome,
-      detalhe: el === 'Energia' ? 'À distância, curto' : 'Corpo a corpo',
+      detalhe: ['Mental', 'Energia'].includes(arma.tipo) ? 'À distância, curto' : 'Corpo a corpo',
       teste: poolTexto(dadosTeste, bonusTeste),
       dano: `${dadosDano}d6+${bonusDano} ${tipoDano.toLowerCase()}`,
       critico: '19/x2',
@@ -1045,14 +1082,14 @@ export function gerarOcultista({ vd = 40, elemento = null, patente = null } = {}
     }],
     habilidades: poderes.map((pd) => ({ nome: pd.nome, custo: pd.custo || 'Poder paranormal', descricao: pd.descricao || '' })),
     rituais: rituais.map((r) => ({ ...r, circulo: String(r.circulo), elemento: elementoRitual(r.elemento), dt: String(r.dt) })),
-    equipamento: [ataqueNome, `Símbolo de ${culto}`, 'Componentes ritualísticos'],
+    equipamento: [ataqueNome, ...papel.pertences.map(g), `Símbolo d’${culto}`],
     roleplay: {
       aparencia,
-      traco: ao(TRACOS_CULTISTAS),
+      traco: doEstilo(estilo.tracos),
       personalidade: comportamento,
-      maneirismos: ao(MANEIRISMOS_CULTISTAS),
-      motivacao: ao(MOTIVACOES_CULTISTAS),
-      informacao: ao(INFORMACOES_CULTISTAS),
+      maneirismos: doEstilo(estilo.maneirismos),
+      motivacao: g(Math.random() < 0.7 ? ao(papel.motivacoes) : ao(MOTIVACOES_CULTISTAS)),
+      informacao: g(Math.random() < 0.75 ? ao(papel.informacoes) : ao(INFORMACOES_CULTISTAS)),
       notasMestre: dicaRp,
     },
     tags: [],

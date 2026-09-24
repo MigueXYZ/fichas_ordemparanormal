@@ -261,24 +261,9 @@ export const INFORMACOES_UTEIS_AGENTES = [
   'Tem um pressentimento fundado sobre quem será o próximo alvo — mas não sabe como o provar.',
 ];
 
-// Guia de interpretação dos ocultistas/cultistas gerados (NPCs de ficha livre)
-
-export const TRACOS_CULTISTAS = [
-  'Um sigilo queimado na palma da mão que nunca cicatriza por completo.',
-  'Olhos sempre injetados, como quem não dorme há dias — e talvez não durma.',
-  'Unhas pintadas de negro com um símbolo diferente em cada dedo.',
-  'Um colar de dentes pequenos, que jura serem de "voluntários".',
-  'Voz rouca e baixa, gasta por anos de cânticos.',
-  'Cheira sempre a cera queimada e a ferro.',
-];
-
-export const MANEIRISMOS_CULTISTAS = [
-  'Traça o símbolo do culto no ar antes de falar com um estranho.',
-  'Murmura orações em voz baixa sempre que alguém o contradiz.',
-  'Toca na lâmina ritual como quem acaricia um animal de estimação.',
-  'Nunca vira as costas a uma porta aberta.',
-  'Ri-se no momento errado, como se soubesse o fim de uma piada que mais ninguém ouviu.',
-];
+// Guia de interpretação dos ocultistas/cultistas gerados (NPCs de ficha livre).
+// Traços, maneirismos e aparência vêm do estilo de cada elemento
+// (data/perfisNpc.js → ESTILO_CULTO); estes completam o papel no culto.
 
 export const MOTIVACOES_CULTISTAS = [
   'Subir na hierarquia do culto, custe quantas vidas custar.',
