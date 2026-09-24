@@ -49,6 +49,71 @@ export const CLASSES_NPC = ['Combatente', 'Especialista', 'Ocultista', 'Sobreviv
  * sem nenhuma; o botão "+ perícias comuns" junta estas de uma vez. */
 export const PERICIAS_BASE_NPC = ['Iniciativa', 'Percepção', 'Fortitude', 'Reflexos', 'Vontade'];
 
+// ------------------------------------------------ testes "Nd20+B" e deslocamento
+
+/** "3d20+10 (às cegas)" → { dados: 3, bonus: 10 }; null se não for uma pool de d20. */
+export function lerPool(txt) {
+  const m = String(txt || '').replace(/\s/g, '').match(/^(-?\d+)d20([+-]\d+)?/i);
+  return m ? { dados: Number(m[1]), bonus: Number(m[2] || 0) } : null;
+}
+
+/** { dados: 2, bonus: 5 } → "2d20+5"; vazio se nenhum dos dois estiver escrito. */
+export function poolTexto(dados, bonus) {
+  const temD = dados !== '' && dados != null && !Number.isNaN(Number(dados));
+  const temB = bonus !== '' && bonus != null && !Number.isNaN(Number(bonus));
+  if (!temD && !temB) return '';
+  const d = temD ? Number(dados) : 1;
+  const b = temB ? Number(bonus) : 0;
+  return `${d}d20${b < 0 ? '-' : '+'}${Math.abs(b)}`;
+}
+
+/** Sentidos de uma ameaça: Percepção e Iniciativa em "Nd20+B" e os dois sentidos
+ * especiais do livro como marcas. Os blocos do compêndio escrevem-nos dentro do
+ * texto — "1d20+5 (Percepção às cegas)" — por isso separam-se aqui. */
+export function normalizarSentidos(s = {}) {
+  const extras = [];
+  let cegas = s.percepcaoAsCegas === true;
+  let escuro = s.visaoNoEscuro === true;
+  const limpar = (txt) => {
+    const t = String(txt || '');
+    const nota = t.match(/\(([^)]*)\)/);
+    if (nota) {
+      for (const parte of nota[1].split(/[,;]/).map((x) => x.trim()).filter(Boolean)) {
+        if (/cegas/i.test(parte)) cegas = true;
+        else if (/escuro/i.test(parte)) escuro = true;
+        else extras.push(parte);
+      }
+    }
+    const p = lerPool(t);
+    return p ? poolTexto(p.dados, p.bonus) : '';
+  };
+  const percepcao = limpar(s.percepcao);
+  const iniciativa = limpar(s.iniciativa);
+  let extra = String(s.extra || '');
+  if (/cegas/i.test(extra)) { cegas = true; extra = extra.replace(/percep[cç][aã]o\s+[àa]s\s+cegas[,;]?/i, ''); }
+  if (/escuro/i.test(extra)) { escuro = true; extra = extra.replace(/vis[aã]o\s+no\s+escuro[,;]?/i, ''); }
+  extra = [extra.trim(), ...extras].filter(Boolean).join(', ');
+  return { percepcao, iniciativa, visaoNoEscuro: escuro, percepcaoAsCegas: cegas, extra };
+}
+
+/** Deslocamento em metros por tipo; o texto "9m | 6 · escalada 6m" é gerado daqui. */
+export function lerDeslocamento(texto) {
+  const t = String(texto || '');
+  const m = t.match(/(\d+(?:[.,]\d+)?)\s*m/i);
+  const metros = m ? Number(m[1].replace(',', '.')) : '';
+  // "9m | 6 (escalando)" no livro = anda e escala a 9m; o mesmo para voar
+  return { terrestre: metros, escalada: /escal/i.test(t) ? metros : '', voo: /vo[ao]/i.test(t) ? metros : '' };
+}
+const quadrados = (m) => Math.floor(Number(m) / 1.5);
+export function textoDeslocamento(d = {}) {
+  const partes = [];
+  if (temNumero(d.terrestre)) partes.push(`${d.terrestre}m | ${quadrados(d.terrestre)}`);
+  if (temNumero(d.escalada)) partes.push(`escalada ${d.escalada}m | ${quadrados(d.escalada)}`);
+  if (temNumero(d.voo)) partes.push(`voo ${d.voo}m | ${quadrados(d.voo)}`);
+  return partes.join(' · ');
+}
+function temNumero(v) { return v !== '' && v != null && Number.isFinite(Number(v)); }
+
 export function fichaLivreVazia(tipo = 'npc') {
   if (tipo === 'ameaca') {
     return {
@@ -58,15 +123,16 @@ export function fichaLivreVazia(tipo = 'npc') {
       imagem: null,
       presencaPerturbadora: null,
       // vazios de propósito: escreve-se só o que a criatura tiver
-      sentidos: { percepcao: '', iniciativa: '', extra: '' },
+      sentidos: { percepcao: '', iniciativa: '', visaoNoEscuro: false, percepcaoAsCegas: false, extra: '' },
       defesa: 15,
       testes: { fortitude: '', reflexos: '', vontade: '' },
       pv: 20, pvMachucado: 10,
       resistencias: [], vulnerabilidades: [], imunidades: [],
       atributos: { agi: 1, for: 1, int: 1, pre: 1, vig: 1 },
       pericias: [],
+      deslocamentos: { terrestre: 9, escalada: '', voo: '' },
       deslocamento: '9m | 6',
-      habilidades: [], acoes: [], rituais: [],
+      habilidades: [], acoes: [],
       enigmaDoMedo: null,
       roleplay: Object.fromEntries(NARRACAO_AMEACA.map(([k]) => [k, ''])),
       tags: [], notas: '',
@@ -111,12 +177,6 @@ const numeroOu = (v, padrao) => {
 };
 const lista = (v) => (Array.isArray(v) ? v : []);
 const texto = (v) => (v === null || v === undefined ? '' : String(v));
-
-/** "3d20+10 (às cegas)" → { dados: 3, bonus: 10 }; null se não for uma pool de d20. */
-function pool(txt) {
-  const m = String(txt || '').replace(/\s/g, '').match(/^(-?\d+)d20([+-]\d+)?/i);
-  return m ? { dados: Number(m[1]), bonus: Number(m[2] || 0) } : null;
-}
 
 const acaoLimpa = (a) => ({
   tipo: a.tipo || 'Padrão', nome: texto(a.nome), detalhe: texto(a.detalhe),
@@ -166,17 +226,34 @@ export function paraFichaOrdo(dados) {
 
   if (tipo === 'ameaca') {
     // eslint-disable-next-line no-unused-vars
-    const { poderes, ...ameaca } = comum;
+    const { poderes, rituais, ...ameaca } = comum;
+    // teste de resistência: "Nd20+B"; um texto que não seja isso fica como está
+    const teste = (t) => { const p = lerPool(t); return p && /^\s*-?\d+d20([+-]\d+)?\s*$/i.test(String(t)) ? poolTexto(p.dados, p.bonus) : texto(t); };
+    const testes = { ...base.testes, ...(dados.testes || {}) };
+    const deslocamentos = dados.deslocamentos
+      ? { ...base.deslocamentos, ...dados.deslocamentos }
+      : dados.deslocamento ? lerDeslocamento(dados.deslocamento) : base.deslocamentos;
     return {
       ...ameaca,
       pvMachucado: numeroOu(dados.pvMachucado, Math.floor((Number(dados.pv) || base.pv) / 2)),
-      sentidos: { ...base.sentidos, ...(dados.sentidos || {}) },
-      testes: { ...base.testes, ...(dados.testes || {}) },
+      sentidos: normalizarSentidos(dados.sentidos),
+      testes: { fortitude: teste(testes.fortitude), reflexos: teste(testes.reflexos), vontade: teste(testes.vontade) },
+      deslocamentos,
+      deslocamento: textoDeslocamento(deslocamentos) || texto(dados.deslocamento),
       descritores: lista(dados.descritores),
       vulnerabilidades: lista(dados.vulnerabilidades),
       imunidades: lista(dados.imunidades),
-      // "poderes" (versão 1) juntam-se às habilidades
-      habilidades: [...comum.habilidades, ...lista(dados.poderes).map(habLimpa)],
+      // ameaças não têm rituais nem poderes à parte: o que vier (fichas antigas)
+      // passa a habilidade, para não se perder
+      habilidades: [
+        ...comum.habilidades,
+        ...lista(dados.poderes).map(habLimpa),
+        ...comum.rituais.map((r) => ({
+          nome: `Ritual: ${r.nome}`,
+          custo: [r.circulo && `${r.circulo}º círculo`, r.elemento, r.custo, r.dt && `DT ${r.dt}`].filter(Boolean).join(' · '),
+          descricao: r.descricao,
+        })),
+      ],
     };
   }
 
@@ -185,7 +262,7 @@ export function paraFichaOrdo(dados) {
   const nomes = new Set(pericias.map((p) => p.nome.toLowerCase()));
   for (const [grupo, chave, nome] of [['sentidos', 'iniciativa', 'Iniciativa'], ['sentidos', 'percepcao', 'Percepção'],
     ['testes', 'fortitude', 'Fortitude'], ['testes', 'reflexos', 'Reflexos'], ['testes', 'vontade', 'Vontade']]) {
-    const p = pool(dados[grupo]?.[chave]);
+    const p = lerPool(dados[grupo]?.[chave]);
     if (p && !nomes.has(nome.toLowerCase()) && (p.dados !== 1 || p.bonus !== 0)) pericias.push({ nome, ...p });
   }
   // eslint-disable-next-line no-unused-vars

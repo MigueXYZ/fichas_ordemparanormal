@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   FORMATO_FICHA_LIVRE, fichaLivreVazia, ehFichaLivre, paraFichaOrdo, lerFichasDeTexto,
   fichaParaExportar, roleplayDe, vitaisLivre, PERICIAS_BASE_NPC,
+  lerPool, poolTexto, lerDeslocamento, textoDeslocamento,
 } from '../src/engine/fichaLivre.js';
 import { prepararAtaques } from '../src/engine/combateAtaques.js';
 
@@ -57,10 +58,44 @@ teste('uma ameaça entra com o bloco oficial completo', () => {
   assert.equal(f.tipo, 'ameaca');
   assert.equal(f.pvMachucado, 100, 'sem Machucado escrito, fica metade dos PV');
   assert.equal(f.presencaPerturbadora.dt, 25);
-  assert.equal(f.sentidos.extra, 'Percepção às cegas');
+  assert.equal(f.sentidos.percepcaoAsCegas, true, '"Percepção às cegas" escrito à mão vira a marca');
+  assert.equal(f.sentidos.extra, '');
   assert.equal(f.testes.fortitude, '', 'testes em falta ficam vazios, não inventados');
   assert.equal(f.enigmaDoMedo, 'Chamar o nome do dono.');
   assert.equal(roleplayDe(f).comportamento, 'Só ataca sob ordens');
+});
+
+teste('testes Nd20+B: poolTexto/lerPool escrevem e leem o formato do livro', () => {
+  assert.equal(poolTexto(3, 10), '3d20+10');
+  assert.equal(poolTexto(1, -2), '1d20-2');
+  assert.equal(poolTexto('', 5), '1d20+5', 'só bónus = 1 dado');
+  assert.equal(poolTexto(2, ''), '2d20+0');
+  assert.equal(poolTexto('', ''), '', 'nada escrito = vazio');
+  assert.deepEqual(lerPool('4d20+15 (algo)'), { dados: 4, bonus: 15 });
+});
+
+teste('uma ameaça do compêndio: sentidos com nota, deslocamento a escalar, rituais passam a habilidades', () => {
+  const f = paraFichaOrdo({
+    tipo: 'ameaca', nome: 'Aberração de Carne', vd: 40, pv: 70,
+    sentidos: { percepcao: '1d20+5 (Percepção às cegas, faro)', iniciativa: '1d20+0' },
+    testes: { fortitude: '3d20+10', reflexos: '1d20+0', vontade: '+2d20 contra medo' },
+    deslocamento: '9m | 6 (escalando)',
+    rituais: [{ nome: 'Decadência', circulo: 1, elemento: 'Morte', dt: 20 }],
+  });
+  assert.deepEqual(f.sentidos, { percepcao: '1d20+5', iniciativa: '1d20+0', visaoNoEscuro: false, percepcaoAsCegas: true, extra: 'faro' });
+  assert.equal(f.testes.fortitude, '3d20+10');
+  assert.equal(f.testes.vontade, '+2d20 contra medo', 'um texto que não é Nd20+B não se perde');
+  assert.deepEqual(f.deslocamentos, { terrestre: 9, escalada: 9, voo: '' });
+  assert.equal(f.deslocamento, '9m | 6 · escalada 9m | 6');
+  assert.equal('rituais' in f, false, 'ameaças não têm rituais');
+  assert.equal(f.habilidades[0].nome, 'Ritual: Decadência');
+  assert.equal(f.habilidades[0].custo, '1º círculo · Morte · DT 20');
+});
+
+teste('deslocamento: voo e quadrados calculados (1 quadrado = 1,5m)', () => {
+  assert.deepEqual(lerDeslocamento('15m | 10 (voando)'), { terrestre: 15, escalada: '', voo: 15 });
+  assert.equal(textoDeslocamento({ terrestre: 9, escalada: '', voo: 12 }), '9m | 6 · voo 12m | 8');
+  assert.equal(textoDeslocamento({ terrestre: '', escalada: '', voo: '' }), '');
 });
 
 teste('fichas da versão 1: sentidos/testes de um NPC passam a perícias, poderes juntam-se às habilidades', () => {
@@ -117,7 +152,8 @@ teste('fichas vazias: nada inventado — NPC sem perícias, ameaça com sentidos
   assert.equal(PERICIAS_BASE_NPC.length, 5, 'o atalho "+ perícias comuns" continua disponível');
   const a = fichaLivreVazia('ameaca');
   assert.ok('enigmaDoMedo' in a && 'presencaPerturbadora' in a);
-  assert.deepEqual(a.sentidos, { percepcao: '', iniciativa: '', extra: '' });
+  assert.deepEqual(a.sentidos, { percepcao: '', iniciativa: '', visaoNoEscuro: false, percepcaoAsCegas: false, extra: '' });
+  assert.equal('rituais' in a, false, 'uma ameaça não tem rituais');
   assert.deepEqual(a.testes, { fortitude: '', reflexos: '', vontade: '' });
   for (const k of ['pe', 'san', 'bloqueio', 'esquiva']) assert.equal(k in a, false, `uma ameaça não tem ${k}`);
 });

@@ -2894,6 +2894,12 @@ body.bate-forte .barra-recurso .preenchido::before {
 .ficha-livre-habilidades { display: flex; flex-direction: column; gap: 10px; }
 .ficha-livre-habilidades b { font-family: var(--display); font-size: 14px; color: var(--txt); }
 .ficha-livre-segredo { border: 1px dashed var(--sangue-claro); border-radius: 6px; padding: 8px 10px; background: rgba(0,0,0,.18); }
+.ficha-livre-d20 { display: flex; align-items: center; gap: 6px; }
+.ficha-livre-d20 input { width: 100%; min-width: 0; text-align: center; }
+.ficha-livre-d20 span { flex: none; font-size: 12px; color: var(--txt-fraco); white-space: nowrap; }
+.ficha-livre-marcas { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 10px 0; font-size: 13px; color: var(--txt-dim); }
+.ficha-livre-marcas label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.ficha-livre-marcas input { accent-color: var(--sangue); }
 .ficha-livre-vd {
   font-family: var(--display); font-size: 15px; letter-spacing: .06em; white-space: nowrap;
   border: 1px solid var(--sangue-claro); color: var(--sangue-claro); border-radius: 4px; padding: 2px 10px;

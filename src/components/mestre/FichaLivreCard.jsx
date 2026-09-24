@@ -3,7 +3,10 @@ import tokenPlaceholder from '../../assets/token-placeholder.png';
 import EditorTags from '../EditorTags.jsx';
 import { rolarTeste, rolarDano, quantidadeDados } from '../../engine/dados.js';
 import { acoesDeAmeaca, parseTesteTexto, parseDanoTexto } from '../../engine/combateAtaques.js';
-import { roleplayDe, camposRoleplay, ELEMENTOS, TAMANHOS, CLASSES_NPC, PERICIAS_BASE_NPC } from '../../engine/fichaLivre.js';
+import {
+  roleplayDe, camposRoleplay, ELEMENTOS, TAMANHOS, CLASSES_NPC, PERICIAS_BASE_NPC,
+  lerPool, poolTexto, textoDeslocamento, lerDeslocamento, normalizarSentidos,
+} from '../../engine/fichaLivre.js';
 import { BlocoStat, TabelaLinha, CampoRoleplay } from './FichaCardBlocos.jsx';
 import TokenFicha from './TokenFicha.jsx';
 
@@ -56,6 +59,39 @@ function Campo({ rotulo, valor, onChange, placeholder, largura }) {
     <div className="campo" style={{ marginBottom: 0, ...(largura ? { maxWidth: largura } : null) }}>
       <label>{rotulo}</label>
       <input type="text" value={valor ?? ''} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}
+
+/** Um teste do bloco de ameaça: [dados] d20 + [bónus], guardado como "2d20+5".
+ * Os dois números têm estado próprio para se poder apagar um e escrever outro
+ * sem o campo saltar para "1". Um texto antigo que não seja Nd20+B (ex.:
+ * "+2d20 contra medo") continua editável como texto. */
+function CampoD20({ rotulo, valor, onChange }) {
+  const puro = !valor || /^\s*-?\d+d20([+-]\d+)?\s*$/i.test(String(valor));
+  const p = lerPool(valor);
+  const [dados, setDados] = React.useState(p ? String(p.dados) : '');
+  const [bonus, setBonus] = React.useState(p ? String(p.bonus) : '');
+  React.useEffect(() => {
+    // só re-sincroniza quando o valor muda por fora (ex.: outra ficha aberta)
+    if ((valor || '') !== poolTexto(dados, bonus)) {
+      const q = lerPool(valor);
+      setDados(q ? String(q.dados) : '');
+      setBonus(q ? String(q.bonus) : '');
+    }
+  }, [valor]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!puro) {
+    return <Campo rotulo={rotulo} valor={valor} onChange={onChange} />;
+  }
+  const mudar = (d, b) => { setDados(d); setBonus(b); onChange(poolTexto(d, b)); };
+  return (
+    <div className="campo" style={{ marginBottom: 0 }}>
+      <label>{rotulo}</label>
+      <div className="ficha-livre-d20">
+        <input type="number" min="0" value={dados} placeholder="—" onChange={(e) => mudar(e.target.value, bonus)} />
+        <span>d20 +</span>
+        <input type="number" value={bonus} placeholder="—" onChange={(e) => mudar(dados, e.target.value)} />
+      </div>
     </div>
   );
 }
@@ -370,6 +406,11 @@ function CartaoAmeaca({ f, editando, onAtualizar, onRolar }) {
   const secundarios = principal ? descritores.slice(1) : descritores;
   const pp = f.presencaPerturbadora;
   const linha = [descritores.join(' · '), f.tamanho, f.categoria].filter(Boolean).join(' · ');
+  // ameaças do compêndio/gerador trazem "(Percepção às cegas)" no texto e o
+  // deslocamento só como "9m | 6 (voando)" — normaliza-se ao mostrar/editar
+  const sentidos = normalizarSentidos(f.sentidos);
+  const especiais = [sentidos.visaoNoEscuro && 'Visão no escuro', sentidos.percepcaoAsCegas && 'Percepção às cegas', sentidos.extra].filter(Boolean).join(' · ');
+  const desl = f.deslocamentos || lerDeslocamento(f.deslocamento);
 
   return (
     <div className="ficha-npc ficha-livre" style={{ marginTop: 16 }}>
@@ -440,25 +481,31 @@ function CartaoAmeaca({ f, editando, onAtualizar, onRolar }) {
 
           <BlocoStat titulo="Sentidos">
             {editando ? (
-              <div className="grelha-editor" style={{ gridTemplateColumns: '1fr 1fr 1.4fr' }}>
-                <Campo rotulo="Percepção" valor={f.sentidos?.percepcao} placeholder="ex.: 2d20+5" onChange={(v) => set('sentidos', { ...(f.sentidos || {}), percepcao: v })} />
-                <Campo rotulo="Iniciativa" valor={f.sentidos?.iniciativa} placeholder="ex.: 2d20+5" onChange={(v) => set('sentidos', { ...(f.sentidos || {}), iniciativa: v })} />
-                <Campo rotulo="Especial" valor={f.sentidos?.extra} placeholder="Percepção às cegas…" onChange={(v) => set('sentidos', { ...(f.sentidos || {}), extra: v })} />
-              </div>
+              <>
+                <div className="grelha-editor" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                  <CampoD20 rotulo="Percepção" valor={sentidos.percepcao} onChange={(v) => set('sentidos', { ...sentidos, percepcao: v })} />
+                  <CampoD20 rotulo="Iniciativa" valor={sentidos.iniciativa} onChange={(v) => set('sentidos', { ...sentidos, iniciativa: v })} />
+                </div>
+                <div className="ficha-livre-marcas">
+                  <label><input type="checkbox" checked={sentidos.visaoNoEscuro} onChange={(e) => set('sentidos', { ...sentidos, visaoNoEscuro: e.target.checked })} /> Visão no escuro</label>
+                  <label><input type="checkbox" checked={sentidos.percepcaoAsCegas} onChange={(e) => set('sentidos', { ...sentidos, percepcaoAsCegas: e.target.checked })} /> Percepção às cegas</label>
+                </div>
+                <Campo rotulo="Outros sentidos" valor={sentidos.extra} placeholder="Faro, sentir vibrações…" onChange={(v) => set('sentidos', { ...sentidos, extra: v })} />
+              </>
             ) : (
               <>
-                <ListaRolavel linhas={[['Percepção', f.sentidos?.percepcao], ['Iniciativa', f.sentidos?.iniciativa]]} rolarTexto={h.rolarTexto} onRolar={onRolar} />
-                {f.sentidos?.extra && <div className="ficha-livre-det" style={{ marginTop: 6 }}>{f.sentidos.extra}</div>}
+                <ListaRolavel linhas={[['Percepção', sentidos.percepcao], ['Iniciativa', sentidos.iniciativa]]} rolarTexto={h.rolarTexto} onRolar={onRolar} />
+                {especiais && <div className="ficha-livre-det" style={{ marginTop: 6 }}>{especiais}</div>}
               </>
             )}
           </BlocoStat>
 
           <BlocoStat titulo="Defesa">
             {editando ? (
-              <div className="grelha-editor" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+              <div className="grelha-editor" style={{ gridTemplateColumns: '.7fr 1fr 1fr 1fr' }}>
                 <Campo rotulo="Defesa" valor={f.defesa} onChange={(v) => set('defesa', numOuTexto(v))} />
                 {[['fortitude', 'Fortitude'], ['reflexos', 'Reflexos'], ['vontade', 'Vontade']].map(([k, r]) => (
-                  <Campo key={k} rotulo={r} valor={f.testes?.[k]} placeholder="ex.: 2d20+5" onChange={(v) => set('testes', { ...(f.testes || {}), [k]: v })} />
+                  <CampoD20 key={k} rotulo={r} valor={f.testes?.[k]} onChange={(v) => set('testes', { ...(f.testes || {}), [k]: v })} />
                 ))}
               </div>
             ) : (
@@ -492,14 +539,24 @@ function CartaoAmeaca({ f, editando, onAtualizar, onRolar }) {
           <Pericias f={f} editando={editando} h={h} onRolar={onRolar} />
 
           <BlocoStat titulo="Deslocamento">
-            {editando
-              ? <Campo rotulo="" valor={f.deslocamento} placeholder="9m | 6 (voando)" onChange={(v) => set('deslocamento', v)} largura={220} />
-              : <div className="ficha-livre-linha" style={{ marginTop: 0 }}><b>{f.deslocamento || '—'}</b></div>}
+            {editando ? (
+              <div className="grelha-editor" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                {[['terrestre', 'Terrestre (m)'], ['escalada', 'Escalada (m)'], ['voo', 'Voo (m)']].map(([k, r]) => (
+                  <Campo key={k} rotulo={r} valor={desl[k]} placeholder="—" onChange={(v) => {
+                    const novo = { ...desl, [k]: numOuTexto(v) };
+                    onAtualizar({ deslocamentos: novo, deslocamento: textoDeslocamento(novo) });
+                  }} />
+                ))}
+              </div>
+            ) : (
+              <div className="ficha-livre-linha" style={{ marginTop: 0 }}><b>{textoDeslocamento(desl) || f.deslocamento || '—'}</b></div>
+            )}
           </BlocoStat>
 
           <Habilidades f={f} editando={editando} h={h} titulo="Habilidades" />
           <Acoes f={f} editando={editando} h={h} onRolar={onRolar} titulo="Ações" novo="Nova ação" />
-          <Rituais f={f} editando={editando} h={h} />
+          {/* ameaças não têm rituais; só se mostram os que já venham (ocultistas gerados) */}
+          {!editando && <Rituais f={f} editando={false} h={h} />}
 
           {(f.enigmaDoMedo != null || editando) && (
             <BlocoStat titulo="Enigma do Medo">
