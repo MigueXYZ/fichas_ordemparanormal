@@ -44,7 +44,7 @@ teste('Geração de agente com classe, trilha e origem específicas atribui habi
 teste('Geração de ameaça / criatura atribui habilidades especiais e detalhes narrativos de RP', () => {
   const a = gerarAmeaca({ vd: 100, arquetipo: 'sangue' });
 
-  assert.ok(a.habilidades.length >= 2, 'Ameaça de VD 100 deve receber habilidades especiais');
+  assert.ok(a.habilidades.length >= 1, 'Ameaça de VD 100 deve receber habilidades especiais');
   assert.ok(a.roleplay.comportamento && a.roleplay.comportamento.length > 5, 'Deve conter comportamento sinistro da criatura');
   assert.ok(a.roleplay.aparencia && a.roleplay.aparencia.length > 5, 'Deve conter descrição visual da criatura');
   assert.ok(a.roleplay.notasMestre && a.roleplay.notasMestre.length > 5, 'Deve conter dica de narração para o Mestre');
@@ -64,8 +64,30 @@ teste('Ameaça paranormal gerada: bloco oficial completo (presença, sentidos, t
   assert.ok(Number(a.deslocamentos.terrestre) >= 9);
   assert.ok(/^\d+m \| \d+/.test(a.deslocamento));
   assert.equal(a.pvMachucado, Math.round(a.pv / 2));
-  assert.ok(a.acoes.every((x) => x.nome.startsWith('Agredir — ') && pool.test(x.teste) && /\d+d\d+\+\d+ \S+/.test(x.dano)));
+  const ataques = a.acoes.filter((x) => x.teste);
+  assert.ok(ataques.length >= 1, 'pelo menos um ataque');
+  assert.ok(ataques.every((x) => x.nome.startsWith('Agredir — ') && pool.test(x.teste) && /\d+d\d+\+\d+ \S+/.test(x.dano)));
+  assert.ok(a.acoes.filter((x) => !x.teste).every((x) => x.descricao && !/\{[A-Z_]+\}/.test(x.descricao)), 'ações especiais com regra escrita e marcadores preenchidos');
   assert.equal('rituais' in a, false, 'ameaças não têm rituais');
+});
+
+teste('Criaturas variam: número de habilidades e ações, e tipos de ação além de Padrão', () => {
+  const lote = Array.from({ length: 60 }, () => gerarAmeaca({ vd: 120, elementos: ['Morte'] }));
+  const nHab = new Set(lote.map((a) => a.habilidades.length));
+  const nAcoes = new Set(lote.map((a) => a.acoes.length));
+  const tipos = new Set(lote.flatMap((a) => a.acoes.map((x) => x.tipo)));
+  assert.ok(nHab.size >= 2, 'o número de habilidades varia');
+  assert.ok(nAcoes.size >= 2, 'o número de ações varia');
+  assert.ok(tipos.size >= 3, `há ações de vários tipos (${[...tipos]})`);
+  const pequenas = Array.from({ length: 60 }, () => gerarAmeaca({ vd: 20 }));
+  assert.ok(pequenas.some((a) => a.habilidades.length === 0), 'uma criatura pequena pode não ter habilidades');
+});
+
+teste('NPC gerado não sai com perícias treinadas a mais', () => {
+  for (let i = 0; i < 30; i++) {
+    const n = gerarNpcAgente({ nex: 5 });
+    assert.ok(n.pericias.length <= 5 + 3, `NEX 5: no máximo 5 comuns + 3 treinadas (saiu ${n.pericias.length})`);
+  }
 });
 
 teste('Animal mundano gerado: sem presença perturbadora, com faro', () => {

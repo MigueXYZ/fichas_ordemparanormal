@@ -352,14 +352,19 @@ export function gerarNpcAgente(opcoes = {}) {
   const max = calcMaximos(p);
   const def = calcDefesas(p);
 
-  // Perícias: as treinadas, mais Iniciativa/Percepção/testes de resistência
-  // (toda a gente os rola, treinado ou não)
+  // Perícias: Iniciativa/Percepção/testes de resistência (toda a gente os
+  // rola) mais só as treinadas que definem a pessoa — 2 a 5 conforme o NEX,
+  // primeiro as do perfil. A ficha de agente por baixo treina 7+ (é a regra
+  // de uma personagem de jogador), o que num NPC era demasiado.
   const todas = calcPericias(p);
-  const escolhidas = todas.filter((x) => x.grau !== 'destreinado' || PERICIAS_BASE_NPC.includes(x.nome));
-  const ordem = (x) => { const i = PERICIAS_BASE_NPC.indexOf(x.nome); return i < 0 ? 99 : i; };
-  const pericias = escolhidas
-    .sort((a, b) => ordem(a) - ordem(b) || b.bonus - a.bonus)
-    .map((x) => ({ nome: x.nome, dados: x.dados, bonus: x.bonus }));
+  const base = PERICIAS_BASE_NPC.map((nome) => todas.find((x) => x.nome === nome)).filter(Boolean);
+  const quantas = Math.max(1, (p.nex <= 10 ? 2 : p.nex <= 35 ? 3 : p.nex <= 65 ? 4 : 5) + entre(-1, 1));
+  const doPerfilPrimeiro = (x) => { const i = pf.pericias.indexOf(x.id); return i < 0 ? 99 : i; };
+  const treinadas = todas
+    .filter((x) => x.grau !== 'destreinado' && !PERICIAS_BASE_NPC.includes(x.nome))
+    .sort((a, b) => doPerfilPrimeiro(a) - doPerfilPrimeiro(b) || b.bonus - a.bonus)
+    .slice(0, quantas);
+  const pericias = [...base, ...treinadas].map((x) => ({ nome: x.nome, dados: x.dados, bonus: x.bonus }));
 
   const acoes = (p.ataques || []).map((arma) => {
     const e = estatisticasArma(p, arma);
@@ -681,13 +686,52 @@ function escalaAmeaca(vd) {
   return { defesa, pv, bonusTeste, dadosTeste, dadosDano, bonusDano, dt };
 }
 
+/**
+ * Ações além dos ataques, no estilo das fichas do livro (Agarrão como
+ * Reação, Investida como Movimento, "uma vez por rodada" como Livre…). As
+ * gerais servem a qualquer criatura; as do elemento dão-lhe o sabor dele.
+ */
+const ACOES_ESPECIAIS_GERAIS = [
+  { tipo: 'Reação', nome: 'Agarrão', descricao: 'Se acertar um ataque corpo a corpo, pode tentar agarrar o alvo (teste {TESTE}). Mantém até dois alvos agarrados.' },
+  { tipo: 'Movimento', nome: 'Investida Brutal', descricao: 'Avança até o dobro do deslocamento em linha reta e ataca no fim; se acertar, o alvo cai (Fortitude DT {DT} evita).' },
+  { tipo: 'Reação', nome: 'Contra-ataque', descricao: 'Quando um inimigo adjacente falha um ataque contra si, faz um ataque contra esse inimigo.' },
+  { tipo: 'Completa', nome: 'Fúria', descricao: 'Faz um ataque contra cada inimigo adjacente, com –1d20 em cada teste.' },
+  { tipo: 'Movimento', nome: 'Recuar para as Sombras', descricao: 'Desloca-se sem provocar ataques de oportunidade e fica com camuflagem até ao seu próximo turno.' },
+  { tipo: 'Padrão', nome: 'Arremessar', descricao: 'Atira um alvo agarrado ou um objeto pesado a até 9m: {DANO} de impacto (Reflexos DT {DT} reduz à metade).' },
+  { tipo: 'Livre', nome: 'Rugido', descricao: 'Uma vez por rodada, solta um rugido: um alvo a até 9m faz Vontade (DT {DT}) ou fica abalado por 1 rodada.' },
+];
+const ACOES_ESPECIAIS_ELEMENTO = {
+  Sangue: [
+    { tipo: 'Livre', nome: 'Beber o Sangue', descricao: 'Quando reduz um alvo a 0 PV, recupera {DANO_METADE} PV.' },
+    { tipo: 'Completa', nome: 'Explosão de Espinhos', descricao: 'Espinhos de osso rebentam do corpo: todos a até 3m sofrem {DANO} de Sangue (Reflexos DT {DT} reduz à metade).' },
+  ],
+  Morte: [
+    { tipo: 'Padrão', nome: 'Toque do Lodo', descricao: 'Um alvo adjacente sofre {DANO_METADE} de Morte e fica lento por 1 rodada (Fortitude DT {DT} evita a lentidão).' },
+    { tipo: 'Completa', nome: 'Onda de Decadência', descricao: 'Lodo negro espalha-se: todos a até 6m sofrem {DANO} de Morte (Fortitude DT {DT} reduz à metade).' },
+  ],
+  Conhecimento: [
+    { tipo: 'Padrão', nome: 'Revelar Segredo', descricao: 'Sussurra um segredo de um alvo a até 9m: Vontade (DT {DT}) ou fica confuso por 1 rodada.' },
+    { tipo: 'Movimento', nome: 'Distorcer o Espaço', descricao: 'Reaparece num ponto que consiga ver a até 9m, sem atravessar o espaço entre eles.' },
+  ],
+  Energia: [
+    { tipo: 'Movimento', nome: 'Salto Elétrico', descricao: 'Viaja através de qualquer fonte elétrica a até 18m e sai por outra.' },
+    { tipo: 'Completa', nome: 'Descarga em Cone', descricao: 'Todos num cone de 6m sofrem {DANO} de Energia (Reflexos DT {DT} reduz à metade).' },
+  ],
+  Medo: [
+    { tipo: 'Padrão', nome: 'Encarar', descricao: 'Um alvo que a veja faz Vontade (DT {DT}) ou fica apavorado por 1 rodada.' },
+    { tipo: 'Livre', nome: 'Desvanecer', descricao: 'Uma vez por cena, fica invisível até ao início do seu próximo turno.' },
+  ],
+};
+
 /** Preenche os marcadores {DANO}, {DT}, etc. de uma habilidade com os valores já escalados pelo VD. */
 function formatarHabilidade(hab, e) {
   const danoTexto = `${e.dadosDano}d6+${e.bonusDano}`;
   const danoMetade = Math.max(1, Math.round((e.dadosDano * 3.5 + e.bonusDano) / 2));
   return {
+    ...hab,
     nome: hab.nome,
     descricao: hab.descricao
+      .replace(/\{TESTE\}/g, `${e.dadosTeste}d20+${e.bonusTeste + 2}`)
       .replace(/\{DANO_METADE\}/g, String(danoMetade))
       .replace(/\{DANO\}/g, danoTexto)
       .replace(/\{DT\}/g, String(e.dt))
@@ -774,7 +818,9 @@ export function gerarAmeaca({ vd = 20, categoria = null, elementos = [], tamanho
   // Uma criatura pode ter 1 a 3 ações (mais VD = mais ações, tal como as
   // fichas maiores do livro têm sempre vários ataques listados), sem repetir
   // nome entre elas.
-  const qtdAcoes = vdCada >= 200 ? 3 : vdCada >= 60 ? 2 : 1;
+  // Quantos ataques: varia dentro de uma faixa que sobe com o VD (as fichas
+  // do livro vão de um só "Agredir" a quatro ataques diferentes)
+  const qtdAcoes = vdCada >= 200 ? entre(2, 4) : vdCada >= 100 ? entre(1, 3) : vdCada >= 40 ? entre(1, 2) : 1;
   const poolAcoesTotal = elementosEscolhidos.length
     ? [...elementosEscolhidos.flatMap((el) => el.ataques), ...cat.ataques]
     : [...cat.ataques];
@@ -825,7 +871,8 @@ export function gerarAmeaca({ vd = 20, categoria = null, elementos = [], tamanho
   // Habilidades conforme o VD de cada criatura: os elementos escolhidos têm
   // prioridade (cada um garante entrar, ver selecionarHabilidades), a
   // categoria preenche o resto.
-  const qtdHabilidades = vdCada >= 160 ? 3 : vdCada >= 60 ? 2 : 1;
+  // Habilidades: podem não ser nenhuma (criaturas simples) ou várias
+  const qtdHabilidades = vdCada >= 200 ? entre(2, 4) : vdCada >= 100 ? entre(1, 3) : vdCada >= 40 ? entre(0, 2) : entre(0, 1);
   const poolsPrioridade = [...elementosEscolhidos.map((el) => el.habilidades), cat.habilidades];
   let habilidades = selecionarHabilidades(qtdHabilidades, poolsPrioridade).map((h) => formatarHabilidade(h, e));
 
@@ -836,7 +883,7 @@ export function gerarAmeaca({ vd = 20, categoria = null, elementos = [], tamanho
   // acima — abaixo disso a criatura não costuma durar o suficiente em
   // combate para a diferença se notar.
   const poolCondicionais = [...elementosEscolhidos.map((el) => el.habilidadeCondicional), cat.habilidadeCondicional].filter(Boolean);
-  if (vdCada >= 40 && poolCondicionais.length) {
+  if (vdCada >= 40 && poolCondicionais.length && Math.random() < 0.6) {
     const extra = ao(poolCondicionais);
     if (!habilidades.some((h) => h.nome === extra.nome)) {
       habilidades = [...habilidades, formatarHabilidade(extra, e)];
@@ -858,6 +905,17 @@ export function gerarAmeaca({ vd = 20, categoria = null, elementos = [], tamanho
   const notaGrupo = ehGrupo
     ? `Grupo de ${qtdGrupo} criaturas idênticas: cada uma tem VD ${vdCada} (Defesa, PV e dano já refletem isso); o grupo todo soma VD ${vdTotalPedido}. Duplica este cartão ${qtdGrupo}× no Campo de Batalha.`
     : '';
+
+  // Ações especiais (0 a 3 conforme o VD): as do elemento primeiro, depois
+  // as gerais — sem repetir nomes de habilidades já escolhidas
+  const qtdEspeciais = vdCada >= 200 ? entre(1, 3) : vdCada >= 100 ? entre(1, 2) : vdCada >= 40 ? entre(0, 2) : entre(0, 1);
+  const acoesEspeciais = selecionarHabilidades(qtdEspeciais, [
+    ...elementosEscolhidos.map((el) => ACOES_ESPECIAIS_ELEMENTO[el.id] || []),
+    ACOES_ESPECIAIS_GERAIS,
+  ]).map((a) => {
+    const f = formatarHabilidade(a, e);
+    return { tipo: a.tipo, nome: f.nome, detalhe: '', teste: '', dano: '', critico: '', descricao: f.descricao };
+  });
 
   // Sentidos: as criaturas paranormais do livro veem no escuro quase sempre, e
   // as mais altas sentem sem ver ("Percepção às cegas"); animais mundanos não.
@@ -919,17 +977,20 @@ export function gerarAmeaca({ vd = 20, categoria = null, elementos = [], tamanho
     deslocamento: textoDeslocamento(deslocamentos),
     pericias,
     habilidades: habilidades.map((h) => ({ ...h, custo: /Machucada/.test(h.descricao) ? 'Ao ficar Machucada' : 'Passiva' })),
-    // Ações no esquema oficial (Livro Base, cap. 7): "Agredir — Garras",
-    // "Corpo a corpo" (x2 quando há mais de um ataque), dano com o tipo.
-    acoes: acoesEscolhidas.map((at) => ({
-      tipo: 'Padrão',
-      nome: `Agredir — ${at.nome}`,
-      detalhe: acoesEscolhidas.length > 1 ? 'Corpo a corpo x2' : 'Corpo a corpo',
-      teste: poolTexto(e.dadosTeste, e.bonusTeste),
-      dano: `${e.dadosDano}d${at.dado}+${e.bonusDano} ${String(at.tipo).toLowerCase()}`,
-      critico: '20/x2',
-      descricao: '',
-    })),
+    // Ações no esquema oficial (Livro Base, cap. 7): os ataques "Agredir —
+    // Garras" (x2 quando há mais de um) seguidos das ações especiais.
+    acoes: [
+      ...acoesEscolhidas.map((at) => ({
+        tipo: 'Padrão',
+        nome: `Agredir — ${at.nome}`,
+        detalhe: acoesEscolhidas.length > 1 ? 'Corpo a corpo x2' : 'Corpo a corpo',
+        teste: poolTexto(e.dadosTeste, e.bonusTeste),
+        dano: `${e.dadosDano}d${at.dado}+${e.bonusDano} ${String(at.tipo).toLowerCase()}`,
+        critico: '20/x2',
+        descricao: '',
+      })),
+      ...acoesEspeciais,
+    ],
     enigmaDoMedo: null,
     roleplay: { aparencia, comportamento, notasMestre: dicaRp },
     notas: notaGrupo,

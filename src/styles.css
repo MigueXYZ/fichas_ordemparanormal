@@ -2907,7 +2907,7 @@ body.bate-forte .barra-recurso .preenchido::before {
 /* token das fichas: figura inteira, sem recorte, logo abaixo do roleplay
    (não estica até ao fundo da coluna — numa ficha comprida ficava lá em baixo) */
 .ficha-npc-token.ficha-token-fixo { flex: none; min-height: 0; }
-.ficha-token { flex: none; width: 100%; aspect-ratio: 3 / 4; max-height: 520px; }
+.ficha-token { flex: none; width: 100%; aspect-ratio: 3 / 4; max-height: 400px; }
 .ficha-token-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: center; display: block; pointer-events: none; user-select: none; }
 .modal.modal-token { width: min(400px, 100%); }
 .modal-token-corpo { display: flex; flex-direction: column; align-items: center; gap: 10px; }

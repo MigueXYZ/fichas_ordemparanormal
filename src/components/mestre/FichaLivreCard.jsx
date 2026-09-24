@@ -359,7 +359,9 @@ function Notas({ f, editando, set }) {
   );
 }
 
-function ColunaDireita({ f, editando, set, onAtualizar, titulo, vazioToken }) {
+/** Roleplay/narração em cima, token, e por baixo do token os blocos curtos
+ * (`children`) — para a imagem não ficar sozinha numa coluna meio vazia. */
+function ColunaDireita({ f, editando, set, onAtualizar, titulo, vazioToken, children }) {
   const rp = roleplayDe(f);
   const campos = camposRoleplay(f.tipo);
   return (
@@ -392,6 +394,7 @@ function ColunaDireita({ f, editando, set, onAtualizar, titulo, vazioToken }) {
         <TokenFicha imagem={f.imagem} nome={f.nome} editavel={editando} vazio={vazioToken}
           aoMudar={(imagem) => onAtualizar({ imagem, imagemPosX: undefined, imagemPosY: undefined, imagemZoom: undefined })} />
       </div>
+      {children}
     </div>
   );
 }
@@ -531,27 +534,9 @@ function CartaoAmeaca({ f, editando, onAtualizar, onRolar }) {
               ]} />
             )}
           </BlocoStat>
-          <ListaTexto f={f} campo="resistencias" rotulo="Resistências" placeholder="Balístico, corte e perfuração 10" editando={editando} h={h} />
-          <ListaTexto f={f} campo="vulnerabilidades" rotulo="Vulnerabilidades" placeholder="Morte" editando={editando} h={h} />
-          <ListaTexto f={f} campo="imunidades" rotulo="Imunidades" placeholder="Condições de paralisia" editando={editando} h={h} />
 
           <Atributos f={f} editando={editando} set={set} />
           <Pericias f={f} editando={editando} h={h} onRolar={onRolar} />
-
-          <BlocoStat titulo="Deslocamento">
-            {editando ? (
-              <div className="grelha-editor" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-                {[['terrestre', 'Terrestre (m)'], ['escalada', 'Escalada (m)'], ['voo', 'Voo (m)']].map(([k, r]) => (
-                  <Campo key={k} rotulo={r} valor={desl[k]} placeholder="—" onChange={(v) => {
-                    const novo = { ...desl, [k]: numOuTexto(v) };
-                    onAtualizar({ deslocamentos: novo, deslocamento: textoDeslocamento(novo) });
-                  }} />
-                ))}
-              </div>
-            ) : (
-              <div className="ficha-livre-linha" style={{ marginTop: 0 }}><b>{textoDeslocamento(desl) || f.deslocamento || '—'}</b></div>
-            )}
-          </BlocoStat>
 
           <Habilidades f={f} editando={editando} h={h} titulo="Habilidades" />
           <Acoes f={f} editando={editando} h={h} onRolar={onRolar} titulo="Ações" novo="Nova ação" />
@@ -575,12 +560,30 @@ function CartaoAmeaca({ f, editando, onAtualizar, onRolar }) {
             </BlocoStat>
           )}
 
-          <Notas f={f} editando={editando} set={set} />
-          {editando && <EditorTags tags={f.tags || []} onChange={(v) => set('tags', v)} />}
         </div>
 
         <ColunaDireita f={f} editando={editando} set={set} onAtualizar={onAtualizar} titulo="Narração"
-          vazioToken={<div className="ficha-livre-interrogacao" aria-hidden="true">?</div>} />
+          vazioToken={<div className="ficha-livre-interrogacao" aria-hidden="true">?</div>}>
+          <ListaTexto f={f} campo="resistencias" rotulo="Resistências" placeholder="Balístico, corte e perfuração 10" editando={editando} h={h} />
+          <ListaTexto f={f} campo="vulnerabilidades" rotulo="Vulnerabilidades" placeholder="Morte" editando={editando} h={h} />
+          <ListaTexto f={f} campo="imunidades" rotulo="Imunidades" placeholder="Condições de paralisia" editando={editando} h={h} />
+          <BlocoStat titulo="Deslocamento">
+            {editando ? (
+              <div className="grelha-editor" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                {[['terrestre', 'Terrestre (m)'], ['escalada', 'Escalada (m)'], ['voo', 'Voo (m)']].map(([k, r]) => (
+                  <Campo key={k} rotulo={r} valor={desl[k]} placeholder="—" onChange={(v) => {
+                    const novo = { ...desl, [k]: numOuTexto(v) };
+                    onAtualizar({ deslocamentos: novo, deslocamento: textoDeslocamento(novo) });
+                  }} />
+                ))}
+              </div>
+            ) : (
+              <div className="ficha-livre-linha" style={{ marginTop: 0 }}><b>{textoDeslocamento(desl) || f.deslocamento || '—'}</b></div>
+            )}
+          </BlocoStat>
+          <Notas f={f} editando={editando} set={set} />
+          {editando && <EditorTags tags={f.tags || []} onChange={(v) => set('tags', v)} />}
+        </ColunaDireita>
       </div>
     </div>
   );
@@ -665,24 +668,24 @@ function CartaoNpc({ f, editando, onAtualizar, onRolar }) {
             )}
           </BlocoStat>
 
+          <Pericias f={f} editando={editando} h={h} onRolar={onRolar} comuns={PERICIAS_BASE_NPC} />
+          <Acoes f={f} editando={editando} h={h} onRolar={onRolar} titulo="Ataques" novo="Novo ataque" />
+          <Habilidades f={f} editando={editando} h={h} titulo="Habilidades & Poderes" />
+          <Rituais f={f} editando={editando} h={h} />
+        </div>
+
+        <ColunaDireita f={f} editando={editando} set={set} onAtualizar={onAtualizar} titulo="Roleplay"
+          vazioToken={<img src={tokenPlaceholder} alt="" className="ficha-npc-token-placeholder" />}>
           <BlocoStat titulo="Deslocamento">
             {editando
               ? <Campo rotulo="" valor={f.deslocamento} placeholder="9m" onChange={(v) => set('deslocamento', v)} largura={220} />
               : <div className="ficha-livre-linha" style={{ marginTop: 0 }}><b>{f.deslocamento || '—'}</b></div>}
           </BlocoStat>
-
-          <Pericias f={f} editando={editando} h={h} onRolar={onRolar} comuns={PERICIAS_BASE_NPC} />
           <ListaTexto f={f} campo="resistencias" rotulo="Resistências" placeholder="Mental 5, Balístico 2…" editando={editando} h={h} />
-          <Acoes f={f} editando={editando} h={h} onRolar={onRolar} titulo="Ataques" novo="Novo ataque" />
-          <Habilidades f={f} editando={editando} h={h} titulo="Habilidades & Poderes" />
-          <Rituais f={f} editando={editando} h={h} />
           <ListaTexto f={f} campo="equipamento" rotulo="Equipamento" placeholder="Pistola .38, kit médico, lanterna…" editando={editando} h={h} />
           <Notas f={f} editando={editando} set={set} />
           {editando && <EditorTags tags={f.tags || []} onChange={(v) => set('tags', v)} />}
-        </div>
-
-        <ColunaDireita f={f} editando={editando} set={set} onAtualizar={onAtualizar} titulo="Roleplay"
-          vazioToken={<img src={tokenPlaceholder} alt="" className="ficha-npc-token-placeholder" />} />
+        </ColunaDireita>
       </div>
     </div>
   );
