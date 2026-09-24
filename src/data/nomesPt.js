@@ -34,7 +34,7 @@ export const APELIDOS = [
  * quando NÃO é gerado como grupo — cada entrada é sempre um único bicho. */
 export const ANIMAIS = [
   'Cão de guarda', 'Javali', 'Lobo ibérico', 'Corvo', 'Touro bravo', 'Lince',
-  'Cavalo assustado', 'Cobra-de-água', 'Aranha da cave', 'Raposa', 'Morcego', 'Texugo',
+  'Cavalo assustado', 'Cobra-de-água', 'Aranha-lobo', 'Raposa', 'Morcego', 'Texugo',
 ];
 
 /** Nomes coletivos de animais, usados só quando o mestre marca "é um grupo?"
@@ -44,16 +44,6 @@ export const ANIMAIS_GRUPO = [
   'Colónia de morcegos', 'Revoada de corvos', 'Vara de javalis', 'Ninhada de aranhas',
 ];
 
-/** Sítios portugueses para dar nome às criaturas. */
-export const SITIOS = [
-  'do Beco', 'da Cave', 'do Convento', 'da Ria', 'do Mosteiro', 'da Serra', 'do Metro',
-  'do Cais', 'da Mata', 'do Aqueduto', 'das Minas', 'do Cemitério', 'da Fábrica', 'do Farol',
-];
-
-export const CIDADES = [
-  'Lisboa', 'Porto', 'Coimbra', 'Braga', 'Aveiro', 'Faro', 'Évora', 'Setúbal', 'Guimarães',
-  'Leiria', 'Viseu', 'Funchal', 'Ponta Delgada', 'Covilhã', 'Bragança', 'Sintra', 'Almada',
-];
 
 /** Profissões e ocupações comuns, para NPCs mundanos. */
 export const OCUPACOES = [

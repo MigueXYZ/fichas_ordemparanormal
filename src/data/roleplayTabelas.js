@@ -122,14 +122,6 @@ export const APARENCIAS_CRIATURAS = [
   'Membros articulados em sentidos contrários ao normal, com movimentos que parecem um filme a rodar aos soluços.',
 ];
 
-export const DICAS_RP_CRIATURAS = [
-  'Narre o horror sensorial: o ar fica subitamente gelado, o cheiro a ozono sufoca e os ouvidos começam a zumbir.',
-  'Tática predatória: use o cenário, apague as fontes de luz dos agentes e ataque o membro que se isolar da equipa.',
-  'Pressão psicológica: faça a criatura usar frases curtas de entes queridos dos agentes para quebrar a sua Sanidade.',
-  'Monstro imparável: enfatize que os tiros e lâmpadas cortam a carne mas ela não expressa dor física comum.',
-  'Comportamento territorial: a criatura protege um foco paranormal específico e torna-se frenética se os agentes se aproximarem.',
-];
-
 // ----------------------------------------------------------- OCULTISTAS INIMIGOS / CULTISTAS
 
 export const NOMES_CULTOS = [
@@ -141,33 +133,6 @@ export const NOMES_CULTOS = [
   'Os Devotos da Espiral Rubra',
   'A Ordem do Véu Rompido',
   'Os Adoradores do Olho Cego',
-];
-
-export const PODERES_PARANORMAIS_CULTISTAS = [
-  {
-    nome: 'Sacrifício Fanático',
-    descricao: 'Como reação ao sofrer dano letal, o cultista explode em chamas paranormais ou espinhos ósseos, causando 4d6 de dano do seu elemento a todos a até 3m (Reflexos DT reduz à metade).',
-  },
-  {
-    nome: 'Vínculo de Dor',
-    descricao: 'Como ação de movimento, vincula-se a um aliado próximo. Metade de todo o dano que o cultista sofrer é transferido para o aliado vinculado.',
-  },
-  {
-    nome: 'Sussurros do Outro Lado',
-    descricao: 'Sempre que conjura um ritual, força um alvo a até 9m a fazer um teste de Vontade (DT). Em caso de falha, o alvo perde 1d6 de Sanidade e fica Frustrado por 1 rodada.',
-  },
-  {
-    nome: 'Foco Macabro',
-    descricao: 'Recebe +5 em testes de Ocultismo e concentração ao conjurar rituais do seu elemento de afinidade.',
-  },
-  {
-    nome: 'Proteção Profana',
-    descricao: 'Ganha RD 5 contra o dano físico (corte, impacto, perfuração, balístico) e RD 10 contra o seu próprio elemento.',
-  },
-  {
-    nome: 'Transfiguração Maldita',
-    descricao: 'Quando fica com menos de metade dos PV, o seu corpo sofre uma mutação grotesca: ganha +2 na Defesa e +1d6 no dano de todos os seus ataques e rituais.',
-  },
 ];
 
 export const COMPORTAMENTOS_CULTISTAS = [
@@ -185,13 +150,6 @@ export const APARENCIAS_CULTISTAS = [
   'Máscara ritualística de madeira entalhada ou metal polido que oculta totalmente as feições humanas.',
   'Unhas enegrecidas e dedos manchados por óleos de rituais e substâncias alquímicas proibidas.',
   'Olhos com pupilas dilatadas e escleras manchadas por veias escuras pulsantes de exposição continuada.',
-];
-
-export const DICAS_RP_CULTISTAS = [
-  'Fanático inflexível: não teme a morte e considera os agentes apenas carne tola destinada à colheita.',
-  'Mestre manipulador: usa rituais para desestabilizar a mente do grupo e fazer os agentes duvidarem dos seus aliados.',
-  'Convicção absoluta: fale com fervor religioso, usando termos grandiosos para descrever o Outro Lado.',
-  'Tática covarde mas implacável: mantém peões à sua frente enquanto canaliza rituais devastadores à distância.',
 ];
 
 // ----------------------------------------------------- FICHA DE NPC ("Como Interpretar")
@@ -259,24 +217,4 @@ export const INFORMACOES_UTEIS_AGENTES = [
   'Sabe de um objeto ou artefacto perdido que pode ser relevante, mas hesita em revelar onde está.',
   'Testemunhou algo que contradiz a versão oficial de um evento recente, mas tem medo de o admitir.',
   'Tem um pressentimento fundado sobre quem será o próximo alvo — mas não sabe como o provar.',
-];
-
-// Guia de interpretação dos ocultistas/cultistas gerados (NPCs de ficha livre).
-// Traços, maneirismos e aparência vêm do estilo de cada elemento
-// (data/perfisNpc.js → ESTILO_CULTO); estes completam o papel no culto.
-
-export const MOTIVACOES_CULTISTAS = [
-  'Subir na hierarquia do culto, custe quantas vidas custar.',
-  'Completar o ritual a tempo — a data está marcada e não pode falhar.',
-  'Provar a sua devoção depois de um fracasso que o culto não esqueceu.',
-  'Proteger o líder do culto, a quem deve a vida (ou o que resta dela).',
-  'Trazer de volta alguém que perdeu, convencido de que o Outro Lado lho devolverá.',
-];
-
-export const INFORMACOES_CULTISTAS = [
-  'Sabe onde o culto se reúne e a senha para entrar.',
-  'Conhece a data e o local do próximo ritual.',
-  'Sabe quem, fora do culto, lhes fornece dinheiro e proteção.',
-  'Guarda um objeto do ritual que o culto precisa de recuperar.',
-  'Conhece o ponto fraco da entidade que o culto serve — e tem medo de o dizer.',
 ];

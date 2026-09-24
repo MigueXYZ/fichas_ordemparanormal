@@ -47,7 +47,12 @@ teste('Geração de ameaça / criatura atribui habilidades especiais e detalhes 
   assert.ok(a.habilidades.length >= 1, 'Ameaça de VD 100 deve receber habilidades especiais');
   assert.ok(a.roleplay.comportamento && a.roleplay.comportamento.length > 5, 'Deve conter comportamento sinistro da criatura');
   assert.ok(a.roleplay.aparencia && a.roleplay.aparencia.length > 5, 'Deve conter descrição visual da criatura');
-  assert.ok(a.roleplay.notasMestre && a.roleplay.notasMestre.length > 5, 'Deve conter dica de narração para o Mestre');
+  assert.equal(a.roleplay.notasMestre, '', 'como narrar fica em branco — depende da campanha');
+});
+
+teste('Nomes das criaturas geradas não têm lugares (servem qualquer campanha)', () => {
+  const nomes = Array.from({ length: 80 }, () => gerarAmeaca({ vd: 40 }).nome);
+  assert.ok(nomes.every((n) => !/\b(do|da|das|dos) (Beco|Cave|Convento|Ria|Mosteiro|Serra|Metro|Cais|Mata|Aqueduto|Minas|Cemitério|Fábrica|Farol)\b/.test(n)), nomes.join(', '));
 });
 
 teste('Ameaça paranormal gerada: bloco oficial completo (presença, sentidos, testes Nd20+B, deslocamento, sem rituais)', () => {
@@ -83,10 +88,12 @@ teste('Criaturas variam: número de habilidades e ações, e tipos de ação al�
   assert.ok(pequenas.some((a) => a.habilidades.length === 0), 'uma criatura pequena pode não ter habilidades');
 });
 
-teste('NPC gerado não sai com perícias treinadas a mais', () => {
+teste('NPC gerado não sai com perícias a mais (como as Pessoas do livro: 1 a 3 além dos testes)', () => {
   for (let i = 0; i < 30; i++) {
-    const n = gerarNpcAgente({ nex: 5 });
-    assert.ok(n.pericias.length <= 5 + 3, `NEX 5: no máximo 5 comuns + 3 treinadas (saiu ${n.pericias.length})`);
+    const n = gerarNpcAgente({ vd: 10 });
+    assert.ok(n.pericias.length <= 5 + 2, `VD 10: no máximo 5 testes + 2 perícias (saiu ${n.pericias.length})`);
+    const grande = gerarNpcAgente({ vd: 200 });
+    assert.ok(grande.pericias.length <= 5 + 3);
   }
 });
 
@@ -97,24 +104,35 @@ teste('Animal mundano gerado: sem presença perturbadora, com faro', () => {
   assert.deepEqual(a.descritores, []);
 });
 
-teste('NPC gerado: ficha livre com os números calculados da ficha de agente', () => {
-  const n = gerarNpcAgente({ nex: 35, classeId: 'ocultista' });
+teste('NPC gerado: uma Pessoa do livro — sem classe, trilha nem NEX, números do VD', () => {
+  const n = gerarNpcAgente({ vd: 80, perfilId: 'detetive' });
   assert.equal(n.tipo, 'npc');
   assert.equal(n.fichaLivre, true);
-  assert.equal(n.classe, 'Ocultista');
-  assert.equal(n.nex, 35);
-  assert.ok(n.origem && n.trilha, 'origem e trilha (NEX 35) preenchidas');
-  // Defesa pode ficar abaixo de 10 (AGI 0, carga) — vem do cálculo das regras
-  assert.ok(n.pv > 0 && n.pe > 0 && n.san > 0 && Number.isFinite(n.defesa) && n.defesa > 0);
+  for (const k of ['classe', 'trilha', 'origem', 'nex']) assert.equal(n[k], '', `sem ${k}`);
+  assert.equal(n.vd, 80);
+  assert.equal(n.perfilId, 'detetive');
+  // Assassino (VD 80) do livro: Defesa 26, PV 90 — a escala anda por aí
+  assert.ok(n.defesa >= 20 && n.defesa <= 26, `Defesa ${n.defesa}`);
+  assert.ok(n.pv >= 60 && n.pv <= 95, `PV ${n.pv}`);
   assert.deepEqual(n.pericias.slice(0, 5).map((p) => p.nome), ['Iniciativa', 'Percepção', 'Fortitude', 'Reflexos', 'Vontade']);
-  assert.ok(n.pericias.length > 5, 'mais as perícias treinadas');
-  assert.ok(n.acoes.length >= 1 && /^-?\d+d20[+-]\d+$/.test(n.acoes[0].teste) && /^\d+\/x\d+$/.test(n.acoes[0].critico));
-  assert.ok(n.rituais.length >= 3 && n.rituais.every((r) => r.circulo && r.dt), 'rituais com círculo e DT');
+  assert.ok(n.pericias.some((p) => p.nome === 'Investigação'), 'a perícia principal do perfil');
+  assert.ok(n.acoes.length >= 1 && /^\d+d20\+\d+$/.test(n.acoes[0].teste) && /^\d+\/x\d+$/.test(n.acoes[0].critico));
+  assert.deepEqual(n.rituais, [], 'um NPC comum não conjura rituais');
   assert.ok(n.equipamento.length >= 1);
-  for (const k of ['aparencia', 'traco', 'personalidade', 'maneirismos', 'motivacao', 'informacao', 'notasMestre']) {
-    assert.ok(n.roleplay[k], `roleplay.${k} preenchido`);
-  }
+  for (const k of ['aparencia', 'traco', 'personalidade', 'maneirismos']) assert.ok(n.roleplay[k], `roleplay.${k} preenchido`);
+  for (const k of ['motivacao', 'informacao', 'notasMestre']) assert.equal(n.roleplay[k], '', `roleplay.${k} em branco`);
   assert.equal('sentidos' in n, false);
+});
+
+teste('NPC gerado: habilidades próprias, balanceadas pelo VD', () => {
+  const todas = Array.from({ length: 80 }, () => gerarNpcAgente({ vd: 120 }));
+  const nomes = todas.flatMap((n) => [...n.habilidades, ...n.acoes.filter((a) => !a.teste)].map((h) => h.nome));
+  assert.ok(new Set(nomes).size >= 15, 'habilidades variadas entre perfis');
+  assert.ok(todas.every((n) => !/\{[A-Z0-9_]+\}/.test(JSON.stringify(n))), 'marcadores todos preenchidos');
+  // Um NPC de VD 10 não recebe habilidades de VD alto (ex.: Ordens, VD 100)
+  const fracos = Array.from({ length: 80 }, () => gerarNpcAgente({ vd: 10 }));
+  assert.ok(fracos.every((n) => [...n.habilidades, ...n.acoes].length <= 3));
+  assert.ok(!fracos.some((n) => n.acoes.some((a) => a.nome === 'Ordens')));
 });
 
 teste('Confirmação mecânica: Personagem já treinado em Ocultismo que escolhe Monstruoso fica com exatamente +7', () => {

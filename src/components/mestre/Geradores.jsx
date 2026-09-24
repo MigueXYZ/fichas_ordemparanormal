@@ -11,6 +11,7 @@ import ModalDetalheGenerico from './ModalDetalheGenerico.jsx';
 import Ficha from '../ficha/Ficha.jsx';
 import FichaLivreCard from './FichaLivreCard.jsx';
 import { ehFichaLivre } from '../../engine/fichaLivre.js';
+import { PERFIS_NPC } from '../../data/perfisNpc.js';
 import PainelRolagem from '../PainelRolagem.jsx';
 
 const SEPARADORES = [
@@ -27,6 +28,7 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
   const [classeId, setClasseId] = useState('');
   const [trilhaId, setTrilhaId] = useState('');
   const [origemId, setOrigemId] = useState('');
+  const [perfilNpc, setPerfilNpc] = useState('');
   const [vd, setVd] = useState(20);
   const [categoriaAmeaca, setCategoriaAmeaca] = useState('');
   const [elementosAmeaca, setElementosAmeaca] = useState([]);
@@ -79,15 +81,20 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
       }));
       return;
     }
-    const opcoes = {
+    if (aba === 'npc') {
+      setResultado(gerarNpcAgente({ vd: Number(vd), conceito, perfilId: perfilNpc || null }));
+      return;
+    }
+    setResultado(gerarFicha({
       nex: Number(nex),
       conceito,
       classeId: classeId || null,
       trilhaId: trilhaId || null,
       origemId: origemId || null,
-    };
-    setResultado(aba === 'npc' ? gerarNpcAgente(opcoes) : gerarFicha(opcoes));
+    }));
   }
+
+  const perfisDisponiveis = PERFIS_NPC.filter((pf) => conceito === 'surpresa' || pf.conceito === conceito);
 
   return (
     <div>
@@ -103,13 +110,49 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
         ))}
       </div>
 
-      {/* Aba 1 e 2: Ficha e NPC */}
-      {(aba === 'ficha' || aba === 'npc') && (
+      {/* Aba 2: NPC — uma "Pessoa" como as do livro, sem classe nem trilha */}
+      {aba === 'npc' && (
         <>
           <p className="dica" style={{ marginTop: 0 }}>
-            {aba === 'npc'
-              ? 'Um NPC com ficha de NPC já preenchida — PV/PE/SAN, Defesa, perícias, ataques, poderes, rituais (consoante o NEX), equipamento e guia de interpretação. Não implica que seja um agente da Ordem.'
-              : 'Uma ficha jogável inteira: atributos, origem, classe, trilha, poderes de NEX, rituais, comportamento e equipamento.'}
+            Uma pessoa comum ou profissional, como as fichas de &quot;Pessoa&quot; do livro: sem classe, trilha nem NEX. Defesa, PV, testes e ataques vêm do VD, com poucas perícias e habilidades próprias do perfil, todas calculadas a partir do VD.
+            Motivação, informação e notas do Mestre ficam em branco para as preencheres com a tua história.
+          </p>
+          <div className="grelha-editor" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
+            <div className="campo">
+              <label>Valor de Desafio (VD)</label>
+              <select value={vd} onChange={(e) => setVd(Number(e.target.value))}>
+                {VD_SUGERIDOS.map((v) => <option key={v} value={v}>VD {v}</option>)}
+              </select>
+            </div>
+            <div className="campo">
+              <label>Conceito</label>
+              <select value={conceito} onChange={(e) => { setConceito(e.target.value); setPerfilNpc(''); }}>
+                {CONCEITOS.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </select>
+            </div>
+            <div className="campo">
+              <label>Perfil</label>
+              <select value={perfilNpc} onChange={(e) => setPerfilNpc(e.target.value)}>
+                <option value="">Ao acaso</option>
+                {perfisDisponiveis.map((pf) => <option key={pf.id} value={pf.id}>{pf.ocupacao[0]}</option>)}
+              </select>
+            </div>
+            <div className="campo">
+              <label>NEX somado do grupo</label>
+              <input type="number" value={nexGrupo} onChange={(e) => setNexGrupo(Number(e.target.value))} />
+            </div>
+          </div>
+          <div className="dica" style={{ marginTop: 6, fontSize: 12 }}>
+            Referência de VD para o grupo: fácil {vdParaGrupo(nexGrupo, 'facil')} · equilibrado {vdParaGrupo(nexGrupo)} · difícil {vdParaGrupo(nexGrupo, 'dificil')}
+          </div>
+        </>
+      )}
+
+      {/* Aba 1: Ficha aleatória de agente (essa sim com classe, trilha e NEX) */}
+      {aba === 'ficha' && (
+        <>
+          <p className="dica" style={{ marginTop: 0 }}>
+            Uma ficha jogável inteira: atributos, origem, classe, trilha, poderes de NEX, rituais e equipamento.
           </p>
           <div className="grelha-editor" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
             <div className="campo">
@@ -163,7 +206,8 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
       {aba === 'ocultista' && (
         <>
           <p className="dica" style={{ marginTop: 0 }}>
-            Ocultistas e cultistas não-agentes: saem como NPC (vão para o Elenco) — rituais prontos com DT, poderes paranormais do culto, armas amaldiçoadas, equipamento e guia de interpretação.
+            Ocultistas e cultistas como os do livro (Iniciado, Investido, Líder de Culto): sem classe nem trilha. Saem como NPC (vão para o Elenco) com a habilidade Conjurador e rituais do livro com DT,
+            mais habilidades próprias do seu elemento e do seu papel no culto. Motivação, informação e notas do Mestre ficam em branco.
           </p>
           <div className="grelha-editor" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
             <div className="campo">
@@ -201,14 +245,14 @@ export default function Geradores({ aoGuardar, aoAbrir }) {
       {aba === 'ameaca' && (
         <>
           <p className="dica" style={{ marginTop: 0 }}>
-            Ameaças e criaturas com habilidades especiais, comportamento sinistro, descrição aterrorizante e dicas de narração para o Mestre.
+            Ameaças e criaturas com habilidades especiais, aparência e comportamento. A forma de as narrar fica em branco — depende da tua cena.
           </p>
           <div className="campo" style={{ marginBottom: 14 }}>
             <label>Conceito da criatura (opcional)</label>
             <textarea
               value={conceitoAmeaca}
               onChange={(e) => setConceitoAmeaca(e.target.value)}
-              placeholder="Ex.: a aranha da cave do Convento; a boneca de porcelana da Fábrica..."
+              placeholder="Ex.: uma boneca de porcelana possuída; um cão sem pele..."
               rows={2}
               style={{ resize: 'vertical' }}
             />
