@@ -42,9 +42,11 @@ export default function TokenFicha({ imagem, nome, editavel, vazio, aoMudar }) {
 export function ModalTokenFicha({ imagem, vazio, aoAplicar, aoCancelar }) {
   const [rascunho, setRascunho] = useState(imagem || null);
   const [ficheiro, setFicheiro] = useState(null);
-  const [tirarFundo, setTirarFundo] = useState(true);
+  // com uma imagem já guardada começa desligado (fica como está); ao carregar uma nova, liga
+  const [tirarFundo, setTirarFundo] = useState(!imagem);
   const [aProcessar, setAProcessar] = useState(false);
   const [erro, setErro] = useState(null);
+  const [baixaResolucao, setBaixaResolucao] = useState(false);
   const [arrastar, setArrastar] = useState(false);
   const input = useRef(null);
 
@@ -54,6 +56,24 @@ export function ModalTokenFicha({ imagem, vazio, aoAplicar, aoCancelar }) {
     return () => window.removeEventListener('keydown', aoTeclar);
   }, [aoCancelar]);
 
+  // A imagem já guardada também pode ser reprocessada (ex.: tirar o fundo
+  // preto que a versão antiga deixava), e avisa-se se for pequena demais —
+  // a versão antiga guardava a 320px, o que fica esborratado na ficha.
+  useEffect(() => {
+    if (!imagem) return undefined;
+    let vivo = true;
+    (async () => {
+      try {
+        const blob = await (await fetch(imagem)).blob();
+        if (vivo) setFicheiro(new File([blob], 'token', { type: blob.type || 'image/png' }));
+        const img = new Image();
+        img.onload = () => { if (vivo) setBaixaResolucao(Math.max(img.naturalWidth, img.naturalHeight) < 500); };
+        img.src = imagem;
+      } catch { /* sem reprocessamento — continua a dar para trocar a imagem */ }
+    })();
+    return () => { vivo = false; };
+  }, [imagem]);
+
   async function processar(f, comFundoTirado) {
     if (!f) return;
     if (!f.type.startsWith('image/')) { setErro('Esse ficheiro não é uma imagem.'); return; }
@@ -62,6 +82,7 @@ export function ModalTokenFicha({ imagem, vazio, aoAplicar, aoCancelar }) {
     try {
       setRascunho(await lerToken(f, 900, { tirarFundo: comFundoTirado }));
       setFicheiro(f);
+      if (f.name !== 'token') setBaixaResolucao(false); // ficheiro novo, escolhido agora
     } catch (e) {
       setErro(e.message);
     } finally {
@@ -83,7 +104,7 @@ export function ModalTokenFicha({ imagem, vazio, aoAplicar, aoCancelar }) {
             onClick={() => input.current?.click()}
             onDragOver={(e) => { e.preventDefault(); setArrastar(true); }}
             onDragLeave={() => setArrastar(false)}
-            onDrop={(e) => { e.preventDefault(); setArrastar(false); processar(e.dataTransfer.files?.[0], tirarFundo); }}
+            onDrop={(e) => { e.preventDefault(); setArrastar(false); setTirarFundo(true); processar(e.dataTransfer.files?.[0], true); }}
             title="Clica ou arrasta uma imagem"
           >
             {rascunho ? <img src={rascunho} alt="" draggable={false} /> : <div className="ficha-npc-token-vazio">{vazio}</div>}
@@ -103,7 +124,13 @@ export function ModalTokenFicha({ imagem, vazio, aoAplicar, aoCancelar }) {
             Tirar fundo branco/preto liso
           </label>
 
-          <input ref={input} type="file" accept="image/*" hidden onChange={(e) => { processar(e.target.files?.[0], tirarFundo); e.target.value = ''; }} />
+          {baixaResolucao && (
+            <div className="aviso" style={{ fontSize: 12 }}>
+              Esta imagem foi guardada em baixa resolução (pela versão antiga do Ordo). Carrega outra vez o ficheiro original para ficar nítida.
+            </div>
+          )}
+
+          <input ref={input} type="file" accept="image/*" hidden onChange={(e) => { setTirarFundo(true); processar(e.target.files?.[0], true); e.target.value = ''; }} />
           {erro && <div className="aviso" style={{ fontSize: 12 }}>{erro}</div>}
         </div>
 

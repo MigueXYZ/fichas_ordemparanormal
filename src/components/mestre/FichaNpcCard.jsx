@@ -554,7 +554,7 @@ export default function FichaNpcCard({ p, aoVerDetalhe, editando, onAtualizarCam
           {/* Espaço do token — fora da moldura do roleplay, sem moldura própria.
               A figura inteira, sem recorte; em modo de editar, clicar nela abre
               o editor de token (com pré-visualização e fundo transparente). */}
-          <div className="ficha-npc-token">
+          <div className="ficha-npc-token ficha-token-fixo">
             <TokenFicha
               imagem={p.imagem}
               nome={p.nome}

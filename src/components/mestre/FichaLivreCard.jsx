@@ -352,7 +352,7 @@ function ColunaDireita({ f, editando, set, onAtualizar, titulo, vazioToken }) {
           </>
         )}
       </div>
-      <div className="ficha-npc-token">
+      <div className="ficha-npc-token ficha-token-fixo">
         <TokenFicha imagem={f.imagem} nome={f.nome} editavel={editando} vazio={vazioToken}
           aoMudar={(imagem) => onAtualizar({ imagem, imagemPosX: undefined, imagemPosY: undefined, imagemZoom: undefined })} />
       </div>
