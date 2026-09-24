@@ -216,6 +216,11 @@ export function adicionarCombatente(estado, combatente) {
     // habilidades e poderes no cartão de detalhe. null para combatentes criados
     // manualmente, que não têm ficha nenhuma.
     ficha: combatente.ficha || null,
+    // id da ficha guardada de onde veio (várias cópias da mesma ameaça têm ids
+    // de combatente diferentes); `fichaPropria` = ficha que não está guardada
+    // no Ordo (cópia do compêndio), para o combate a guardar inteira
+    fichaId: combatente.fichaId || null,
+    fichaPropria: Boolean(combatente.fichaPropria),
   };
 
   const lista = ordenarCombatentes([...(estado.combatentes || []), c]);

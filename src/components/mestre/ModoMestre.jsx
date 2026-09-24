@@ -5,8 +5,17 @@ import Geradores from './Geradores.jsx';
 import Bestiario from './Bestiario.jsx';
 import Elenco from './Elenco.jsx';
 import { listarAgentes, guardarAgente, apagarAgente } from '../../engine/armazenamento.js';
-import { estadoCombateVazio, adicionarCombatente } from '../../engine/combateTracker.js';
+import { estadoCombateVazio, adicionarCombatente, editarCombatente } from '../../engine/combateTracker.js';
 import { SubscritorMestre, lerCodigosMestre, guardarCodigosMestre } from '../../engine/redeMestre.js';
+import { lerCombateLocal, guardarCombateLocal, resumoRolagemJogador } from '../../engine/campoBatalha.js';
+
+/** O combate guardado da última visita, com as fichas atuais do Ordo. */
+function combateInicial() {
+  const fichasPorId = Object.fromEntries(listarAgentes().map((f) => [f.id, f]));
+  return lerCombateLocal(fichasPorId) || { estado: estadoCombateVazio(), registo: [] };
+}
+
+const novoIdRegisto = () => `r-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
 const ABAS = [
   { id: 'hub', nome: 'Hub de Equipa' },
@@ -36,12 +45,59 @@ export default function ModoMestre({ aoAbrir }) {
   const [aba, setAba] = useState('hub');
   const [listaAmeacas, setListaAmeacas] = useState(ameacasGuardadas);
   const [listaAgentes, setListaAgentes] = useState(agentesGuardados);
-  const [estadoCombate, setEstadoCombate] = useState(estadoCombateVazio);
+  const [inicial] = useState(combateInicial);
+  const [estadoCombate, setEstadoCombate] = useState(inicial.estado);
+  // Registo do combate (rolagens do Mestre e dos jogadores, dano, turnos) —
+  // vive aqui para continuar a apanhar as rolagens dos jogadores noutras abas
+  const [registo, setRegisto] = useState(inicial.registo);
+  const registar = useCallback((entrada) => {
+    setRegisto((r) => [...r, { id: novoIdRegisto(), quando: Date.now(), ...entrada }].slice(-200));
+  }, []);
+  const limparRegisto = useCallback(() => setRegisto([]), []);
+
+  // o combate fica guardado neste browser (fecha-se a app e continua onde estava)
+  useEffect(() => {
+    const t = setTimeout(() => guardarCombateLocal(estadoCombate, registo), 400);
+    return () => clearTimeout(t);
+  }, [estadoCombate, registo]);
 
   // Gestão de Salas e Conexão P2P Multi-Player
   const [codigos, setCodigos] = useState(lerCodigosMestre);
   const [agentesConectados, setAgentesConectados] = useState([]);
   const subscritorRef = useRef(null);
+
+  // Rolagens dos jogadores ligados → registo; PV/SAN/PE que mudaram na ficha
+  // do jogador → o seu cartão no combate (a ficha dele é que manda)
+  const vistas = useRef(new Set());
+  const montadoEm = useRef(Date.now());
+  useEffect(() => {
+    for (const a of agentesConectados) {
+      const r = a.dados?.rolagem;
+      if (!r?.quando || r.quando < montadoEm.current - 2000) continue;
+      const chave = `${a.codigo}:${r.quando}`;
+      if (vistas.current.has(chave)) continue;
+      vistas.current.add(chave);
+      registar({ tipo: 'rolagem', origem: 'jogador', autor: a.dados?.nome || a.codigo, resumo: resumoRolagemJogador(r) });
+    }
+    setEstadoCombate((est) => {
+      let novo = est;
+      for (const a of agentesConectados) {
+        if (!a.dados || !a.codigo) continue;
+        const c = novo.combatentes.find((x) => x.codigo === a.codigo);
+        if (!c) continue;
+        const remoto = JSON.stringify({ pv: a.dados.pv, san: a.dados.san, pe: a.dados.pe, cond: a.dados.condicoes });
+        if (remoto === c.ultimoRemoto) continue;
+        novo = editarCombatente(novo, c.id, {
+          ultimoRemoto: remoto,
+          ...(a.dados.pv ? { pv: a.dados.pv } : null),
+          ...(a.dados.san && c.san ? { san: a.dados.san } : null),
+          ...(a.dados.pe && c.pe ? { pe: a.dados.pe } : null),
+          condicoes: a.dados.condicoes || c.condicoes,
+        });
+      }
+      return novo;
+    });
+  }, [agentesConectados, registar]);
 
   useEffect(() => {
     const sub = new SubscritorMestre();
@@ -152,6 +208,9 @@ export default function ModoMestre({ aoAbrir }) {
           agentes={listaAgentes}
           agentesConectados={dadosAgentesConectados}
           aoGuardar={guardar}
+          registo={registo}
+          registar={registar}
+          limparRegisto={limparRegisto}
         />
       )}
     </div>
