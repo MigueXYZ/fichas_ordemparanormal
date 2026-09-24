@@ -7,8 +7,7 @@ import { quantidadeDados } from '../../engine/dados.js';
 import tokenPlaceholder from '../../assets/token-placeholder.png';
 import CabecalhoSeta from '../ficha/CabecalhoSeta.jsx';
 import InputNumeroScroll from '../InputNumeroScroll.jsx';
-import AvatarAjustavel from '../AvatarAjustavel.jsx';
-import ModalEditarAvatar from '../ModalEditarAvatar.jsx';
+import TokenFicha from './TokenFicha.jsx';
 import { TIPOS_DANO_RESISTIVEIS, estadoResistencia, definirResistencia } from '../../engine/danoRecetor.js';
 import { ROTULO_GRAU, BlocoStat, TabelaLinha, CampoRoleplay } from './FichaCardBlocos.jsx';
 
@@ -33,7 +32,6 @@ const GRAUS_ATRIBUIVEIS = GRAUS_TREINO.filter((g) => g.id !== 'destreinado');
  * "extra" / manuais ao lado.
  */
 export default function FichaNpcCard({ p, aoVerDetalhe, editando, onAtualizarCampo, aoUploadImagem }) {
-  const [modalAvatarAberto, setModalAvatarAberto] = useState(false);
   const [abertaResistencias, setAbertaResistencias] = useState(false);
   const classe = CLASSES.find((c) => c.id === p.classeId);
   const origem = ORIGENS.find((o) => o.id === p.origemId);
@@ -48,14 +46,6 @@ export default function FichaNpcCard({ p, aoVerDetalhe, editando, onAtualizarCam
   const habilidades = p.habilidades || [];
   const poderes = p.poderes || [];
   const rp = p.comoInterpretar || {};
-
-  function aplicarAvatar(patch) {
-    aoUploadImagem(patch.imagem);
-    onAtualizarCampo('imagemPosX', patch.imagemPosX);
-    onAtualizarCampo('imagemPosY', patch.imagemPosY);
-    onAtualizarCampo('imagemZoom', patch.imagemZoom);
-    setModalAvatarAberto(false);
-  }
 
   // --------------------------------------------------- perícias do livro (oficiais)
   function definirGrauPericiaOficial(id, grau) {
@@ -562,38 +552,16 @@ export default function FichaNpcCard({ p, aoVerDetalhe, editando, onAtualizarCam
           </div>
 
           {/* Espaço do token — fora da moldura do roleplay, sem moldura própria.
-              Mostra a imagem se houver, senão um template vazio. A imagem em si é
-              o botão: em modo de editar, clicar nela abre o seletor de ficheiro
-              — não há um botão à parte por cima. */}
+              A figura inteira, sem recorte; em modo de editar, clicar nela abre
+              o editor de token (com pré-visualização e fundo transparente). */}
           <div className="ficha-npc-token">
-            <AvatarAjustavel
-              className={'ficha-npc-token-caixa' + (editando ? ' editavel' : '')}
+            <TokenFicha
               imagem={p.imagem}
-              alt={p.nome}
-              posX={p.imagemPosX ?? 50}
-              posY={p.imagemPosY ?? 50}
-              zoom={p.imagemZoom ?? 1}
-              editavel={false}
-              onClick={editando ? () => setModalAvatarAberto(true) : undefined}
-              title={editando ? (p.imagem ? 'Clica para trocar o avatar' : 'Clica para adicionares um avatar') : undefined}
-              role={editando ? 'button' : undefined}
-              tabIndex={editando ? 0 : undefined}
-              onKeyDown={editando ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setModalAvatarAberto(true); } } : undefined}
-            >
-              <div className="ficha-npc-token-vazio">
-                <img src={tokenPlaceholder} alt="" className="ficha-npc-token-placeholder" />
-              </div>
-            </AvatarAjustavel>
-            {modalAvatarAberto && (
-              <ModalEditarAvatar
-                imagem={p.imagem}
-                posX={p.imagemPosX ?? 50}
-                posY={p.imagemPosY ?? 50}
-                zoom={p.imagemZoom ?? 1}
-                aoAplicar={aplicarAvatar}
-                aoCancelar={() => setModalAvatarAberto(false)}
-              />
-            )}
+              nome={p.nome}
+              editavel={editando}
+              vazio={<img src={tokenPlaceholder} alt="" className="ficha-npc-token-placeholder" />}
+              aoMudar={aoUploadImagem}
+            />
           </div>
         </div>
       </div>

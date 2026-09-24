@@ -1,21 +1,30 @@
 /**
  * "Ficha livre" — o formato comum de NPCs e Ameaças que não funcionam como
- * personagens: os valores (PV, Defesa, perícias como "2d20+5", ataques com
- * teste/dano/crítico) escrevem-se à mão, sem classe, origem nem cálculos do
- * livro. É o mesmo esquema das ameaças do Bestiário (FichaAmeaca / Campo de
- * Batalha já o sabem ler), mais o bloco de roleplay e PE/SAN/Bloqueio/Esquiva.
+ * personagens de jogador: os valores escrevem-se à mão, sem cálculos do livro.
  *
- * Um NPC livre é `tipo: 'npc'` com `fichaLivre: true`; os NPCs antigos da aba
- * "Gerar" (ficha 4, modelo de personagem) não têm a marca e continuam iguais.
+ * Há dois modelos, um por `tipo`:
+ * - 'ameaca' — o bloco oficial de ameaça (Ficha de Ameaça / cap. 7 do Livro
+ *   Base): Presença Perturbadora, Sentidos, Defesa + testes de resistência,
+ *   PV/Machucado, resistências/vulnerabilidades/imunidades, habilidades,
+ *   ações, rituais e Enigma do Medo. É o esquema do Bestiário, que o Campo de
+ *   Batalha já sabe ler.
+ * - 'npc' (com `fichaLivre: true`) — pessoas: agentes, ocultistas, cultistas,
+ *   civis. Classe/origem/NEX, PV/PE/SAN, Defesa/Bloqueio/Esquiva, perícias
+ *   (Iniciativa, Percepção e os testes de resistência são perícias), ataques,
+ *   habilidades, rituais, equipamento e guia de interpretação. Sem sentidos,
+ *   presença nem enigma.
+ * Os NPCs antigos da aba "Gerar" (ficha 4, modelo de personagem) não têm a
+ * marca `fichaLivre` e continuam iguais.
  *
- * A ficha editável fora da app (Ficha_NPC_Ordem_Editavel.html) exporta
- * exatamente isto, com `formato: FORMATO_FICHA_LIVRE` — é o que o botão
- * "Importar ficha" do Modo Mestre lê.
+ * As fichas editáveis fora da app (Ficha_NPC_Ordem_Editavel.html e
+ * Ficha_Ameaca_Ordem_Editavel.html) exportam exatamente isto, com
+ * `formato: FORMATO_FICHA_LIVRE` — é o que o botão "Importar ficha" lê.
+ * Se mudares um campo aqui, muda-o também nessas duas fichas.
  */
 export const FORMATO_FICHA_LIVRE = 'ordo-ficha-livre';
-export const VERSAO_FICHA_LIVRE = 1;
+export const VERSAO_FICHA_LIVRE = 2;
 
-export const CAMPOS_ROLEPLAY = [
+export const ROLEPLAY_NPC = [
   ['aparencia', 'Descrição Física & Aparência'],
   ['traco', 'Traço Marcante'],
   ['personalidade', 'Personalidade & Tom de Voz'],
@@ -24,44 +33,55 @@ export const CAMPOS_ROLEPLAY = [
   ['informacao', 'Informações Úteis & Pistas'],
   ['notasMestre', 'Dicas de Mesa (Mestre)'],
 ];
+export const NARRACAO_AMEACA = [
+  ['aparencia', 'Aparência'],
+  ['comportamento', 'Comportamento & Táticas'],
+  ['notasMestre', 'Como Narrar (Mestre)'],
+];
+export const camposRoleplay = (tipo) => (tipo === 'ameaca' ? NARRACAO_AMEACA : ROLEPLAY_NPC);
+
+export const ELEMENTOS = ['Sangue', 'Morte', 'Conhecimento', 'Energia', 'Medo'];
+export const TAMANHOS = ['Minúsculo', 'Pequeno', 'Médio', 'Grande', 'Enorme', 'Colossal'];
+export const CLASSES_NPC = ['Combatente', 'Especialista', 'Ocultista', 'Sobrevivente', 'Civil'];
+
+/** As perícias com que um NPC novo começa — no sistema, Iniciativa,
+ * Percepção e os testes de resistência são perícias como as outras. */
+export const PERICIAS_BASE_NPC = ['Iniciativa', 'Percepção', 'Fortitude', 'Reflexos', 'Vontade'];
 
 export function fichaLivreVazia(tipo = 'npc') {
-  const ameaca = tipo === 'ameaca';
+  if (tipo === 'ameaca') {
+    return {
+      tipo: 'ameaca', fichaLivre: true,
+      nome: 'Nova Ameaça', historia: '', vd: 20,
+      descritores: [], tamanho: 'Médio', categoria: 'Criatura',
+      imagem: null,
+      presencaPerturbadora: null,
+      sentidos: { percepcao: '1d20+0', iniciativa: '1d20+0', extra: '' },
+      defesa: 15,
+      testes: { fortitude: '1d20+0', reflexos: '1d20+0', vontade: '1d20+0' },
+      pv: 20, pvMachucado: 10,
+      resistencias: [], vulnerabilidades: [], imunidades: [],
+      atributos: { agi: 1, for: 1, int: 1, pre: 1, vig: 1 },
+      pericias: [],
+      deslocamento: '9m | 6',
+      habilidades: [], acoes: [], rituais: [],
+      enigmaDoMedo: null,
+      roleplay: Object.fromEntries(NARRACAO_AMEACA.map(([k]) => [k, ''])),
+      tags: [], notas: '',
+    };
+  }
   return {
-    tipo: ameaca ? 'ameaca' : 'npc',
-    fichaLivre: true,
-    nome: ameaca ? 'Nova Ameaça' : 'Novo NPC',
-    breveDescricao: '',
-    historia: '',
-    vd: ameaca ? 20 : '',
-    nex: '',
-    descritores: [],
-    tamanho: 'Médio',
-    categoria: '',
+    tipo: 'npc', fichaLivre: true,
+    nome: 'Novo NPC', breveDescricao: '', historia: '',
+    classe: '', origem: '', trilha: '', afiliacao: '', nex: '', vd: '',
     imagem: null,
     atributos: { agi: 1, for: 1, int: 1, pre: 1, vig: 1 },
-    pv: 20,
-    pvMachucado: 10,
-    pe: '',
-    san: '',
-    defesa: ameaca ? 15 : 10,
-    bloqueio: '',
-    esquiva: '',
-    deslocamento: '9m',
-    sentidos: { percepcao: '1d20+0', iniciativa: '1d20+0' },
-    testes: { fortitude: '1d20+0', reflexos: '1d20+0', vontade: '1d20+0' },
-    imunidades: [],
+    pv: 20, pe: '', san: '', defesa: 10, bloqueio: '', esquiva: '', deslocamento: '9m',
+    pericias: PERICIAS_BASE_NPC.map((nome) => ({ nome, dados: 1, bonus: 0 })),
     resistencias: [],
-    vulnerabilidades: [],
-    pericias: [],
-    acoes: [],
-    habilidades: [],
-    poderes: [],
-    presencaPerturbadora: null,
-    enigmaDoMedo: null,
-    roleplay: Object.fromEntries(CAMPOS_ROLEPLAY.map(([k]) => [k, ''])),
-    tags: [],
-    notas: '',
+    acoes: [], habilidades: [], rituais: [], equipamento: [],
+    roleplay: Object.fromEntries(ROLEPLAY_NPC.map(([k]) => [k, ''])),
+    tags: [], notas: '',
   };
 }
 
@@ -70,16 +90,16 @@ export function ehFichaLivre(f) {
   return Boolean(f) && (f.tipo === 'ameaca' || f.fichaLivre === true);
 }
 
-/** Roleplay de uma ficha livre — inclui os campos soltos das ameaças geradas
- * (aparencia / comportamento / dicaRp), para essas também aparecerem. */
+/** Guia de roleplay/narração de uma ficha — inclui os campos soltos das
+ * ameaças geradas e do compêndio (aparencia / comportamento / dicaRp). */
 export function roleplayDe(f) {
   const rp = f?.roleplay || {};
-  return {
-    ...Object.fromEntries(CAMPOS_ROLEPLAY.map(([k]) => [k, rp[k] || ''])),
-    aparencia: rp.aparencia || f?.aparencia || '',
-    personalidade: rp.personalidade || f?.comportamento || '',
-    notasMestre: rp.notasMestre || f?.dicaRp || '',
-  };
+  const campos = camposRoleplay(f?.tipo);
+  const base = Object.fromEntries(campos.map(([k]) => [k, rp[k] || '']));
+  base.aparencia = rp.aparencia || f?.aparencia || '';
+  base.notasMestre = rp.notasMestre || f?.dicaRp || '';
+  if (f?.tipo === 'ameaca') base.comportamento = rp.comportamento || rp.personalidade || f?.comportamento || '';
+  return base;
 }
 
 const numeroOu = (v, padrao) => {
@@ -90,9 +110,25 @@ const numeroOu = (v, padrao) => {
 const lista = (v) => (Array.isArray(v) ? v : []);
 const texto = (v) => (v === null || v === undefined ? '' : String(v));
 
+/** "3d20+10 (às cegas)" → { dados: 3, bonus: 10 }; null se não for uma pool de d20. */
+function pool(txt) {
+  const m = String(txt || '').replace(/\s/g, '').match(/^(-?\d+)d20([+-]\d+)?/i);
+  return m ? { dados: Number(m[1]), bonus: Number(m[2] || 0) } : null;
+}
+
+const acaoLimpa = (a) => ({
+  tipo: a.tipo || 'Padrão', nome: texto(a.nome), detalhe: texto(a.detalhe),
+  teste: texto(a.teste), dano: texto(a.dano), critico: texto(a.critico), descricao: texto(a.descricao),
+});
+const habLimpa = (h) => ({ nome: texto(h.nome), custo: texto(h.custo), descricao: texto(h.descricao) });
+const ritualLimpo = (r) => ({
+  nome: texto(r.nome), circulo: texto(r.circulo), elemento: texto(r.elemento), dt: texto(r.dt),
+  custo: texto(r.custo), execucao: texto(r.execucao), alcance: texto(r.alcance), descricao: texto(r.descricao),
+});
+
 /**
  * Transforma o que vem de um ficheiro numa ficha pronta a guardar no Ordo.
- * Aceita o formato da ficha editável e também uma ameaça/NPC livre do
+ * Aceita o formato das fichas editáveis e também uma ameaça/NPC livre do
  * próprio Ordo (exportada daqui). Devolve null se não for nada disso.
  */
 export function paraFichaOrdo(dados) {
@@ -106,7 +142,7 @@ export function paraFichaOrdo(dados) {
   // eslint-disable-next-line no-unused-vars
   const { formato, versao, id, atualizadoEm, ...resto } = dados;
 
-  return {
+  const comum = {
     ...base,
     ...resto,
     tipo,
@@ -114,29 +150,54 @@ export function paraFichaOrdo(dados) {
     nome: texto(dados.nome).trim() || base.nome,
     vd: numeroOu(dados.vd, base.vd),
     pv: numeroOu(dados.pv, base.pv),
-    pvMachucado: numeroOu(dados.pvMachucado, Math.floor((Number(dados.pv) || base.pv) / 2)),
     defesa: numeroOu(dados.defesa, base.defesa),
+    atributos: { ...base.atributos, ...(dados.atributos || {}) },
+    resistencias: lista(dados.resistencias),
+    pericias: lista(dados.pericias).map((p) => ({ nome: texto(p.nome), dados: Number(p.dados) || 1, bonus: Number(p.bonus) || 0 })),
+    acoes: lista(dados.acoes).map(acaoLimpa),
+    habilidades: lista(dados.habilidades).map(habLimpa),
+    rituais: lista(dados.rituais).map(ritualLimpo),
+    roleplay: { ...base.roleplay, ...(dados.roleplay || {}) },
+    tags: lista(dados.tags),
+    imagem: dados.imagem || null,
+  };
+
+  if (tipo === 'ameaca') {
+    // eslint-disable-next-line no-unused-vars
+    const { poderes, ...ameaca } = comum;
+    return {
+      ...ameaca,
+      pvMachucado: numeroOu(dados.pvMachucado, Math.floor((Number(dados.pv) || base.pv) / 2)),
+      sentidos: { ...base.sentidos, ...(dados.sentidos || {}) },
+      testes: { ...base.testes, ...(dados.testes || {}) },
+      descritores: lista(dados.descritores),
+      vulnerabilidades: lista(dados.vulnerabilidades),
+      imunidades: lista(dados.imunidades),
+      // "poderes" (versão 1) juntam-se às habilidades
+      habilidades: [...comum.habilidades, ...lista(dados.poderes).map(habLimpa)],
+    };
+  }
+
+  // NPC: da versão 1 (que ainda tinha sentidos/testes) passam para perícias
+  const pericias = [...comum.pericias];
+  const nomes = new Set(pericias.map((p) => p.nome.toLowerCase()));
+  for (const [grupo, chave, nome] of [['sentidos', 'iniciativa', 'Iniciativa'], ['sentidos', 'percepcao', 'Percepção'],
+    ['testes', 'fortitude', 'Fortitude'], ['testes', 'reflexos', 'Reflexos'], ['testes', 'vontade', 'Vontade']]) {
+    const p = pool(dados[grupo]?.[chave]);
+    if (p && !nomes.has(nome.toLowerCase()) && (p.dados !== 1 || p.bonus !== 0)) pericias.push({ nome, ...p });
+  }
+  // eslint-disable-next-line no-unused-vars
+  const { sentidos, testes, presencaPerturbadora, enigmaDoMedo, pvMachucado, descritores, imunidades, vulnerabilidades, poderes, ...npc } = comum;
+  return {
+    ...npc,
+    pericias,
     pe: numeroOu(dados.pe, ''),
     san: numeroOu(dados.san, ''),
     bloqueio: numeroOu(dados.bloqueio, ''),
     esquiva: numeroOu(dados.esquiva, ''),
-    atributos: { ...base.atributos, ...(dados.atributos || {}) },
-    sentidos: { ...base.sentidos, ...(dados.sentidos || {}) },
-    testes: { ...base.testes, ...(dados.testes || {}) },
-    descritores: lista(dados.descritores),
-    imunidades: lista(dados.imunidades),
-    resistencias: lista(dados.resistencias),
-    vulnerabilidades: lista(dados.vulnerabilidades),
-    pericias: lista(dados.pericias).map((p) => ({ nome: texto(p.nome), dados: Number(p.dados) || 1, bonus: Number(p.bonus) || 0 })),
-    acoes: lista(dados.acoes).map((a) => ({
-      tipo: a.tipo || 'Padrão', nome: texto(a.nome), detalhe: texto(a.detalhe),
-      teste: texto(a.teste), dano: texto(a.dano), critico: texto(a.critico), descricao: texto(a.descricao),
-    })),
-    habilidades: lista(dados.habilidades).map((h) => ({ nome: texto(h.nome), custo: texto(h.custo), descricao: texto(h.descricao) })),
-    poderes: lista(dados.poderes).map((h) => ({ nome: texto(h.nome), custo: texto(h.custo), descricao: texto(h.descricao) })),
-    roleplay: { ...base.roleplay, ...(dados.roleplay || {}) },
-    tags: lista(dados.tags),
-    imagem: dados.imagem || null,
+    nex: numeroOu(dados.nex, ''),
+    habilidades: [...comum.habilidades, ...lista(dados.poderes).map(habLimpa)],
+    equipamento: lista(dados.equipamento).map(texto),
   };
 }
 
@@ -154,7 +215,7 @@ export function lerFichasDeTexto(textoJson) {
  * ou importar noutro computador). Tira o que só faz sentido nesta app. */
 export function fichaParaExportar(f) {
   // eslint-disable-next-line no-unused-vars
-  const { id, atualizadoEm, versao, pvAtual, peAtual, sanAtual, pvTemp, ...resto } = f;
+  const { id, atualizadoEm, versao, pvAtual, peAtual, sanAtual, pvTemp, imagemPosX, imagemPosY, imagemZoom, ...resto } = f;
   return { formato: FORMATO_FICHA_LIVRE, versao: VERSAO_FICHA_LIVRE, ...resto };
 }
 
@@ -165,8 +226,8 @@ export function vitaisLivre(f) {
   const san = Number(f.san);
   return {
     pv: { atual: Number(f.pvAtual ?? pvMax), max: pvMax, temp: 0 },
-    pe: Number.isFinite(pe) && f.pe !== '' ? { atual: Number(f.peAtual ?? pe), max: pe, temp: 0 } : null,
-    san: Number.isFinite(san) && f.san !== '' ? { atual: Number(f.sanAtual ?? san), max: san, temp: 0 } : null,
+    pe: Number.isFinite(pe) && f.pe !== '' && f.pe != null ? { atual: Number(f.peAtual ?? pe), max: pe, temp: 0 } : null,
+    san: Number.isFinite(san) && f.san !== '' && f.san != null ? { atual: Number(f.sanAtual ?? san), max: san, temp: 0 } : null,
     defesa: Number(f.defesa) || 10,
     agi: Number(f.atributos?.agi ?? 1) || 0,
   };
