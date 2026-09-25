@@ -650,8 +650,26 @@ body.sem-scroll { overflow: hidden; }
   border: 1px solid var(--linha-forte); border-radius: 5px; padding: 2px 7px;
   background: var(--bg-2); font-family: var(--corpo);
 }
-@media (max-width: 1000px) { .busca-topbar { min-width: 0; } .busca-topbar-texto { display: none; } }
-@media (max-width: 720px) { .busca-topbar { padding: 7px; border-radius: 50%; } .busca-topbar-atalho { display: none; } }
+@media (max-width: 1250px) {
+  .busca-topbar {
+    min-width: 0;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 50%;
+    justify-content: center;
+    gap: 0;
+  }
+  .busca-topbar-texto,
+  .busca-topbar-atalho {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  .busca-topbar {
+    top: 26px;
+  }
+}
 
 .container { width: 100%; max-width: 1240px; margin: 0 auto; padding: 26px 18px 90px; }
 

@@ -358,7 +358,13 @@ export default function App() {
         </div>
 
         {vista !== 'inicio' && (
-          <button type="button" className="busca-topbar" onClick={() => setVerBusca(true)} title="Busca rápida — rituais, poderes, perícias, itens, condições">
+          <button
+            type="button"
+            className="busca-topbar"
+            onClick={() => setVerBusca(true)}
+            title="Busca rápida — rituais, poderes, perícias, itens, condições"
+            aria-label="Busca rápida"
+          >
             <IconeBusca size={15} className="busca-topbar-icone" />
             <span className="busca-topbar-texto">Busca rápida…</span>
           </button>
