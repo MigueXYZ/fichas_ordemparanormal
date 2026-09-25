@@ -1,0 +1,753 @@
+import React from 'react';
+import tokenPlaceholder from '../../assets/token-placeholder.png';
+import EditorTags from '../EditorTags.jsx';
+import { rolarTeste, rolarDano, quantidadeDados } from '../../engine/dados.js';
+import { acoesDeAmeaca, parseTesteTexto, parseDanoTexto } from '../../engine/combateAtaques.js';
+import {
+  roleplayDe, camposRoleplay, ELEMENTOS, TAMANHOS, CLASSES_NPC, PERICIAS_BASE_NPC,
+  lerPool, poolTexto, textoDeslocamento, lerDeslocamento, normalizarSentidos, dtRitualNpc,
+} from '../../engine/fichaLivre.js';
+
+/** Uma ação que é mesmo um ataque (tem teste ou dano) — o resto são habilidades de ação. */
+const ehAtaque = (a) => Boolean(String(a?.teste || '').trim() || String(a?.dano || '').trim());
+import { BlocoStat, TabelaLinha, CampoRoleplay } from './FichaCardBlocos.jsx';
+import TokenFicha from './TokenFicha.jsx';
+
+const TIPOS_ACAO = ['Padrão', 'Movimento', 'Livre', 'Reação', 'Completa'];
+const ATRIBUTOS = ['agi', 'for', 'int', 'pre', 'vig'];
+
+/** "20" → 20, "" → "", "20 (grupo)" fica texto. */
+const numOuTexto = (v) => (v === '' ? '' : /^-?\d+$/.test(v.trim()) ? Number(v) : v);
+const temValor = (v) => v !== '' && v !== null && v !== undefined;
+/** "30/65" durante o combate, "65" fora dele. */
+const atualDe = (atual, max) => (temValor(atual) && atual !== max ? `${atual}/${max}` : max);
+
+/**
+ * Ficha livre (ver engine/fichaLivre.js) com a moldura da "ficha 4": coluna
+ * de jogo à esquerda, roleplay/narração + token à direita. Há dois modelos:
+ * CartaoAmeaca segue a Ficha de Ameaça oficial; CartaoNpc é uma pessoa
+ * (classe, NEX, PV/PE/SAN, perícias, ataques, rituais, equipamento).
+ * Em modo de ler, perícias, testes e ações rolam com um clique.
+ *
+ * `onAtualizar(patch)` recebe os campos alterados de uma vez.
+ */
+export default function FichaLivreCard(props) {
+  return props.f.tipo === 'ameaca' ? <CartaoAmeaca {...props} /> : <CartaoNpc {...props} />;
+}
+
+// ------------------------------------------------------------ peças comuns
+
+function usarFicha(f, onAtualizar, onRolar) {
+  const set = (campo, valor) => onAtualizar({ [campo]: valor });
+  const rolarPool = (nome, dados, bonus) => {
+    if (!onRolar || dados == null || Number.isNaN(Number(dados))) return;
+    onRolar(rolarTeste({ nome: `${f.nome} — ${nome}`, dados: Number(dados), bonus: Number(bonus) || 0 }));
+  };
+  const rolarTexto = (nome, txt) => { const p = parseTesteTexto(txt); if (p) rolarPool(nome, p.dados, p.bonus); };
+  const rolarDanoTexto = (nome, txt) => {
+    const p = parseDanoTexto(txt);
+    if (p && onRolar) onRolar(rolarDano({ nome: `${f.nome} — ${nome}`, dano: p.dano, tipoDano: p.tipoDano }));
+  };
+  const editarItem = (campo, lista, i, patch) => {
+    const novas = [...lista];
+    novas[i] = typeof patch === 'object' ? { ...novas[i], ...patch } : patch;
+    set(campo, novas);
+  };
+  const removerItem = (campo, lista, i) => set(campo, lista.filter((_, j) => j !== i));
+  return { set, rolarPool, rolarTexto, rolarDanoTexto, editarItem, removerItem };
+}
+
+function Campo({ rotulo, valor, onChange, placeholder, largura }) {
+  return (
+    <div className="campo" style={{ marginBottom: 0, ...(largura ? { maxWidth: largura } : null) }}>
+      <label>{rotulo}</label>
+      <input type="text" value={valor ?? ''} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}
+
+/** Um teste do bloco de ameaça: [dados] d20 + [bónus], guardado como "2d20+5".
+ * Os dois números têm estado próprio para se poder apagar um e escrever outro
+ * sem o campo saltar para "1". Um texto antigo que não seja Nd20+B (ex.:
+ * "+2d20 contra medo") continua editável como texto. */
+function CampoD20({ rotulo, valor, onChange }) {
+  const puro = !valor || /^\s*-?\d+d20([+-]\d+)?\s*$/i.test(String(valor));
+  const p = lerPool(valor);
+  const [dados, setDados] = React.useState(p ? String(p.dados) : '');
+  const [bonus, setBonus] = React.useState(p ? String(p.bonus) : '');
+  React.useEffect(() => {
+    // só re-sincroniza quando o valor muda por fora (ex.: outra ficha aberta)
+    if ((valor || '') !== poolTexto(dados, bonus)) {
+      const q = lerPool(valor);
+      setDados(q ? String(q.dados) : '');
+      setBonus(q ? String(q.bonus) : '');
+    }
+  }, [valor]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!puro) {
+    return <Campo rotulo={rotulo} valor={valor} onChange={onChange} />;
+  }
+  const mudar = (d, b) => { setDados(d); setBonus(b); onChange(poolTexto(d, b)); };
+  return (
+    <div className="campo" style={{ marginBottom: 0 }}>
+      <label>{rotulo}</label>
+      <div className="ficha-livre-d20">
+        <input type="number" min="0" value={dados} placeholder="—" onChange={(e) => mudar(e.target.value, bonus)} />
+        <span>d20 +</span>
+        <input type="number" value={bonus} placeholder="—" onChange={(e) => mudar(dados, e.target.value)} />
+      </div>
+    </div>
+  );
+}
+
+function Atributos({ f, editando, set }) {
+  return (
+    <BlocoStat titulo="Atributos">
+      {editando ? (
+        <div className="grelha-editor" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
+          {ATRIBUTOS.map((k) => (
+            <Campo key={k} rotulo={k.toUpperCase()} valor={f.atributos?.[k]} onChange={(v) => set('atributos', { ...(f.atributos || {}), [k]: numOuTexto(v) })} />
+          ))}
+        </div>
+      ) : (
+        <TabelaLinha colunas={ATRIBUTOS.map((k) => ({ rotulo: k.toUpperCase(), valor: f.atributos?.[k] ?? '—' }))} />
+      )}
+    </BlocoStat>
+  );
+}
+
+/** Linhas "Nome ... teste" que rolam ao clicar (sentidos, testes de resistência). */
+function ListaRolavel({ linhas, rolarTexto, onRolar }) {
+  const comValor = linhas.filter(([, v]) => v);
+  if (comValor.length === 0) return <span className="dica">—</span>;
+  return (
+    <ul className="previa-pericias">
+      {comValor.map(([rotulo, v]) => (
+        <li key={rotulo} style={{ cursor: onRolar ? 'pointer' : undefined }} onClick={() => rolarTexto(rotulo, v)} title={onRolar ? `Rolar ${rotulo}` : undefined}>
+          <span className="pn">{rotulo}</span><span className="pb">{v}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Pericias({ f, editando, h, onRolar, comuns }) {
+  const pericias = Array.isArray(f.pericias) ? f.pericias : [];
+  // atalho: junta as perícias comuns que ainda faltam
+  const emFalta = (comuns || []).filter((n) => !pericias.some((p) => p.nome.toLowerCase() === n.toLowerCase()));
+  return (
+    <BlocoStat titulo="Perícias" extra={pericias.length ? `${pericias.length}` : null}>
+      {editando ? (
+        <>
+          {pericias.map((p, i) => (
+            <div key={i} className="ameaca-linha-editavel ameaca-pericia-linha">
+              <input type="text" value={p.nome} onChange={(e) => h.editarItem('pericias', pericias, i, { nome: e.target.value })} />
+              <input type="number" value={p.dados} style={{ width: 44, flex: '0 0 auto' }} onChange={(e) => h.editarItem('pericias', pericias, i, { dados: Number(e.target.value) })} />
+              <span style={{ flex: '0 0 auto' }}>d20+</span>
+              <input type="number" value={p.bonus} style={{ width: 52, flex: '0 0 auto' }} onChange={(e) => h.editarItem('pericias', pericias, i, { bonus: Number(e.target.value) })} />
+              <button type="button" className="btn-remover-linha" onClick={() => h.removerItem('pericias', pericias, i)}>×</button>
+            </div>
+          ))}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+            <button type="button" className="btn ghost sm" onClick={() => h.set('pericias', [...pericias, { nome: 'Nova perícia', dados: 1, bonus: 0 }])}>+ Perícia</button>
+            {emFalta.length > 0 && (
+              <button type="button" className="btn ghost sm" title={emFalta.join(', ')}
+                onClick={() => h.set('pericias', [...pericias, ...emFalta.map((nome) => ({ nome, dados: 1, bonus: 0 }))])}>+ Perícias comuns</button>
+            )}
+          </div>
+        </>
+      ) : pericias.length === 0 ? (
+        <span className="dica">Sem perícias.</span>
+      ) : (
+        <ul className="previa-pericias">
+          {pericias.map((p, i) => (
+            <li key={i} style={{ cursor: onRolar ? 'pointer' : undefined }} onClick={() => h.rolarPool(p.nome, p.dados, p.bonus)} title={onRolar ? `Rolar ${p.nome}` : undefined}>
+              <span className="pn">{p.nome}</span>
+              <span className="pb">{quantidadeDados(p.dados)}d20 {p.bonus >= 0 ? '+' : '−'}{Math.abs(p.bonus)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </BlocoStat>
+  );
+}
+
+/** Uma lista de linhas de texto (resistências, imunidades, equipamento…). */
+function ListaTexto({ f, campo, rotulo, placeholder, editando, h, sempre }) {
+  const lista = Array.isArray(f[campo]) ? f[campo] : [];
+  if (!editando && lista.length === 0 && !sempre) return null;
+  return (
+    <BlocoStat titulo={rotulo} extra={lista.length > 1 ? `${lista.length}` : null}>
+      {editando ? (
+        <>
+          {lista.map((linha, i) => (
+            <div key={i} className="ameaca-linha-editavel">
+              <input type="text" value={linha} placeholder={placeholder} onChange={(e) => h.editarItem(campo, lista, i, e.target.value)} />
+              <button type="button" className="btn-remover-linha" onClick={() => h.removerItem(campo, lista, i)}>×</button>
+            </div>
+          ))}
+          <button type="button" className="btn ghost sm" style={{ marginTop: 4 }} onClick={() => h.set(campo, [...lista, ''])}>+ {rotulo}</button>
+        </>
+      ) : lista.length === 0 ? (
+        <span className="dica">—</span>
+      ) : (
+        <div style={{ fontSize: 13, color: 'var(--txt-dim)' }}>{lista.join(' · ')}</div>
+      )}
+    </BlocoStat>
+  );
+}
+
+function Acoes({ f, editando, h, onRolar, titulo, novo, soAtaques }) {
+  const todas = acoesDeAmeaca(f);
+  // Nos NPCs, ao ler, só os ataques ficam aqui; Movimento/Reação/Livre… sem
+  // teste nem dano aparecem em Habilidades & Poderes (ver Habilidades).
+  const acoes = !editando && soAtaques ? todas.filter(ehAtaque) : todas;
+  return (
+    <BlocoStat titulo={titulo} extra={acoes.length ? `${acoes.length}` : null}>
+      {editando ? (
+        <>
+          {acoes.map((acao, i) => (
+            <div key={i} className="bloco arma" style={{ marginTop: i ? 10 : 0 }}>
+              <div className="topo" style={{ gap: 8 }}>
+                <select value={acao.tipo || 'Padrão'} style={{ width: 110, flex: '0 0 auto' }} onChange={(e) => h.editarItem('acoes', acoes, i, { tipo: e.target.value })}>
+                  {TIPOS_ACAO.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+                <input type="text" value={acao.nome || ''} placeholder="Nome" style={{ fontFamily: 'var(--display)', fontSize: 16 }}
+                  onChange={(e) => h.editarItem('acoes', acoes, i, { nome: e.target.value })} />
+                <button type="button" className="btn-remover-linha" onClick={() => h.removerItem('acoes', acoes, i)}>×</button>
+              </div>
+              <input type="text" value={acao.detalhe || ''} placeholder="Corpo a corpo x2 · À distância, curto…" style={{ marginTop: 6, fontSize: 13 }}
+                onChange={(e) => h.editarItem('acoes', acoes, i, { detalhe: e.target.value })} />
+              <div className="grelha-editor" style={{ gridTemplateColumns: '1fr 1.3fr .8fr', marginTop: 6 }}>
+                <Campo rotulo="Teste" valor={acao.teste} placeholder="2d20+5" onChange={(v) => h.editarItem('acoes', acoes, i, { teste: v })} />
+                <Campo rotulo="Dano" valor={acao.dano} placeholder="1d8+2 corte" onChange={(v) => h.editarItem('acoes', acoes, i, { dano: v })} />
+                <Campo rotulo="Crítico" valor={acao.critico} placeholder="19/x2" onChange={(v) => h.editarItem('acoes', acoes, i, { critico: v })} />
+              </div>
+              <textarea rows={acao.descricao ? 2 : 1} value={acao.descricao || ''} placeholder="Efeito, condições, regra completa…" style={{ width: '100%', marginTop: 6 }}
+                onChange={(e) => h.editarItem('acoes', acoes, i, { descricao: e.target.value })} />
+            </div>
+          ))}
+          <button type="button" className="btn ghost sm" style={{ marginTop: acoes.length ? 10 : 0 }}
+            onClick={() => h.set('acoes', [...acoes, { tipo: 'Padrão', nome: novo, detalhe: '', teste: '', dano: '', critico: '', descricao: '' }])}>+ {novo}</button>
+        </>
+      ) : acoes.length === 0 ? (
+        <span className="dica">Nada definido.</span>
+      ) : (
+        <div className="ficha-livre-acoes">
+          {acoes.map((acao, i) => (
+            <div key={i} className="ficha-livre-acao">
+              <div className="ficha-livre-acao-topo">
+                <b>{acao.nome}</b>
+                <span className="ficha-livre-tag">{acao.tipo || 'Padrão'}</span>
+                {acao.detalhe && <span className="ficha-livre-det">{acao.detalhe}</span>}
+              </div>
+              {(acao.teste || acao.dano || acao.critico) && (
+                <div className="ficha-livre-acao-numeros">
+                  {acao.teste && <span>Teste <b>{acao.teste}</b></span>}
+                  {acao.dano && <span>Dano <b>{acao.dano}</b></span>}
+                  {acao.critico && <span>Crítico <b>{acao.critico}</b></span>}
+                  {onRolar && (acao.teste || acao.dano) && (
+                    <span className="ficha-livre-acao-botoes">
+                      {acao.teste && <button type="button" className="btn sm" onClick={() => h.rolarTexto(acao.nome, acao.teste)}>Atacar</button>}
+                      {acao.dano && <button type="button" className="btn ghost sm" onClick={() => h.rolarDanoTexto(`${acao.nome} — dano`, acao.dano)}>Dano</button>}
+                    </span>
+                  )}
+                </div>
+              )}
+              {acao.descricao && <div className="ficha-livre-det" style={{ marginTop: 4 }}>{acao.descricao}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+    </BlocoStat>
+  );
+}
+
+function Habilidades({ f, editando, h, titulo, comAcoesNaoAtaque }) {
+  const habilidades = Array.isArray(f.habilidades) ? f.habilidades : [];
+  // "poderes" das ameaças/ocultistas gerados — só se mostram, junto às habilidades;
+  // nos NPCs, também as ações sem teste nem dano (ex.: "Ponto Fraco", Movimento)
+  const extra = [
+    ...(Array.isArray(f.poderes) ? f.poderes : []),
+    ...(comAcoesNaoAtaque ? acoesDeAmeaca(f).filter((a) => !ehAtaque(a)).map((a) => ({ nome: a.nome, custo: a.tipo, descricao: a.descricao })) : []),
+  ];
+  if (!editando && habilidades.length + extra.length === 0) return null;
+  return (
+    <BlocoStat titulo={titulo} extra={habilidades.length + extra.length ? `${habilidades.length + extra.length}` : null}>
+      {editando ? (
+        <>
+          {habilidades.map((hab, i) => (
+            <div key={i} className="bloco" style={{ marginTop: i ? 10 : 0 }}>
+              <div className="topo" style={{ gap: 8 }}>
+                <input type="text" value={hab.nome || ''} placeholder="Nome" style={{ fontFamily: 'var(--display)', fontSize: 16 }}
+                  onChange={(e) => h.editarItem('habilidades', habilidades, i, { nome: e.target.value })} />
+                <input type="text" value={hab.custo || ''} placeholder="Custo / ação" style={{ width: 130, flex: '0 0 auto', fontSize: 13 }}
+                  onChange={(e) => h.editarItem('habilidades', habilidades, i, { custo: e.target.value })} />
+                <button type="button" className="btn-remover-linha" onClick={() => h.removerItem('habilidades', habilidades, i)}>×</button>
+              </div>
+              <textarea rows={2} value={hab.descricao || ''} placeholder="O que faz, ativação, efeitos…" style={{ width: '100%', marginTop: 6 }}
+                onChange={(e) => h.editarItem('habilidades', habilidades, i, { descricao: e.target.value })} />
+            </div>
+          ))}
+          <button type="button" className="btn ghost sm" style={{ marginTop: habilidades.length ? 10 : 0 }}
+            onClick={() => h.set('habilidades', [...habilidades, { nome: 'Nova habilidade', custo: '', descricao: '' }])}>+ Habilidade</button>
+        </>
+      ) : (
+        <div className="ficha-livre-habilidades">
+          {[...habilidades, ...extra].map((hab, i) => (
+            <div key={i}>
+              <b>{hab.nome}</b>{hab.custo && <span className="ficha-livre-tag">{hab.custo}</span>}
+              {hab.descricao && <div className="ficha-livre-det">{hab.descricao}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+    </BlocoStat>
+  );
+}
+
+/** A DT para resistir aos rituais do NPC: 10 + limite de PE + Presença (ou o valor fixado à mão). */
+function DtRitual({ f, editando, set }) {
+  const dt = dtRitualNpc(f);
+  if (editando) {
+    return (
+      <div className="ficha-livre-dt-ritual" style={{ display: 'block' }}>
+        <div className="grelha-editor" style={{ gridTemplateColumns: '1fr 1fr' }}>
+          <Campo rotulo="Limite de PE por conjuração" valor={f.limitePe} placeholder="ex.: 3" onChange={(v) => set('limitePe', numOuTexto(v))} />
+          <Campo rotulo="DT de Ritual (vazio = automática)" valor={f.dtRitual} placeholder={dt && !dt.manual ? String(dt.total) : '—'} onChange={(v) => set('dtRitual', numOuTexto(v))} />
+        </div>
+        <div className="dica" style={{ fontSize: 11, marginTop: 6 }}>
+          Regra do livro: DT = 10 + limite de PE + Presença.{dt && !dt.manual ? ` Agora: 10 + ${dt.limite} + ${dt.pre} = ${dt.total}.` : ''}
+        </div>
+      </div>
+    );
+  }
+  if (!dt) return null;
+  return (
+    <div className="ficha-livre-dt-ritual" title="A DT que os alvos têm de passar para resistir aos rituais deste NPC">
+      <span>DT de Ritual</span>
+      <b>{dt.total}</b>
+      <span className="conta">{dt.manual ? 'fixada na ficha' : `10 + limite de PE ${dt.limite} + Presença ${dt.pre}`}</span>
+    </div>
+  );
+}
+
+function Rituais({ f, editando, h, comDt }) {
+  const rituais = Array.isArray(f.rituais) ? f.rituais : [];
+  const [abertos, setAbertos] = React.useState(() => new Set());
+  if (!editando && rituais.length === 0) return null;
+  const dtFicha = comDt ? dtRitualNpc(f)?.total : null;
+  const alternar = (i) => setAbertos((antes) => { const s = new Set(antes); if (s.has(i)) s.delete(i); else s.add(i); return s; });
+  const todosAbertos = rituais.length > 0 && abertos.size === rituais.length;
+  return (
+    <BlocoStat titulo="Rituais" extra={rituais.length ? `${rituais.length}` : null}>
+      {comDt && <DtRitual f={f} editando={editando} set={h.set} />}
+      {editando ? (
+        <>
+          {rituais.map((r, i) => (
+            <div key={i} className="bloco" style={{ marginTop: i ? 10 : 0 }}>
+              <div className="topo" style={{ gap: 8 }}>
+                <input type="text" value={r.nome || ''} placeholder="Nome do ritual" style={{ fontFamily: 'var(--display)', fontSize: 16 }}
+                  onChange={(e) => h.editarItem('rituais', rituais, i, { nome: e.target.value })} />
+                <button type="button" className="btn-remover-linha" onClick={() => h.removerItem('rituais', rituais, i)}>×</button>
+              </div>
+              <div className="grelha-editor" style={{ gridTemplateColumns: '.7fr 1.2fr .8fr .7fr', marginTop: 6 }}>
+                <Campo rotulo="Círculo" valor={r.circulo} placeholder="1" onChange={(v) => h.editarItem('rituais', rituais, i, { circulo: v })} />
+                <div className="campo" style={{ marginBottom: 0 }}>
+                  <label>Elemento</label>
+                  <select value={r.elemento || ''} onChange={(e) => h.editarItem('rituais', rituais, i, { elemento: e.target.value })}>
+                    <option value="">—</option>
+                    {ELEMENTOS.map((el) => <option key={el} value={el}>{el}</option>)}
+                  </select>
+                </div>
+                <Campo rotulo="Custo" valor={r.custo} placeholder="1 PE" onChange={(v) => h.editarItem('rituais', rituais, i, { custo: v })} />
+                <Campo rotulo="DT" valor={r.dt} placeholder="15" onChange={(v) => h.editarItem('rituais', rituais, i, { dt: v })} />
+              </div>
+              <div className="grelha-editor" style={{ gridTemplateColumns: '1fr 1fr', marginTop: 6 }}>
+                <Campo rotulo="Execução" valor={r.execucao} placeholder="Padrão" onChange={(v) => h.editarItem('rituais', rituais, i, { execucao: v })} />
+                <Campo rotulo="Alcance" valor={r.alcance} placeholder="Curto" onChange={(v) => h.editarItem('rituais', rituais, i, { alcance: v })} />
+              </div>
+              <textarea rows={2} value={r.descricao || ''} placeholder="Efeito do ritual…" style={{ width: '100%', marginTop: 6 }}
+                onChange={(e) => h.editarItem('rituais', rituais, i, { descricao: e.target.value })} />
+            </div>
+          ))}
+          <button type="button" className="btn ghost sm" style={{ marginTop: rituais.length ? 10 : 0 }}
+            onClick={() => h.set('rituais', [...rituais, { nome: 'Novo ritual', circulo: '1', elemento: '', dt: '', custo: '', execucao: '', alcance: '', descricao: '' }])}>+ Ritual</button>
+        </>
+      ) : (
+        <>
+          {rituais.length > 1 && (
+            <button type="button" className="btn ghost sm" style={{ marginBottom: 8 }}
+              onClick={() => setAbertos(todosAbertos ? new Set() : new Set(rituais.map((_, i) => i)))}>
+              {todosAbertos ? '▴ Fechar todos' : '▾ Abrir todos'}
+            </button>
+          )}
+          <div className="ficha-livre-habilidades">
+            {rituais.map((r, i) => {
+              const aberto = abertos.has(i);
+              const dt = temValor(r.dt) ? r.dt : dtFicha;
+              return (
+                <div key={i}>
+                  <div className="ritual-linha-topo" onClick={() => alternar(i)} role="button" tabIndex={0} aria-expanded={aberto}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); alternar(i); } }}>
+                    <span className="bloco-stat-seta" aria-hidden="true">{aberto ? '▾' : '▸'}</span>
+                    <b>{r.nome}</b>
+                    <span className="ficha-livre-tag">{[r.circulo && `${r.circulo}º círculo`, r.elemento, r.custo, temValor(dt) && `DT ${dt}`].filter(Boolean).join(' · ')}</span>
+                  </div>
+                  {aberto && (
+                    <>
+                      {(r.execucao || r.alcance) && <div className="ficha-livre-det">{[r.execucao && `Execução: ${r.execucao}`, r.alcance && `Alcance: ${r.alcance}`].filter(Boolean).join(' · ')}</div>}
+                      {r.descricao && <div className="ficha-livre-det" style={{ whiteSpace: 'pre-line' }}>{r.descricao}</div>}
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </BlocoStat>
+  );
+}
+
+function Notas({ f, editando, set }) {
+  if (!f.notas && !editando) return null;
+  return (
+    <BlocoStat titulo="Notas">
+      {editando
+        ? <textarea rows={2} value={f.notas || ''} style={{ width: '100%' }} onChange={(e) => set('notas', e.target.value)} />
+        : <div className="ficha-npc-historia" style={{ marginTop: 0 }}>{f.notas}</div>}
+    </BlocoStat>
+  );
+}
+
+/** Roleplay/narração em cima, token, e por baixo do token os blocos curtos
+ * (`children`) — para a imagem não ficar sozinha numa coluna meio vazia. */
+function ColunaDireita({ f, editando, set, onAtualizar, titulo, vazioToken, children }) {
+  const rp = roleplayDe(f);
+  const campos = camposRoleplay(f.tipo);
+  return (
+    <div className="ficha-npc-coluna-direita">
+      <div className="ficha-npc-roleplay">
+        <div className="ficha-npc-rp-cabecalho">{titulo}</div>
+        {editando ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {campos.map(([k, rotulo]) => (
+              <div className="campo" key={k} style={{ marginBottom: 0 }}>
+                <label>{rotulo}</label>
+                <textarea rows={2} value={rp[k] || ''} onChange={(e) => set('roleplay', { ...rp, [k]: e.target.value })} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <>
+            {campos.filter(([k]) => k !== 'notasMestre').map(([k, rotulo]) => <CampoRoleplay key={k} rotulo={rotulo} valor={rp[k]} />)}
+            {rp.notasMestre && (
+              <div className="ficha-livre-segredo">
+                <div className="ficha-npc-rp-rotulo">{campos.find(([k]) => k === 'notasMestre')[1]}</div>
+                <div className="ficha-npc-rp-texto">{rp.notasMestre}</div>
+              </div>
+            )}
+            {campos.every(([k]) => !rp[k]) && <p className="dica" style={{ fontSize: 12 }}>Vazio — carrega em "Editar" para o escreveres.</p>}
+          </>
+        )}
+      </div>
+      <div className="ficha-npc-token ficha-token-fixo">
+        <TokenFicha imagem={f.imagem} nome={f.nome} editavel={editando} vazio={vazioToken}
+          aoMudar={(imagem) => onAtualizar({ imagem, imagemPosX: undefined, imagemPosY: undefined, imagemZoom: undefined })} />
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// -------------------------------------------------------------- ameaça
+
+function CartaoAmeaca({ f, editando, onAtualizar, onRolar }) {
+  const h = usarFicha(f, onAtualizar, onRolar);
+  const { set } = h;
+  const descritores = Array.isArray(f.descritores) ? f.descritores : [];
+  const principal = ELEMENTOS.includes(descritores[0]) ? descritores[0] : '';
+  const secundarios = principal ? descritores.slice(1) : descritores;
+  const pp = f.presencaPerturbadora;
+  const linha = [descritores.join(' · '), f.tamanho, f.categoria].filter(Boolean).join(' · ');
+  // ameaças do compêndio/gerador trazem "(Percepção às cegas)" no texto e o
+  // deslocamento só como "9m | 6 (voando)" — normaliza-se ao mostrar/editar
+  const sentidos = normalizarSentidos(f.sentidos);
+  const especiais = [sentidos.visaoNoEscuro && 'Visão no escuro', sentidos.percepcaoAsCegas && 'Percepção às cegas', sentidos.extra].filter(Boolean).join(' · ');
+  const desl = f.deslocamentos || lerDeslocamento(f.deslocamento);
+
+  return (
+    <div className="ficha-npc ficha-livre" style={{ marginTop: 16 }}>
+      <div className="ficha-npc-cabecalho">
+        {editando ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input type="text" value={f.nome || ''} placeholder="Nome da criatura" onChange={(e) => set('nome', e.target.value)} style={{ fontSize: 20, fontWeight: 'bold', flex: 1 }} />
+              <label className="ficha-livre-mini">VD<input type="text" value={f.vd ?? ''} onChange={(e) => set('vd', numOuTexto(e.target.value))} /></label>
+            </div>
+            <div className="grelha-editor" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+              <div className="campo" style={{ marginBottom: 0 }}>
+                <label>Elemento principal</label>
+                <select value={principal} onChange={(e) => set('descritores', [e.target.value, ...secundarios].filter(Boolean))}>
+                  <option value="">— (Realidade)</option>
+                  {ELEMENTOS.map((el) => <option key={el} value={el}>{el}</option>)}
+                </select>
+              </div>
+              <div className="campo" style={{ marginBottom: 0 }}>
+                <label>Tamanho</label>
+                <select value={f.tamanho || ''} onChange={(e) => set('tamanho', e.target.value)}>
+                  {TAMANHOS.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <Campo rotulo="Categoria" valor={f.categoria} placeholder="Criatura, Pessoa, Animal…" onChange={(v) => set('categoria', v)} />
+            </div>
+            <EditorTags tags={secundarios} onChange={(v) => set('descritores', [principal, ...v].filter(Boolean))} rotulo="" dica=""
+              placeholder="Elementos secundários / descritores…" sugestoesPersonalizadas={[...ELEMENTOS, 'Criatura', 'Humano', 'Animal']} />
+            <textarea rows={3} value={f.historia || ''} placeholder="Descrição — o que é, de onde veio, como se manifesta."
+              onChange={(e) => set('historia', e.target.value)} style={{ fontSize: 13 }} />
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+              <div className="ficha-npc-nome" style={{ flex: 1 }}>{f.nome}</div>
+              {temValor(f.vd) && <span className="ficha-livre-vd">VD {f.vd}</span>}
+            </div>
+            {linha && <div className="ficha-npc-breve">{linha}</div>}
+            {f.historia && <div className="ficha-npc-historia">{f.historia}</div>}
+          </>
+        )}
+      </div>
+
+      <div className="ficha-npc-corpo">
+        <div className="ficha-npc-stats">
+          {(pp || editando) && (
+            <BlocoStat titulo="Presença Perturbadora">
+              {editando ? (
+                pp ? (
+                  <div className="grelha-editor" style={{ gridTemplateColumns: '.8fr 1.4fr .8fr auto', alignItems: 'end' }}>
+                    <Campo rotulo="DT" valor={pp.dt} onChange={(v) => set('presencaPerturbadora', { ...pp, dt: numOuTexto(v) })} />
+                    <Campo rotulo="Dano mental" valor={pp.dano} placeholder="2d6 mental" onChange={(v) => set('presencaPerturbadora', { ...pp, dano: v })} />
+                    <Campo rotulo="NEX %" valor={pp.nex} placeholder="30" onChange={(v) => set('presencaPerturbadora', { ...pp, nex: v })} />
+                    <button type="button" className="btn-remover-linha" title="Sem presença perturbadora" onClick={() => set('presencaPerturbadora', null)}>×</button>
+                  </div>
+                ) : (
+                  <button type="button" className="btn ghost sm" onClick={() => set('presencaPerturbadora', { dt: '', dano: '', nex: '' })}>+ Presença Perturbadora</button>
+                )
+              ) : (
+                <div className="ficha-livre-acao-numeros" style={{ marginTop: 0 }}>
+                  {temValor(pp.dt) && <span>DT <b>{pp.dt}</b></span>}
+                  {pp.dano && <span>Dano <b>{pp.dano}</b></span>}
+                  {temValor(pp.nex) && <span>Imune a partir de <b>NEX {pp.nex}%</b></span>}
+                </div>
+              )}
+            </BlocoStat>
+          )}
+
+          <BlocoStat titulo="Sentidos">
+            {editando ? (
+              <>
+                <div className="grelha-editor" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                  <CampoD20 rotulo="Percepção" valor={sentidos.percepcao} onChange={(v) => set('sentidos', { ...sentidos, percepcao: v })} />
+                  <CampoD20 rotulo="Iniciativa" valor={sentidos.iniciativa} onChange={(v) => set('sentidos', { ...sentidos, iniciativa: v })} />
+                </div>
+                <div className="ficha-livre-marcas">
+                  <label><input type="checkbox" checked={sentidos.visaoNoEscuro} onChange={(e) => set('sentidos', { ...sentidos, visaoNoEscuro: e.target.checked })} /> Visão no escuro</label>
+                  <label><input type="checkbox" checked={sentidos.percepcaoAsCegas} onChange={(e) => set('sentidos', { ...sentidos, percepcaoAsCegas: e.target.checked })} /> Percepção às cegas</label>
+                </div>
+                <Campo rotulo="Outros sentidos" valor={sentidos.extra} placeholder="Faro, sentir vibrações…" onChange={(v) => set('sentidos', { ...sentidos, extra: v })} />
+              </>
+            ) : (
+              <>
+                <ListaRolavel linhas={[['Percepção', sentidos.percepcao], ['Iniciativa', sentidos.iniciativa]]} rolarTexto={h.rolarTexto} onRolar={onRolar} />
+                {especiais && <div className="ficha-livre-det" style={{ marginTop: 6 }}>{especiais}</div>}
+              </>
+            )}
+          </BlocoStat>
+
+          <BlocoStat titulo="Defesa">
+            {editando ? (
+              <div className="grelha-editor" style={{ gridTemplateColumns: '.7fr 1fr 1fr 1fr' }}>
+                <Campo rotulo="Defesa" valor={f.defesa} onChange={(v) => set('defesa', numOuTexto(v))} />
+                {[['fortitude', 'Fortitude'], ['reflexos', 'Reflexos'], ['vontade', 'Vontade']].map(([k, r]) => (
+                  <CampoD20 key={k} rotulo={r} valor={f.testes?.[k]} onChange={(v) => set('testes', { ...(f.testes || {}), [k]: v })} />
+                ))}
+              </div>
+            ) : (
+              <>
+                <TabelaLinha colunas={[{ rotulo: 'Defesa', valor: f.defesa ?? '—' }]} />
+                <div style={{ marginTop: 8 }}>
+                  <ListaRolavel linhas={[['Fortitude', f.testes?.fortitude], ['Reflexos', f.testes?.reflexos], ['Vontade', f.testes?.vontade]]} rolarTexto={h.rolarTexto} onRolar={onRolar} />
+                </div>
+              </>
+            )}
+          </BlocoStat>
+
+          <BlocoStat titulo="Pontos de Vida">
+            {editando ? (
+              <div className="grelha-editor" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                <Campo rotulo="PV" valor={f.pv} onChange={(v) => set('pv', numOuTexto(v))} />
+                <Campo rotulo="Machucado" valor={f.pvMachucado} placeholder={temValor(f.pv) ? String(Math.floor(Number(f.pv) / 2) || '') : ''} onChange={(v) => set('pvMachucado', numOuTexto(v))} />
+              </div>
+            ) : (
+              <TabelaLinha colunas={[
+                { rotulo: 'PV', valor: temValor(f.pvAtual) && f.pvAtual !== f.pv ? `${f.pvAtual}/${f.pv}` : f.pv },
+                { rotulo: 'Machucado', valor: f.pvMachucado ?? '—' },
+              ]} />
+            )}
+          </BlocoStat>
+
+          <Atributos f={f} editando={editando} set={set} />
+          <Pericias f={f} editando={editando} h={h} onRolar={onRolar} />
+
+          <Habilidades f={f} editando={editando} h={h} titulo="Habilidades" />
+          <Acoes f={f} editando={editando} h={h} onRolar={onRolar} titulo="Ações" novo="Nova ação" />
+          {/* ameaças não têm rituais; só se mostram os que já venham (ocultistas gerados) */}
+          {!editando && <Rituais f={f} editando={false} h={h} />}
+
+          {(f.enigmaDoMedo != null || editando) && (
+            <BlocoStat titulo="Enigma do Medo">
+              {editando ? (
+                f.enigmaDoMedo != null ? (
+                  <>
+                    <textarea rows={4} value={f.enigmaDoMedo} style={{ width: '100%' }} onChange={(e) => set('enigmaDoMedo', e.target.value)} />
+                    <button type="button" className="btn-remover-linha" onClick={() => set('enigmaDoMedo', null)}>× sem enigma</button>
+                  </>
+                ) : (
+                  <button type="button" className="btn ghost sm" onClick={() => set('enigmaDoMedo', '')}>+ Enigma do Medo</button>
+                )
+              ) : (
+                <div className="ficha-npc-historia" style={{ marginTop: 0 }}>{f.enigmaDoMedo}</div>
+              )}
+            </BlocoStat>
+          )}
+
+        </div>
+
+        <ColunaDireita f={f} editando={editando} set={set} onAtualizar={onAtualizar} titulo="Narração"
+          vazioToken={<div className="ficha-livre-interrogacao" aria-hidden="true">?</div>}>
+          <ListaTexto f={f} campo="resistencias" rotulo="Resistências" placeholder="Balístico, corte e perfuração 10" editando={editando} h={h} />
+          <ListaTexto f={f} campo="vulnerabilidades" rotulo="Vulnerabilidades" placeholder="Morte" editando={editando} h={h} />
+          <ListaTexto f={f} campo="imunidades" rotulo="Imunidades" placeholder="Condições de paralisia" editando={editando} h={h} />
+          <BlocoStat titulo="Deslocamento">
+            {editando ? (
+              <div className="grelha-editor" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                {[['terrestre', 'Terrestre (m)'], ['escalada', 'Escalada (m)'], ['voo', 'Voo (m)']].map(([k, r]) => (
+                  <Campo key={k} rotulo={r} valor={desl[k]} placeholder="—" onChange={(v) => {
+                    const novo = { ...desl, [k]: numOuTexto(v) };
+                    onAtualizar({ deslocamentos: novo, deslocamento: textoDeslocamento(novo) });
+                  }} />
+                ))}
+              </div>
+            ) : (
+              <div className="ficha-livre-linha" style={{ marginTop: 0 }}><b>{textoDeslocamento(desl) || f.deslocamento || '—'}</b></div>
+            )}
+          </BlocoStat>
+          <Notas f={f} editando={editando} set={set} />
+          {editando && <EditorTags tags={f.tags || []} onChange={(v) => set('tags', v)} />}
+        </ColunaDireita>
+      </div>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------- NPC
+
+function CartaoNpc({ f, editando, onAtualizar, onRolar }) {
+  const h = usarFicha(f, onAtualizar, onRolar);
+  const { set } = h;
+  const linha = [f.classe, f.origem && `Origem: ${f.origem}`, f.trilha && `Trilha: ${f.trilha}`, temValor(f.nex) && `NEX ${f.nex}%`, f.afiliacao].filter(Boolean).join(' · ');
+
+  return (
+    <div className="ficha-npc ficha-livre" style={{ marginTop: 16 }}>
+      <div className="ficha-npc-cabecalho">
+        {editando ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <input type="text" value={f.nome || ''} placeholder="Nome do NPC" onChange={(e) => set('nome', e.target.value)} style={{ fontSize: 20, fontWeight: 'bold' }} />
+            <input type="text" value={f.breveDescricao || ''} placeholder="Conceito / ocupação (ex.: Agente veterano da Ordem, dono do bar…)"
+              onChange={(e) => set('breveDescricao', e.target.value)} style={{ fontSize: 13 }} />
+            <div className="grelha-editor" style={{ gridTemplateColumns: '1.2fr 1fr 1fr 1.2fr .6fr .6fr' }}>
+              <div className="campo" style={{ marginBottom: 0 }}>
+                <label>Classe</label>
+                <input type="text" list="classes-npc" value={f.classe || ''} placeholder="—" onChange={(e) => set('classe', e.target.value)} />
+                <datalist id="classes-npc">{CLASSES_NPC.map((c) => <option key={c} value={c} />)}</datalist>
+              </div>
+              <Campo rotulo="Origem" valor={f.origem} onChange={(v) => set('origem', v)} />
+              <Campo rotulo="Trilha" valor={f.trilha} onChange={(v) => set('trilha', v)} />
+              <Campo rotulo="Afiliação" valor={f.afiliacao} placeholder="Ordo Realitas…" onChange={(v) => set('afiliacao', v)} />
+              <Campo rotulo="NEX %" valor={f.nex} onChange={(v) => set('nex', numOuTexto(v))} />
+              <Campo rotulo="VD" valor={f.vd} placeholder="—" onChange={(v) => set('vd', numOuTexto(v))} />
+            </div>
+            <textarea rows={3} value={f.historia || ''} placeholder="História — quem é, o que faz, o que o liga à cena."
+              onChange={(e) => set('historia', e.target.value)} style={{ fontSize: 13 }} />
+          </div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+              <div className="ficha-npc-nome" style={{ flex: 1 }}>{f.nome}</div>
+              {temValor(f.vd) && <span className="ficha-livre-vd">VD {f.vd}</span>}
+            </div>
+            {f.breveDescricao && <div className="ficha-npc-breve">{f.breveDescricao}</div>}
+            {linha && <div className="ficha-npc-breve">{linha}</div>}
+            {f.historia && <div className="ficha-npc-historia">{f.historia}</div>}
+          </>
+        )}
+      </div>
+
+      <div className="ficha-npc-corpo">
+        <div className="ficha-npc-stats">
+          <Atributos f={f} editando={editando} set={set} />
+
+          <BlocoStat titulo="Vida & Recursos">
+            {editando ? (
+              <div className="grelha-editor" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                {[['pv', 'PV'], ['pe', 'PE'], ['san', 'SAN']].map(([k, r]) => (
+                  <Campo key={k} rotulo={r} valor={f[k]} placeholder="—" onChange={(v) => set(k, numOuTexto(v))} />
+                ))}
+              </div>
+            ) : (
+              <TabelaLinha colunas={[
+                { rotulo: 'PV', valor: atualDe(f.pvAtual, f.pv) },
+                { rotulo: 'PE', valor: temValor(f.pe) ? atualDe(f.peAtual, f.pe) : '—' },
+                { rotulo: 'SAN', valor: temValor(f.san) ? atualDe(f.sanAtual, f.san) : '—' },
+              ]} />
+            )}
+          </BlocoStat>
+
+          <BlocoStat titulo="Defesa">
+            {editando ? (
+              <div className="grelha-editor" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                {[['defesa', 'Defesa'], ['bloqueio', 'Bloqueio'], ['esquiva', 'Esquiva']].map(([k, r]) => (
+                  <Campo key={k} rotulo={r} valor={f[k]} placeholder="—" onChange={(v) => set(k, numOuTexto(v))} />
+                ))}
+              </div>
+            ) : (
+              <TabelaLinha colunas={[
+                { rotulo: 'Defesa', valor: temValor(f.defesa) ? f.defesa : '—' },
+                { rotulo: 'Bloqueio', valor: temValor(f.bloqueio) ? f.bloqueio : '—' },
+                { rotulo: 'Esquiva', valor: temValor(f.esquiva) ? f.esquiva : '—' },
+              ]} />
+            )}
+          </BlocoStat>
+
+          <Pericias f={f} editando={editando} h={h} onRolar={onRolar} comuns={PERICIAS_BASE_NPC} />
+          <Acoes f={f} editando={editando} h={h} onRolar={onRolar} titulo="Ataques" novo="Novo ataque" soAtaques />
+          <Habilidades f={f} editando={editando} h={h} titulo="Habilidades & Poderes" comAcoesNaoAtaque />
+          <Rituais f={f} editando={editando} h={h} comDt />
+        </div>
+
+        <ColunaDireita f={f} editando={editando} set={set} onAtualizar={onAtualizar} titulo="Roleplay"
+          vazioToken={<img src={tokenPlaceholder} alt="" className="ficha-npc-token-placeholder" />}>
+          <BlocoStat titulo="Deslocamento">
+            {editando
+              ? <Campo rotulo="" valor={f.deslocamento} placeholder="9m" onChange={(v) => set('deslocamento', v)} largura={220} />
+              : <div className="ficha-livre-linha" style={{ marginTop: 0 }}><b>{f.deslocamento || '—'}</b></div>}
+          </BlocoStat>
+          <ListaTexto f={f} campo="resistencias" rotulo="Resistências" placeholder="Mental 5, Balístico 2…" editando={editando} h={h} />
+          <ListaTexto f={f} campo="equipamento" rotulo="Equipamento" placeholder="Pistola .38, kit médico, lanterna…" editando={editando} h={h} />
+          <Notas f={f} editando={editando} set={set} />
+          {editando && <EditorTags tags={f.tags || []} onChange={(v) => set('tags', v)} />}
+        </ColunaDireita>
+      </div>
+    </div>
+  );
+}

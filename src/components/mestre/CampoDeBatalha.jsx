@@ -1,491 +1,382 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
-  estadoCombateVazio,
-  adicionarCombatente,
-  removerCombatente,
-  editarCombatente,
-  proximoTurno,
-  turnoAnterior,
-  rolarIniciativa,
-  rolarIniciativaGeral,
-  adicionarEquipa,
-  removerEquipa,
-  editarEquipa,
-  adicionarEfeitoCombatente,
-  removerEfeitoCombatente,
+  estadoCombateVazio, adicionarCombatente, removerCombatente, editarCombatente,
+  proximoTurno, turnoAnterior, adicionarEquipa, removerEquipa, editarEquipa,
+  adicionarEfeitoCombatente, removerEfeitoCombatente, novoIdCombatente,
 } from '../../engine/combateTracker.js';
-import { COMPENDIO_AMEACAS, clonarAmeacaOficial } from '../../data/ameacas/index.js';
 import { calcMaximos, calcDefesas } from '../../engine/calc.js';
-import Ficha from '../ficha/Ficha.jsx';
-import FichaAmeaca from '../ficha/FichaAmeaca.jsx';
-import FichaNpcCard from './FichaNpcCard.jsx';
-import ModalDetalheGenerico from './ModalDetalheGenerico.jsx';
+import { vitaisLivre } from '../../engine/fichaLivre.js';
+import { avaliarBalanco, rolarIniciativaDe, resumoRolagem } from '../../engine/campoBatalha.js';
 import PainelRolagem from '../PainelRolagem.jsx';
-import PainelDetalheUnidade from './PainelDetalheUnidade.jsx';
+import PainelCombatente from './campo/PainelCombatente.jsx';
+import ListaIniciativa from './campo/ListaIniciativa.jsx';
+import RegistoCombate from './campo/RegistoCombate.jsx';
+import AdicionarCombatentes from './campo/AdicionarCombatentes.jsx';
+import { BarraRecurso, estadoVida } from './campo/pecas.jsx';
 import tokenPlaceholder from '../../assets/token-placeholder.png';
 
-function normalizar(texto) {
-  return String(texto || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+/** Valor de VD/NEX com que um combatente pesa no balanço do encontro. */
+const pesoDe = (c) => Number(c.tipo === 'agente' ? c.nex : c.vd) || 0;
+
+/** Mantém a vez com quem a tinha quando a ordem muda (iniciativa nova). */
+function mantendoVez(antes, depois) {
+  const ativo = antes.combatentes[antes.turnoIndex]?.id;
+  const i = depois.combatentes.findIndex((c) => c.id === ativo);
+  return i >= 0 ? { ...depois, turnoIndex: i } : depois;
 }
 
-function pvDeFicha(ficha, tipo) {
-  if (!ficha) return null;
-  const max = tipo === 'ameaca' ? (Number(ficha.pv) || 20) : (calcMaximos(ficha)?.pv ?? 20);
-  const atual = Number(ficha.pvAtual ?? max);
-  return { atual, max };
-}
-
-/** Limiares de dificuldade — a mesma fórmula que o antigo "Encontro" usava,
- * agora aplicada em tempo real ao que já está posto nos lados, em vez de
- * duplicar a escolha de agentes/inimigos numa calculadora à parte. */
-function avaliarBalanco(nexAgentes, vdInimigos) {
-  if (vdInimigos <= 0) return { texto: 'Sem inimigos postos ainda', cor: 'var(--txt-fraco)', badge: '—' };
-  const facil = nexAgentes * 0.5;
-  const equilibrado = nexAgentes * 1.0;
-  const dificil = nexAgentes * 1.5;
-  if (vdInimigos < facil) return { texto: 'Muito Fácil', cor: 'var(--txt-fraco)', badge: 'Muito Fácil' };
-  if (vdInimigos <= facil * 1.1) return { texto: 'Fácil', cor: '#22c55e', badge: 'Fácil' };
-  if (vdInimigos <= equilibrado) return { texto: 'Equilibrado', cor: '#eab308', badge: 'Equilibrado' };
-  if (vdInimigos <= dificil) return { texto: 'Difícil', cor: '#f97316', badge: 'Difícil' };
-  return { texto: 'Extremo / Mortal', cor: 'var(--sangue-claro)', badge: 'Extremo / Mortal' };
+/** Os números de combate de uma ficha, para entrar no Campo de Batalha. */
+function combatenteDeFicha(ficha, equipaId, nome) {
+  const base = { id: novoIdCombatente(), fichaId: ficha.id || null, nome: nome || ficha.nome || 'Combatente', equipaId, ficha };
+  if (ficha.tipo === 'ameaca' || ficha.fichaLivre) {
+    const v = vitaisLivre(ficha);
+    const ameaca = ficha.tipo === 'ameaca';
+    return {
+      ...base,
+      tipo: ameaca ? 'ameaca' : 'npc', subtipo: ameaca ? 'criatura' : 'livre',
+      vd: Number(ficha.vd) || 0, agi: v.agi,
+      // uma ameaça do Bestiário é um modelo: cada cópia começa com os PV cheios
+      pv: ameaca ? { atual: v.pv.max, max: v.pv.max, temp: 0 } : v.pv,
+      san: ameaca ? null : v.san, pe: ameaca ? null : v.pe, defesa: v.defesa,
+    };
+  }
+  const max = calcMaximos(ficha);
+  const defesas = calcDefesas(ficha);
+  return {
+    ...base,
+    tipo: ficha.tipo === 'npc' ? 'npc' : 'agente', subtipo: ficha.tipo === 'npc' ? 'npc' : 'agente',
+    nex: Number(ficha.nex || 0), agi: Number(ficha.atributos?.agi ?? 1),
+    pv: { atual: ficha.pvAtual ?? max.pv, max: max.pv, temp: ficha.pvTemp || 0 },
+    san: max.semSanidade ? null : { atual: ficha.sanAtual ?? max.san, max: max.san, temp: 0 },
+    pe: { atual: ficha.peAtual ?? max.pe, max: max.pe, temp: 0 },
+    defesa: Number(defesas.defesa || 10),
+  };
 }
 
 /**
- * "Campo de Batalha" — une o antigo Encontro (balanço de VD), Cartões de
- * Batalha (visual em cartão) e Rastreador de Combate (equipas ilimitadas,
- * efeitos, iniciativa, jogadores conectados) numa única secção prática:
- * cartões simples e recolhidos por omissão (token, PV, PE, SAN, iniciativa),
- * que ao clicar abrem a caixa de atacar — e, para NPCs, a ficha 4 completa.
+ * Campo de Batalha do Modo Mestre: montar o encontro (fichas de agente, NPCs
+ * do Elenco, ameaças do Bestiário ou do compêndio, jogadores ligados), ver o
+ * balanço VD/NEX, e correr o combate — turnos e iniciativa, dano por tipo com
+ * Resistências/Imunidades/Vulnerabilidades, cura, Sanidade, condições, ataques
+ * contra um alvo, e um registo de todas as rolagens (as do Mestre e as dos
+ * jogadores ligados pelo Hub).
  */
 export default function CampoDeBatalha({
-  agentes = [],
-  ameacas = [],
-  agentesConectados = [],
-  estadoCombate,
-  setEstadoCombate,
-  aoGuardar,
+  agentes = [], ameacas = [], agentesConectados = [],
+  estadoCombate, setEstadoCombate, aoGuardar,
+  registo = [], registar = () => {}, limparRegisto = () => {},
 }) {
   const estado = estadoCombate || estadoCombateVazio();
   const setEstado = setEstadoCombate;
+  const equipas = estado.equipas || [];
+  const combatentes = estado.combatentes || [];
+  const ativo = combatentes[estado.turnoIndex] || null;
+
+  const [selecionadoId, setSelecionadoId] = useState(null);
+  const [adicionarEm, setAdicionarEm] = useState(null); // equipaId do "+ Adicionar", ou null
+  const [rolagens, setRolagens] = useState([]);
 
   const fichasAgentes = useMemo(() => agentes.filter((a) => a.tipo !== 'npc'), [agentes]);
   const npcsElenco = useMemo(() => agentes.filter((a) => a.tipo === 'npc'), [agentes]);
 
-  const [painelAdicionar, setPainelAdicionar] = useState(null); // equipaId aberto, ou null
-  const [abaBanco, setAbaBanco] = useState('fichas');
-  const [buscaCatalogo, setBuscaCatalogo] = useState('');
+  const lados = useMemo(() => equipas.map((eq) => {
+    const membros = combatentes.filter((c) => c.equipaId === eq.id);
+    return { ...eq, membros, total: membros.reduce((s, c) => s + pesoDe(c), 0) };
+  }), [equipas, combatentes]);
 
-  const [detalheId, setDetalheId] = useState(null); // combatente com a caixa de ataque aberta
-  const [fichaCompleta, setFichaCompleta] = useState(null); // { combatenteId, tipo, ficha } — editor completo
-  const [npcCompletaId, setNpcCompletaId] = useState(null); // combatente cuja ficha 4 está aberta
-  const [editandoNpcCard, setEditandoNpcCard] = useState(false);
-  const [npcDetalhe, setNpcDetalhe] = useState(null);
+  const balanco = useMemo(() => {
+    const [agentesLado, ...outros] = lados;
+    const nex = agentesLado?.total || 0;
+    const vd = outros.reduce((s, l) => s + l.total, 0);
+    return { ...avaliarBalanco(nex, vd), nex, vd };
+  }, [lados]);
 
-  const [modalEfeito, setModalEfeito] = useState(null); // combatenteId
-  const [nomeEfeito, setNomeEfeito] = useState('');
-  const [duracaoEfeito, setDuracaoEfeito] = useState('2');
-
-  const [rolagens, setRolagens] = useState([]);
-  const onRolar = useCallback((r) => { if (r) setRolagens((a) => [...a.slice(-9), r]); }, []);
+  // ------------------------------------------------------------ rolagens
+  const onRolar = useCallback((r, autor = 'Mestre') => {
+    if (!r) return;
+    setRolagens((a) => [...a.slice(-9), r]);
+    registar({ tipo: 'rolagem', origem: 'mestre', autor, resumo: resumoRolagem(r) });
+  }, [registar]);
   const fecharRolagem = useCallback((id) => setRolagens((a) => a.filter((r) => r.id !== id)), []);
   const limparRolagens = useCallback(() => setRolagens([]), []);
 
-  const equipas = estado.equipas || [];
-  const combatentes = estado.combatentes || [];
-  const combatenteAtivo = combatentes[estado.turnoIndex] || null;
-
-  const statsEquipas = useMemo(() => equipas.map((eq) => {
-    const membros = combatentes.filter((c) => c.equipaId === eq.id);
-    const totalVD = membros.reduce((s, c) => s + (Number(c.vd || c.nex) || 0), 0);
-    return { ...eq, membros, totalVD };
-  }), [equipas, combatentes]);
-
-  // Balanço em tempo real: 1º lado = "agentes" (NEX), resto = "inimigos" (VD somado).
-  const balanco = useMemo(() => {
-    const [ladoAgentes, ...outros] = statsEquipas;
-    const nexAgentes = ladoAgentes?.totalVD || 0;
-    const vdInimigos = outros.reduce((s, eq) => s + eq.totalVD, 0);
-    return { ...avaliarBalanco(nexAgentes, vdInimigos), nexAgentes, vdInimigos };
-  }, [statsEquipas]);
-
-  function avancar() { setEstado((est) => proximoTurno(est)); }
-  function retroceder() { setEstado((est) => turnoAnterior(est)); }
-  function rolarSemIniciativa() { setEstado((est) => rolarIniciativaGeral(est, true)); }
-
-  function rolarIniciativaCard(id) {
+  // ------------------------------------------------------------ combatentes
+  function adicionarFichas(ficha, equipaId, quantidade = 1, { propria = false } = {}) {
+    const existentes = combatentes.filter((c) => (c.fichaId && c.fichaId === ficha.id) || c.nome === ficha.nome).length;
+    const n = Math.max(1, Math.min(20, Number(quantidade) || 1));
     setEstado((est) => {
-      const c = est.combatentes.find((x) => x.id === id);
-      if (!c) return est;
-      const rolo = rolarIniciativa(c.agi || 0, c.bonusIniciativa || 0);
-      return editarCombatente(est, id, { iniciativa: rolo.total, iniciativaRolada: true, ultimaRolagemIni: rolo });
+      let novo = est;
+      for (let i = 0; i < n; i++) {
+        const numerar = n > 1 || existentes > 0;
+        const nome = numerar ? `${ficha.nome} ${existentes + i + 1}` : ficha.nome;
+        const c = { ...combatenteDeFicha(ficha, equipaId, nome), fichaPropria: propria };
+        novo = mantendoVez(novo, adicionarCombatente(novo, c));
+      }
+      return novo;
     });
+    registar({ tipo: 'evento', texto: `${n > 1 ? `${n}× ` : ''}${ficha.nome} entra${n > 1 ? 'm' : ''} no combate` });
   }
 
-  function definirIniciativaManual(id, valorTexto) {
-    const valor = valorTexto === '' ? null : Number(valorTexto);
-    setEstado((est) => editarCombatente(est, id, { iniciativa: valor }));
-  }
-
-  function alterarPv(id, delta) {
-    setEstado((est) => {
-      const c = est.combatentes.find((x) => x.id === id);
-      if (!c) return est;
-      const atual = Number(c.pv?.atual || 0);
-      const novo = Math.max(0, atual + delta);
-      if (c.ficha && aoGuardar) {
-        aoGuardar({ ...c.ficha, pvAtual: novo });
-      }
-      return editarCombatente(est, id, { pv: { atual: novo } });
-    });
-  }
-
-  function aplicarDano(id, quantidade) {
-    alterarPv(id, -Math.abs(Number(quantidade) || 0));
-  }
-
-  // Aplica um resultado já calculado com Resistências (ver PainelDetalheUnidade
-  // → "Dar Dano", que usa engine/danoRecetor.js → calcularDanoRecebido) — ao
-  // contrário de aplicarDano/alterarPv (dano em bruto), isto mexe em PV e SAN
-  // de uma vez e persiste os dois na ficha por baixo, se houver uma.
-  function aplicarDanoResistido(id, resultado) {
-    setEstado((est) => {
-      const c = est.combatentes.find((x) => x.id === id);
-      if (!c || !resultado) return est;
-      const patchFicha = {};
-      let novoPv = c.pv;
-      let novoSan = c.san;
-      if (resultado.totalLiquidoPv > 0 || resultado.pvTempAbsorvido > 0) {
-        patchFicha.pvAtual = resultado.novoPvAtual;
-        patchFicha.pvTemp = resultado.novoPvTemp;
-        novoPv = { ...c.pv, atual: resultado.novoPvAtual };
-      }
-      if (resultado.totalLiquidoSan > 0 && c.san) {
-        if (resultado.semSanidade) patchFicha.pdAtual = resultado.novoSanAtual;
-        else patchFicha.sanAtual = resultado.novoSanAtual;
-        novoSan = { ...c.san, atual: resultado.novoSanAtual };
-      }
-      if (c.ficha && aoGuardar && Object.keys(patchFicha).length) {
-        aoGuardar({ ...c.ficha, ...patchFicha });
-      }
-      return editarCombatente(est, id, { pv: novoPv, san: novoSan });
-    });
-  }
-
-  // Gestão de equipas
-  function criarEquipa() { setEstado((est) => adicionarEquipa(est)); }
-  function apagarEquipa(id) { if (equipas.length > 1) setEstado((est) => removerEquipa(est, id)); }
-  function renomearEquipa(id, nome) { setEstado((est) => editarEquipa(est, id, { nome })); }
-  function mudarCorEquipa(id, cor) { setEstado((est) => editarEquipa(est, id, { cor })); }
-
-  // Adições rápidas
-  function adicionarConectado(equipaId, ag) {
-    setEstado((est) => adicionarCombatente(est, {
-      id: ag.codigo || `ag-peer-${Date.now()}`,
-      nome: ag.nome || 'Agente Conectado',
+  function adicionarConectado(ag, equipaId) {
+    if (combatentes.some((c) => c.codigo && c.codigo === ag.codigo)) return;
+    setEstado((est) => mantendoVez(est, adicionarCombatente(est, {
+      id: `jog-${ag.codigo}`, codigo: ag.codigo, nome: ag.nome || 'Jogador',
       tipo: 'agente', subtipo: 'agente', equipaId,
-      nex: Number(ag.nex || 20), agi: Number(ag.atributos?.agi ?? 2),
-      pv: ag.pv || { atual: 20, max: 20, temp: 0 },
-      san: ag.san || null, pe: ag.pe || null,
-      defesa: Number(ag.defesa || 12), condicoes: ag.condicoes || [], ficha: ag,
-    }));
+      nex: Number(String(ag.subtitulo || '').match(/NEX (\d+)/)?.[1] || ag.nex || 0),
+      pv: ag.pv || { atual: 20, max: 20, temp: 0 }, san: ag.san || null, pe: ag.pe || null,
+      defesa: Number(ag.defesa || 10), condicoes: ag.condicoes || [],
+      ficha: { nome: ag.nome, imagem: ag.token || ag.imagem || null },
+    })));
+    registar({ tipo: 'evento', texto: `${ag.nome || 'Jogador'} (ligado) entra no combate` });
   }
 
-  function adicionarFicha(equipaId, ficha) {
-    const max = calcMaximos(ficha);
-    const defesas = calcDefesas(ficha);
-    setEstado((est) => adicionarCombatente(est, {
-      id: ficha.id, nome: ficha.nome,
-      tipo: 'agente', subtipo: ficha.tipo === 'npc' ? 'npc' : 'agente', equipaId,
-      nex: Number(ficha.nex || 20), agi: Number(ficha.atributos?.agi ?? 1),
-      pv: { atual: ficha.pvAtual ?? max.pv, max: max.pv, temp: 0 },
-      san: { atual: ficha.sanAtual ?? max.san, max: max.san, temp: 0 },
-      pe: { atual: ficha.peAtual ?? max.pe, max: max.pe, temp: 0 },
-      defesa: Number(defesas.defesa || 10), ficha,
-    }));
+  const combatentePorId = (id) => combatentes.find((c) => c.id === id);
+
+  /** Grava na ficha guardada o que mudou nela (só agentes e NPCs do Elenco — as
+   * ameaças do Bestiário são modelos, e os jogadores ligados têm a ficha deles). */
+  function persistirFicha(c, patch) {
+    if (!aoGuardar || !c?.ficha?.id || c.codigo || c.tipo === 'ameaca' || c.fichaPropria) return c?.ficha;
+    const nova = { ...c.ficha, ...patch };
+    aoGuardar(nova);
+    return nova;
   }
 
-  function adicionarAmeaca(equipaId, item) {
-    const ehOcultista = item.subtipo === 'ocultista' || item.subtipo === 'ocultista_inimigo';
-    setEstado((est) => adicionarCombatente(est, {
-      nome: item.nome,
-      tipo: ehOcultista ? 'npc' : 'ameaca', subtipo: ehOcultista ? 'ocultista' : 'criatura', equipaId,
-      vd: Number(item.vd || 20),
-      pv: { atual: Number(item.pvAtual ?? item.pv ?? 30), max: Number(item.pv || 30), temp: 0 },
-      defesa: Number(item.defesa || 15), ficha: item,
-    }));
+  function aplicarDano(id, resultado, descricao) {
+    const c = combatentePorId(id);
+    if (!c || !resultado) return;
+    const patchFicha = { pvAtual: resultado.novoPvAtual, pvTemp: resultado.novoPvTemp };
+    const alteracoes = { pv: { atual: resultado.novoPvAtual, temp: resultado.novoPvTemp } };
+    if (c.san && resultado.totalLiquidoSan > 0) {
+      alteracoes.san = { atual: resultado.novoSanAtual };
+      patchFicha.sanAtual = resultado.novoSanAtual;
+    }
+    const ficha = persistirFicha(c, patchFicha);
+    setEstado((est) => editarCombatente(est, id, { ...alteracoes, ficha }));
+    const partes = [`−${resultado.totalLiquidoPv} PV`];
+    if (resultado.totalLiquidoSan > 0) partes.push(`−${resultado.totalLiquidoSan} SAN`);
+    registar({
+      tipo: 'dano', alvo: c.nome,
+      texto: `${c.nome} sofre ${partes.join(' e ')}${descricao ? ` (${descricao})` : ''}${resultado.novoPvAtual === 0 ? ' — caído!' : ''}`,
+      notas: resultado.notas || [],
+    });
   }
 
-  function adicionarDoCatalogo(equipaId, oficial) {
-    const nova = clonarAmeacaOficial(oficial);
-    const guardada = aoGuardar ? aoGuardar(nova) : nova;
-    adicionarAmeaca(equipaId, guardada);
+  function definirRecurso(id, recurso, valor) {
+    const c = combatentePorId(id);
+    if (!c?.[recurso]) return;
+    const antes = Number(c[recurso].atual) || 0;
+    const novo = Math.max(0, Math.min(Number(c[recurso].max) || 0, Math.round(Number(valor) || 0)));
+    if (novo === antes) return;
+    const campo = { pv: 'pvAtual', san: 'sanAtual', pe: 'peAtual' }[recurso];
+    const ficha = persistirFicha(c, { [campo]: novo });
+    setEstado((est) => editarCombatente(est, id, { [recurso]: { atual: novo }, ficha }));
+    const delta = novo - antes;
+    registar({ tipo: delta > 0 ? 'cura' : 'dano', alvo: c.nome, texto: `${c.nome}: ${delta > 0 ? '+' : '−'}${Math.abs(delta)} ${recurso.toUpperCase()} (${novo}/${c[recurso].max})` });
+  }
+
+  function atualizarFicha(id, patch) {
+    const c = combatentePorId(id);
+    if (!c?.ficha) return;
+    const nova = { ...c.ficha, ...patch };
+    if (aoGuardar && c.ficha.id && !c.codigo && !c.fichaPropria) aoGuardar(nova);
+    const extra = {};
+    if (patch.nome && (c.tipo !== 'ameaca')) extra.nome = patch.nome;
+    if ('defesa' in patch) extra.defesa = Number(patch.defesa) || c.defesa;
+    // ficha livre: PV/PE/SAN máximos escritos na ficha; agente: os atuais mudados na ficha
+    if (c.ficha.fichaLivre || c.ficha.tipo === 'ameaca') {
+      if ('pv' in patch && Number(patch.pv)) extra.pv = { max: Number(patch.pv), atual: Math.min(c.pv.atual, Number(patch.pv)) };
+    } else {
+      if ('pvAtual' in patch) extra.pv = { atual: Number(patch.pvAtual) || 0 };
+      if ('sanAtual' in patch && c.san) extra.san = { atual: Number(patch.sanAtual) || 0 };
+      if ('peAtual' in patch && c.pe) extra.pe = { atual: Number(patch.peAtual) || 0 };
+    }
+    setEstado((est) => editarCombatente(est, id, { ficha: nova, ...extra }));
   }
 
   function removerDoCombate(id) {
-    setEstado((est) => removerCombatente(est, id));
+    const c = combatentePorId(id);
+    setEstado((est) => mantendoVez(est, removerCombatente(est, id)));
+    if (selecionadoId === id) setSelecionadoId(null);
+    if (c) registar({ tipo: 'evento', texto: `${c.nome} sai do combate` });
   }
 
-  // Ficha completa / ficha 4
-  function abrirFichaCompleta(c) {
-    if (!c.ficha) return;
-    setDetalheId(null);
-    if (c.ficha.tipo === 'npc') {
-      setEditandoNpcCard(false);
-      setNpcCompletaId(c.id);
-    } else {
-      setFichaCompleta({ combatenteId: c.id, tipo: c.ficha.tipo === 'ameaca' ? 'ameaca' : 'agente', ficha: c.ficha });
-    }
+  function mudarLado(id, equipaId) { setEstado((est) => editarCombatente(est, id, { equipaId })); }
+
+  function adicionarEfeito(id, efeito) {
+    const c = combatentePorId(id);
+    setEstado((est) => adicionarEfeitoCombatente(est, id, efeito));
+    if (c) registar({ tipo: 'evento', texto: `${c.nome}: ${efeito.nome}${efeito.duracao === 'permanente' ? '' : ` (${efeito.duracao} rod.)`}` });
+  }
+  function removerEfeito(id, efeitoId) { setEstado((est) => removerEfeitoCombatente(est, id, efeitoId)); }
+
+  // ------------------------------------------------------------ iniciativa e turnos
+  function rolarIniciativa(id) {
+    const c = combatentePorId(id);
+    if (!c) return;
+    const r = rolarIniciativaDe(c);
+    onRolar(r, c.nome);
+    setEstado((est) => mantendoVez(est, editarCombatente(est, id, { iniciativa: r.total, iniciativaRolada: true })));
   }
 
-  // Clique no cartão: NPC abre a ficha 4 diretamente; agente/ameaça abre a
-  // caixa de atacar / relatório (PainelDetalheUnidade), como já acontecia.
-  function abrirCartao(c) {
-    if (c.ficha?.tipo === 'npc') abrirFichaCompleta(c);
-    else setDetalheId(c.id);
+  function rolarIniciativas(soEmFalta) {
+    const alvo = combatentes.filter((c) => !soEmFalta || c.iniciativa == null);
+    if (!alvo.length) return;
+    const resultados = alvo.map((c) => [c, rolarIniciativaDe(c)]);
+    resultados.forEach(([c, r]) => registar({ tipo: 'rolagem', origem: 'mestre', autor: c.nome, resumo: resumoRolagem(r) }));
+    setEstado((est) => {
+      let novo = est;
+      for (const [c, r] of resultados) novo = editarCombatente(novo, c.id, { iniciativa: r.total, iniciativaRolada: true });
+      // uma ronda nova de iniciativa começa sempre em quem tem a mais alta
+      return soEmFalta ? mantendoVez(est, novo) : { ...novo, turnoIndex: 0 };
+    });
   }
 
-  // Autoguarda a ficha completa em edição, 800ms depois da última alteração
-  // — o mesmo esquema usado no resto da app.
-  useEffect(() => {
-    if (!fichaCompleta) return undefined;
-    const t = setTimeout(() => aoGuardar(fichaCompleta.ficha), 800);
-    return () => clearTimeout(t);
-  }, [fichaCompleta, aoGuardar]);
-
-  const npcCompletaFicha = npcCompletaId
-    ? combatentes.find((c) => c.id === npcCompletaId)?.ficha || null
-    : null;
-
-  function atualizarCampoNpcCompleta(campo, valor) {
-    const c = combatentes.find((x) => x.id === npcCompletaId);
-    if (!c?.ficha) return;
-    const novaFicha = { ...c.ficha, [campo]: valor };
-    aoGuardar(novaFicha);
-    setEstado((est) => editarCombatente(est, npcCompletaId, { ficha: novaFicha, nome: novaFicha.nome || c.nome }));
+  function definirIniciativa(id, valor) {
+    setEstado((est) => mantendoVez(est, editarCombatente(est, id, { iniciativa: valor === '' ? null : Number(valor) })));
   }
 
-  // Efeitos temporários
-  function salvarEfeito(e) {
-    if (e) e.preventDefault();
-    if (!modalEfeito || !nomeEfeito.trim()) return;
-    setEstado((est) => adicionarEfeitoCombatente(est, modalEfeito, { nome: nomeEfeito.trim(), duracao: duracaoEfeito }));
-    setModalEfeito(null);
-    setNomeEfeito('');
-    setDuracaoEfeito('2');
+  function avancar() {
+    if (!combatentes.length) return;
+    const novo = proximoTurno(estado);
+    setEstado(novo);
+    const vez = novo.combatentes[novo.turnoIndex];
+    registar({ tipo: 'turno', texto: `Rodada ${novo.rodada} · vez de ${vez?.nome || '—'}` });
+    (novo.efeitosExpirados || []).forEach((e) => registar({ tipo: 'evento', texto: `${e.combatenteNome}: ${e.efeitoNome} terminou` }));
   }
+  function recuar() { if (combatentes.length) setEstado(turnoAnterior(estado)); }
+
+  function recomecar() {
+    setEstado((est) => ({
+      ...est, rodada: 1, turnoIndex: 0, emAndamento: false,
+      combatentes: est.combatentes.map((c) => ({ ...c, iniciativa: null, iniciativaRolada: false, efeitos: [] })),
+    }));
+    registar({ tipo: 'turno', texto: 'Novo combate — iniciativas por rolar' });
+  }
+  function limparCampo() {
+    if (!window.confirm('Tirar toda a gente do Campo de Batalha? (as fichas guardadas não são apagadas)')) return;
+    setEstado((est) => ({ ...estadoCombateVazio(), equipas: est.equipas }));
+    setSelecionadoId(null);
+  }
+
+  // ------------------------------------------------------------ lados
+  const criarLado = () => setEstado((est) => adicionarEquipa(est));
+  const apagarLado = (id) => { if (equipas.length > 1) setEstado((est) => removerEquipa(est, id)); };
+  const renomearLado = (id, nome) => setEstado((est) => editarEquipa(est, id, { nome }));
+  const corLado = (id, cor) => setEstado((est) => editarEquipa(est, id, { cor }));
+
+  const selecionado = selecionadoId ? combatentePorId(selecionadoId) : null;
 
   return (
-    <div style={{ marginTop: 8 }}>
-      {/* Barra de Rodada / Turno */}
-      <div className="painel" style={{ padding: '10px 14px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', borderLeft: '4px solid var(--sangue-claro)' }}>
-        <div>
-          <div style={{ fontSize: 10, color: 'var(--txt-fraco)', textTransform: 'uppercase', letterSpacing: 1 }}>Rodada</div>
-          <div style={{ fontSize: 20, fontFamily: 'var(--display)', fontWeight: 'bold' }}>{estado.rodada || 1}</div>
+    <div className="cb">
+      {/* ---------------- barra de turno */}
+      <div className="cb-barra">
+        <div className="cb-rodada">
+          <span className="cb-rotulo">Rodada</span>
+          <b>{estado.rodada || 1}</b>
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button type="button" className="btn ghost sm" onClick={retroceder} disabled={combatentes.length === 0}>← Anterior</button>
-          <button type="button" className="btn sm" onClick={avancar} disabled={combatentes.length === 0}>Próximo Turno →</button>
-        </div>
-        <button type="button" className="btn ghost sm" onClick={rolarSemIniciativa} disabled={combatentes.length === 0}>
-          Rolar Iniciativa em Falta
-        </button>
-        <button type="button" className="btn ghost sm" onClick={criarEquipa}>+ Novo Lado</button>
-      </div>
-
-      {/* Trilha de Iniciativa — a ordem de turno em retratos; quem já jogou ou
-          ainda vai jogar fica esbatido, só quem está na vez fica em destaque. */}
-      <TrilhaIniciativa
-        combatentes={combatentes}
-        turnoIndex={estado.turnoIndex}
-        onRolarIni={rolarIniciativaCard}
-        onIniciativaManual={definirIniciativaManual}
-        onAbrir={(id) => setDetalheId(id)}
-      />
-
-      {/* Balanço de VD/NEX em tempo real */}
-      {equipas.length >= 2 && (
-        <div className="painel" style={{ padding: '10px 16px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, background: 'rgba(0,0,0,0.2)' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-            <span style={{ fontSize: 20, fontFamily: 'var(--display)', fontWeight: 'bold' }}>
-              NEX {balanco.nexAgentes} <span style={{ fontSize: 13, color: 'var(--txt-fraco)', fontFamily: 'var(--corpo)' }}>vs</span> VD {balanco.vdInimigos}
-            </span>
-            <span style={{ fontSize: 12, color: balanco.cor }}>{balanco.texto}</span>
-          </div>
-          <span style={{ fontSize: 11, fontWeight: 'bold', padding: '2px 8px', borderRadius: 4, background: 'rgba(255,255,255,0.08)', color: balanco.cor, border: `1px solid ${balanco.cor}` }}>
-            {balanco.badge}
-          </span>
-        </div>
-      )}
-
-      {/* Colunas por equipa/lado */}
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.max(1, equipas.length)}, minmax(260px, 1fr))`, gap: 16, overflowX: 'auto' }}>
-        {statsEquipas.map((eq) => (
-          <div key={eq.id} className="painel" style={{ borderTop: `4px solid ${eq.cor}`, padding: 12, background: 'rgba(0,0,0,0.12)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <input
-                type="color"
-                value={eq.cor}
-                onChange={(e) => mudarCorEquipa(eq.id, e.target.value)}
-                title="Cor do lado"
-                style={{ width: 22, height: 22, padding: 0, border: 'none', background: 'transparent', flex: '0 0 auto', cursor: 'pointer' }}
-              />
-              <input
-                type="text"
-                value={eq.nome}
-                onChange={(e) => renomearEquipa(eq.id, e.target.value)}
-                style={{ background: 'transparent', border: 'none', fontWeight: 'bold', fontSize: 15, color: eq.cor, flex: 1, fontFamily: 'var(--display)' }}
-              />
-              {equipas.length > 1 && (
-                <button type="button" className="btn ghost sm" style={{ fontSize: 11, padding: '2px 6px' }} onClick={() => apagarEquipa(eq.id)} title="Remover lado">×</button>
-              )}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--txt-dim)', marginBottom: 8 }}>
-              <span>VD/NEX {eq.totalVD}</span>
-              <span>{eq.membros.length} {eq.membros.length === 1 ? 'membro' : 'membros'}</span>
-            </div>
-
-            <button
-              type="button"
-              className={`btn sm ${painelAdicionar === eq.id ? '' : 'ghost'}`}
-              style={{ width: '100%', marginBottom: 10 }}
-              onClick={() => setPainelAdicionar((v) => (v === eq.id ? null : eq.id))}
-            >
-              {painelAdicionar === eq.id ? 'Fechar' : '+ Adicionar'}
+        <div className="cb-vez">
+          {ativo ? (
+            <button type="button" className="cb-vez-quem" onClick={() => setSelecionadoId(ativo.id)} title="Abrir">
+              <span className="cb-token-mini" style={{ backgroundImage: `url(${ativo.ficha?.imagem || tokenPlaceholder})` }} />
+              <span><span className="cb-rotulo">Vez de</span><b>{ativo.nome}</b></span>
             </button>
-
-            {painelAdicionar === eq.id && (
-              <PainelAdicionar
-                equipaId={eq.id}
-                aba={abaBanco}
-                setAba={setAbaBanco}
-                agentesConectados={agentesConectados}
-                fichasAgentes={fichasAgentes}
-                npcsElenco={npcsElenco}
-                ameacas={ameacas}
-                buscaCatalogo={buscaCatalogo}
-                setBuscaCatalogo={setBuscaCatalogo}
-                onAdicionarConectado={(ag) => adicionarConectado(eq.id, ag)}
-                onAdicionarFicha={(f) => adicionarFicha(eq.id, f)}
-                onAdicionarAmeaca={(a) => adicionarAmeaca(eq.id, a)}
-                onAdicionarCatalogo={(o) => adicionarDoCatalogo(eq.id, o)}
-              />
-            )}
-
-            {eq.membros.length === 0 ? (
-              <div style={{ border: '2px dashed rgba(255,255,255,0.08)', borderRadius: 6, padding: 24, textAlign: 'center', color: 'var(--txt-fraco)', fontSize: 12 }}>
-                Sem ninguém neste lado ainda.
-              </div>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 16 }}>
-                {eq.membros.map((c) => (
-                  <CartaoCombatente
-                    key={c.id}
-                    c={c}
-                    ativo={combatenteAtivo?.id === c.id}
-                    onAbrir={() => abrirCartao(c)}
-                    onRemover={() => removerDoCombate(c.id)}
-                    onAbrirEfeito={() => setModalEfeito(c.id)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
+          ) : <span className="cb-rotulo">Junta combatentes para começar</span>}
+        </div>
+        <div className="cb-barra-botoes">
+          <button type="button" className="btn ghost sm" onClick={recuar} disabled={!combatentes.length} title="Turno anterior">◀</button>
+          <button type="button" className="btn sm" onClick={avancar} disabled={!combatentes.length}>Próximo turno ▶</button>
+        </div>
+        <div className="cb-barra-botoes">
+          <button type="button" className="btn ghost sm" onClick={recomecar} disabled={!combatentes.length} title="Rodada 1, iniciativas e efeitos limpos">Recomeçar</button>
+          <button type="button" className="btn ghost sm" onClick={limparCampo} disabled={!combatentes.length}>Limpar campo</button>
+        </div>
+        <div className={`cb-balanco nivel-${balanco.nivel}`} title="NEX somado do 1.º lado contra o VD somado dos restantes (VD ≈ NEX do grupo = equilibrado)">
+          <span>NEX {balanco.nex}</span><span className="cb-rotulo">vs</span><span>VD {balanco.vd}</span>
+          <b>{balanco.texto}</b>
+        </div>
       </div>
 
-      {/* Caixa de atacar / rolar dano */}
-      {detalheId && (() => {
-        const c = combatentes.find((x) => x.id === detalheId);
-        if (!c) return null;
-        return (
-          <PainelDetalheUnidade
-            unidade={c}
-            alvos={combatentes.filter((x) => x.id !== c.id).map((x) => ({
-              id: x.id, nome: x.nome, defesa: x.defesa, equipaId: x.equipaId, pv: x.pv, resistencias: x.ficha?.resistencias,
-            }))}
-            onFechar={() => setDetalheId(null)}
-            onRolar={onRolar}
-            onAplicarDano={aplicarDano}
-            onAplicarDanoResistido={aplicarDanoResistido}
-            onEditar={c.ficha ? () => abrirFichaCompleta(c) : undefined}
-          />
-        );
-      })()}
-
-      {/* Ficha completa (agente ou ameaça) */}
-      {fichaCompleta && (
-        <div className="modal-fundo" onClick={(e) => e.target === e.currentTarget && setFichaCompleta(null)}>
-          <div className="modal" style={{ maxWidth: 960, width: '95vw', maxHeight: '92vh', overflowY: 'auto' }}>
-            <div className="modal-topo">
-              <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>{fichaCompleta.ficha.nome}</h3>
-              <button className="fechar" onClick={() => setFichaCompleta(null)}>×</button>
-            </div>
-            <div className="modal-corpo" style={{ padding: 16 }}>
-              {fichaCompleta.tipo === 'ameaca'
-                ? <FichaAmeaca ameaca={fichaCompleta.ficha} setAmeaca={(f) => setFichaCompleta((ant) => ({ ...ant, ficha: f }))} onRolar={onRolar} aoConcluir={() => setFichaCompleta(null)} />
-                : <Ficha personagem={fichaCompleta.ficha} setPersonagem={(f) => setFichaCompleta((ant) => ({ ...ant, ficha: f }))} onRolar={onRolar} />}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Ficha 4 do NPC */}
-      {npcCompletaId && npcCompletaFicha && (
-        <div className="modal-fundo" onClick={(e) => e.target === e.currentTarget && setNpcCompletaId(null)}>
-          <div className="modal" style={{ maxWidth: 1080, width: '96vw', maxHeight: '92vh', overflowY: 'auto' }}>
-            <div className="modal-topo">
-              <h3 style={{ margin: 0, fontFamily: 'var(--display)' }}>{npcCompletaFicha.nome}</h3>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <button type="button" className={`btn ghost sm ${editandoNpcCard ? 'ativo' : ''}`} onClick={() => setEditandoNpcCard((v) => !v)}>
-                  {editandoNpcCard ? 'Concluir Edição' : 'Editar Guia'}
+      <div className="cb-grelha">
+        {/* ---------------- lados */}
+        <div className="cb-lados">
+          {lados.map((lado) => (
+            <section key={lado.id} className="cb-lado" style={{ '--cor-lado': lado.cor }}>
+              <header className="cb-lado-topo">
+                <input type="color" className="cb-lado-cor" value={lado.cor} onChange={(e) => corLado(lado.id, e.target.value)} title="Cor do lado" />
+                <input type="text" className="cb-lado-nome" value={lado.nome} onChange={(e) => renomearLado(lado.id, e.target.value)} aria-label="Nome do lado" />
+                <span className="cb-lado-total" title={lado.id === equipas[0]?.id ? 'NEX somado' : 'VD somado'}>
+                  {lado.id === equipas[0]?.id ? 'NEX' : 'VD'} {lado.total}
+                </span>
+                <button type="button" className="btn sm" onClick={() => setAdicionarEm(lado.id)}>+ Adicionar</button>
+                {equipas.length > 1 && (
+                  <button type="button" className="cb-x" onClick={() => apagarLado(lado.id)} title="Remover lado (quem lá está passa para o 1.º)">×</button>
+                )}
+              </header>
+              {lado.membros.length === 0 ? (
+                <button type="button" className="cb-lado-vazio" onClick={() => setAdicionarEm(lado.id)}>
+                  Ninguém aqui ainda — <u>adicionar</u> fichas, NPCs, ameaças ou jogadores ligados
                 </button>
-                <button className="fechar" onClick={() => setNpcCompletaId(null)}>×</button>
-              </div>
-            </div>
-            <div className="modal-corpo" style={{ padding: 16 }}>
-              <FichaNpcCard
-                p={npcCompletaFicha}
-                aoVerDetalhe={setNpcDetalhe}
-                editando={editandoNpcCard}
-                onAtualizarCampo={atualizarCampoNpcCompleta}
-                aoUploadImagem={(dataUrl) => atualizarCampoNpcCompleta('imagem', dataUrl)}
-              />
-            </div>
-          </div>
+              ) : (
+                <div className="cb-cartoes">
+                  {lado.membros.map((c) => (
+                    <CartaoCampo key={c.id} c={c} ativo={ativo?.id === c.id} onAbrir={() => setSelecionadoId(c.id)} />
+                  ))}
+                </div>
+              )}
+            </section>
+          ))}
+          <button type="button" className="cb-novo-lado" onClick={criarLado}>+ Novo lado (terceira facção…)</button>
         </div>
-      )}
-      {npcDetalhe && <ModalDetalheGenerico item={npcDetalhe} aoFechar={() => setNpcDetalhe(null)} />}
 
-      {/* Efeito temporário */}
-      {modalEfeito && (
-        <div className="modal-fundo" onClick={(e) => e.target === e.currentTarget && setModalEfeito(null)}>
-          <div className="modal" style={{ maxWidth: 400 }}>
-            <div className="modal-topo">
-              <h3>Adicionar Efeito Temporário</h3>
-              <button className="fechar" onClick={() => setModalEfeito(null)}>×</button>
-            </div>
-            <form onSubmit={salvarEfeito} className="modal-corpo" style={{ padding: 16 }}>
-              <div className="campo" style={{ marginBottom: 12 }}>
-                <label>Nome do Efeito / Condição</label>
-                <input type="text" placeholder="Ex: Abalado, Sangrando, Paralisado" value={nomeEfeito} onChange={(e) => setNomeEfeito(e.target.value)} required />
-              </div>
-              <div className="campo" style={{ marginBottom: 16 }}>
-                <label>Duração</label>
-                <select value={duracaoEfeito} onChange={(e) => setDuracaoEfeito(e.target.value)}>
-                  <option value="1">1 rodada</option>
-                  <option value="2">2 rodadas</option>
-                  <option value="3">3 rodadas</option>
-                  <option value="5">5 rodadas</option>
-                  <option value="permanente">Até o fim da cena</option>
-                </select>
-              </div>
-              <div className="modal-acoes" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                <button type="button" className="btn ghost" onClick={() => setModalEfeito(null)}>Cancelar</button>
-                <button type="submit" className="btn">Adicionar</button>
-              </div>
-            </form>
-          </div>
-        </div>
+        {/* ---------------- lateral: iniciativa + registo */}
+        <aside className="cb-lateral">
+          <ListaIniciativa
+            combatentes={combatentes}
+            equipas={equipas}
+            turnoIndex={estado.turnoIndex}
+            onAbrir={setSelecionadoId}
+            onRolar={rolarIniciativa}
+            onRolarTodas={() => rolarIniciativas(false)}
+            onRolarEmFalta={() => rolarIniciativas(true)}
+            onDefinir={definirIniciativa}
+          />
+          <RegistoCombate registo={registo} onLimpar={limparRegisto} onRolar={(r) => onRolar(r, 'Mestre')} />
+        </aside>
+      </div>
+
+      {selecionado && (
+        <PainelCombatente
+          c={selecionado}
+          combatentes={combatentes}
+          equipas={equipas}
+          ehVez={ativo?.id === selecionado.id}
+          onFechar={() => setSelecionadoId(null)}
+          onRolar={(r) => onRolar(r, selecionado.nome)}
+          onAplicarDano={aplicarDano}
+          onDefinirRecurso={definirRecurso}
+          onAdicionarEfeito={(ef) => adicionarEfeito(selecionado.id, ef)}
+          onRemoverEfeito={(efId) => removerEfeito(selecionado.id, efId)}
+          onRolarIniciativa={() => rolarIniciativa(selecionado.id)}
+          onMudarLado={(eqId) => mudarLado(selecionado.id, eqId)}
+          onRemover={() => removerDoCombate(selecionado.id)}
+          onAtualizarFicha={(patch) => atualizarFicha(selecionado.id, patch)}
+          registar={registar}
+        />
+      )}
+
+      {adicionarEm && (
+        <AdicionarCombatentes
+          equipaId={adicionarEm}
+          equipas={equipas}
+          fichasAgentes={fichasAgentes}
+          npcsElenco={npcsElenco}
+          ameacas={ameacas}
+          agentesConectados={agentesConectados}
+          jaNoCombate={combatentes}
+          onAdicionar={adicionarFichas}
+          onAdicionarConectado={adicionarConectado}
+          onFechar={() => setAdicionarEm(null)}
+        />
       )}
 
       <PainelRolagem rolagens={rolagens} aoFechar={fecharRolagem} aoLimpar={limparRolagens} />
@@ -493,201 +384,31 @@ export default function CampoDeBatalha({
   );
 }
 
-function PainelAdicionar({
-  equipaId, aba, setAba, agentesConectados, fichasAgentes, npcsElenco, ameacas,
-  buscaCatalogo, setBuscaCatalogo, onAdicionarConectado, onAdicionarFicha, onAdicionarAmeaca, onAdicionarCatalogo,
-}) {
-  const resultadosCatalogo = useMemo(() => {
-    const termo = normalizar(buscaCatalogo.trim());
-    if (termo.length < 2) return [];
-    return COMPENDIO_AMEACAS.filter((a) => normalizar(a.nome).includes(termo)).slice(0, 30);
-  }, [buscaCatalogo]);
-
-  const ABAS_BANCO = [
-    { id: 'fichas', nome: `Fichas (${fichasAgentes.length})` },
-    { id: 'elenco', nome: `Elenco (${npcsElenco.length})` },
-    { id: 'bestiario', nome: `Bestiário (${ameacas.length})` },
-    { id: 'catalogo', nome: 'Catálogo Oficial' },
-    { id: 'conectados', nome: `Ligados (${agentesConectados.length})` },
-  ];
-
+function CartaoCampo({ c, ativo, onAbrir }) {
+  const vida = estadoVida(c);
+  const sub = [
+    c.tipo === 'agente' ? (c.nex ? `NEX ${c.nex}%` : 'Agente') : (c.vd ? `VD ${c.vd}` : c.tipo === 'ameaca' ? 'Ameaça' : 'NPC'),
+    `Def ${c.defesa ?? '—'}`,
+    c.codigo ? 'ligado' : null,
+  ].filter(Boolean).join(' · ');
   return (
-    <div style={{ marginBottom: 12, padding: 10, border: '1px solid var(--borda)', borderRadius: 6, background: 'rgba(255,255,255,0.02)' }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
-        {ABAS_BANCO.map((b) => (
-          <button key={b.id} type="button" className={`btn ghost sm ${aba === b.id ? 'ativo' : ''}`} style={{ fontSize: 11 }} onClick={() => setAba(b.id)}>
-            {b.nome}
-          </button>
-        ))}
-      </div>
-
-      {aba === 'fichas' && (
-        fichasAgentes.length === 0
-          ? <p className="dica" style={{ fontSize: 12 }}>Nenhuma ficha guardada.</p>
-          : <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {fichasAgentes.map((f) => (
-                <button key={f.id} type="button" className="btn ghost sm" onClick={() => onAdicionarFicha(f)}>+ {f.nome}</button>
-              ))}
-            </div>
-      )}
-
-      {aba === 'elenco' && (
-        npcsElenco.length === 0
-          ? <p className="dica" style={{ fontSize: 12 }}>Nenhum NPC no Elenco.</p>
-          : <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {npcsElenco.map((n) => (
-                <button key={n.id} type="button" className="btn ghost sm" onClick={() => onAdicionarFicha(n)}>+ {n.nome}</button>
-              ))}
-            </div>
-      )}
-
-      {aba === 'bestiario' && (
-        ameacas.length === 0
-          ? <p className="dica" style={{ fontSize: 12 }}>Nada guardado no Bestiário.</p>
-          : <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {ameacas.map((a) => (
-                <button key={a.id} type="button" className="btn ghost sm" onClick={() => onAdicionarAmeaca(a)}>+ {a.nome} <span style={{ opacity: 0.6 }}>(VD {a.vd})</span></button>
-              ))}
-            </div>
-      )}
-
-      {aba === 'catalogo' && (
-        <div>
-          <input
-            type="text"
-            placeholder="Pesquisar no compêndio oficial (mín. 2 letras)…"
-            value={buscaCatalogo}
-            onChange={(e) => setBuscaCatalogo(e.target.value)}
-            style={{ width: '100%', marginBottom: 6 }}
-          />
-          {buscaCatalogo.trim().length >= 2 && (
-            resultadosCatalogo.length === 0
-              ? <p className="dica" style={{ fontSize: 12 }}>Nada encontrado.</p>
-              : <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {resultadosCatalogo.map((of) => (
-                    <button key={of.id} type="button" className="btn ghost sm" onClick={() => onAdicionarCatalogo(of)}>+ {of.nome} <span style={{ opacity: 0.6 }}>(VD {of.vd})</span></button>
-                  ))}
-                </div>
-          )}
-        </div>
-      )}
-
-      {aba === 'conectados' && (
-        agentesConectados.length === 0
-          ? <p className="dica" style={{ fontSize: 12 }}>Nenhum jogador ligado pelo Hub neste momento.</p>
-          : <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {agentesConectados.map((ag, i) => (
-                <button key={i} type="button" className="btn ghost sm" onClick={() => onAdicionarConectado(ag)}>+ {ag.nome}</button>
-              ))}
-            </div>
-      )}
-    </div>
-  );
-}
-
-/** Barra de recurso no estilo do Overlay de OBS (rótulo + valores em cima,
- * trilho escuro, preenchimento colorido com brilho) — usada para PV/PE/SAN
- * no cartão do combatente. */
-function BarraCartaoCombatente({ rotulo, atual, max, classe }) {
-  const a = Number(atual ?? 0);
-  const m = Math.max(1, Number(max ?? 1));
-  const pct = Math.max(0, Math.min(100, Math.round((a / m) * 100)));
-  return (
-    <div className={`cartao-combatente-barra-${classe}`}>
-      <div className="cartao-combatente-barra-topo">
-        <span>{rotulo}</span>
-        <span>{a}/{m}</span>
-      </div>
-      <div className="cartao-combatente-barra-trilho">
-        <div className="cartao-combatente-barra-preenchimento" style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  );
-}
-
-/** Cartão do combatente — mesma linguagem visual do Overlay de OBS (retrato
- * circular com brilho, nome com glow) mas com barras de PV/PE/SAN, simples e
- * direto. A iniciativa vive na Trilha de Iniciativa acima, não aqui. Sem
- * token ainda, mostra o boneco de referência — o token põe-se na ficha
- * (FichaNpcCard / Ficha), não aqui. O cartão inteiro é clicável: abre a
- * ficha para NPCs, ou a caixa de atacar/relatório para os restantes. */
-function CartaoCombatente({ c, ativo, onAbrir, onRemover, onAbrirEfeito }) {
-  const imagem = c.ficha?.imagem || null;
-
-  return (
-    <div className={`cartao-combatente${ativo ? ' ativo' : ''}`} onClick={onAbrir} title="Atacar / ver ficha">
-      <div className="cartao-combatente-topo">
-        <div
-          className="cartao-combatente-retrato"
-          style={{ backgroundImage: `url(${imagem || tokenPlaceholder})` }}
-        />
-        <div className="cartao-combatente-nome">{c.nome}</div>
-
-        <div className="cartao-combatente-acoes">
-          <button
-            type="button"
-            className={`cartao-combatente-efeito${c.efeitos?.length ? ' tem' : ''}`}
-            onClick={(e) => { e.stopPropagation(); onAbrirEfeito(); }}
-            title={c.efeitos?.length ? c.efeitos.map((ef) => ef.nome).join(', ') : 'Adicionar efeito'}
-          >
-            {c.efeitos?.length ? `${c.efeitos.length}` : '+'}
-          </button>
-          <button
-            type="button"
-            className="cartao-combatente-remover"
-            onClick={(e) => { e.stopPropagation(); onRemover(); }}
-            title="Remover do combate"
-          >
-            ×
-          </button>
-        </div>
-      </div>
-
-      <div className="cartao-combatente-barras">
-        <BarraCartaoCombatente rotulo="PV" atual={c.pv?.atual} max={c.pv?.max} classe="pv" />
-        {c.pe && <BarraCartaoCombatente rotulo="PE" atual={c.pe?.atual} max={c.pe?.max} classe="pe" />}
-        {c.san && <BarraCartaoCombatente rotulo="SAN" atual={c.san?.atual} max={c.san?.max} classe="san" />}
-      </div>
-    </div>
-  );
-}
-
-/** Trilha de Iniciativa — a ordem de turno em retratos, centrada, na ordem
- * já calculada em `combatentes` (decrescente por Iniciativa). Só quem está
- * na vez fica em destaque; quem já jogou nesta rodada e quem ainda vai jogar
- * ficam ambos esbatidos. Cada retrato tem o dado de rolar e o valor da
- * iniciativa por baixo, para não duplicar esse controlo nos cartões. */
-function TrilhaIniciativa({ combatentes, turnoIndex, onRolarIni, onIniciativaManual, onAbrir }) {
-  if (combatentes.length === 0) return null;
-  return (
-    <div className="trilha-iniciativa">
-      {combatentes.map((c, i) => {
-        const imagem = c.ficha?.imagem || null;
-        const ativo = i === turnoIndex;
-        return (
-          <div key={c.id} className={`trilha-iniciativa-item${ativo ? ' ativo' : ''}`}>
-            <button
-              type="button"
-              className="trilha-iniciativa-retrato"
-              style={imagem ? { backgroundImage: `url(${imagem})` } : undefined}
-              onClick={() => onAbrir(c.id)}
-              title={`${c.nome} — abrir`}
-            >
-              {!imagem && (c.nome?.[0]?.toUpperCase() || '?')}
-            </button>
-            <div className="trilha-iniciativa-nome">{c.nome}</div>
-            <div className="trilha-iniciativa-ini">
-              <button type="button" onClick={() => onRolarIni(c.id)} title="Rolar iniciativa (1d20 + Agilidade)">🎲</button>
-              <input
-                type="number"
-                value={c.iniciativa ?? ''}
-                onChange={(e) => onIniciativaManual(c.id, e.target.value)}
-                title="Iniciativa manual"
-              />
-            </div>
-          </div>
-        );
-      })}
-    </div>
+    <button type="button" className={`cb-cartao${ativo ? ' ativo' : ''}${vida ? ` ${vida}` : ''}`} onClick={onAbrir} title="Abrir: dano, cura, ataques, condições, ficha">
+      <span className="cb-cartao-token" style={{ backgroundImage: `url(${c.ficha?.imagem || tokenPlaceholder})` }}>
+        {c.iniciativa != null && <span className="cb-cartao-ini" title="Iniciativa">{c.iniciativa}</span>}
+      </span>
+      <span className="cb-cartao-corpo">
+        <span className="cb-cartao-nome">{c.nome}</span>
+        <span className="cb-cartao-sub">{sub}{vida === 'caido' ? ' · caído' : vida === 'machucado' ? ' · machucado' : ''}</span>
+        <BarraRecurso rotulo="PV" r={c.pv} classe="pv" />
+        <BarraRecurso rotulo="SAN" r={c.san} classe="san" />
+        <BarraRecurso rotulo="PE" r={c.pe} classe="pe" />
+        {(c.efeitos?.length > 0 || c.condicoes?.length > 0) && (
+          <span className="cb-chips">
+            {(c.efeitos || []).map((e) => <span key={e.id} className="cb-chip">{e.nome}{e.duracao !== 'permanente' ? ` ${e.duracao}` : ''}</span>)}
+            {(c.condicoes || []).map((k) => <span key={k} className="cb-chip fraco">{String(k)}</span>)}
+          </span>
+        )}
+      </span>
+    </button>
   );
 }

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import IconeD20 from '../IconeD20.jsx';
 import EditorTags from '../EditorTags.jsx';
+import AvatarAjustavel from '../AvatarAjustavel.jsx';
+import ModalEditarAvatar from '../ModalEditarAvatar.jsx';
 import { rolarTeste, rolarDano } from '../../engine/dados.js';
 
 const TIPOS_ACAO = ['Padrão', 'Movimento', 'Livre', 'Reação', 'Completa'];
@@ -71,6 +73,9 @@ function ListaLinhas({ rotulo, dica, valores, onChange, placeholder }) {
 export default function FichaAmeaca({ ameaca, setAmeaca, onRolar, aoConcluir }) {
   const a = ameaca;
   const set = (patch) => setAmeaca({ ...a, ...patch });
+
+  // -------------------------------------------------------------- avatar
+  const [modalAvatarAberto, setModalAvatarAberto] = useState(false);
 
   function rolar(nome, dados, bonus) {
     if (dados == null || Number.isNaN(Number(dados))) return;
@@ -177,6 +182,29 @@ export default function FichaAmeaca({ ameaca, setAmeaca, onRolar, aoConcluir }) 
     <div className="container">
       <div className="ameaca">
         <div className="ameaca-topo">
+          <div style={{ position: 'relative' }}>
+            <AvatarAjustavel
+              className="retrato"
+              imagem={a.imagem}
+              posX={a.imagemPosX ?? 50}
+              posY={a.imagemPosY ?? 50}
+              zoom={a.imagemZoom ?? 1}
+              editavel={false}
+              onClick={() => setModalAvatarAberto(true)}
+            >
+              Avatar
+            </AvatarAjustavel>
+            {modalAvatarAberto && (
+              <ModalEditarAvatar
+                imagem={a.imagem}
+                posX={a.imagemPosX ?? 50}
+                posY={a.imagemPosY ?? 50}
+                zoom={a.imagemZoom ?? 1}
+                aoAplicar={(patch) => { set(patch); setModalAvatarAberto(false); }}
+                aoCancelar={() => setModalAvatarAberto(false)}
+              />
+            )}
+          </div>
           <input className="ameaca-nome" value={a.nome || ''} onChange={(e) => set({ nome: e.target.value })} />
           <div className="ameaca-vd">
             <span>VD</span>

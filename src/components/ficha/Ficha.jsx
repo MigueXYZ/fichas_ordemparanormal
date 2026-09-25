@@ -15,11 +15,12 @@ import { PROTECOES, PROFICIENCIAS_OP } from '../../data/itens.js';
 import { PATENTES, PATENTES_POR_ID, patentePorPrestigio } from '../../data/patentes.js';
 import { TIPOS_DANO, estadoResistencia, definirResistencia, TIPOS_DANO_RESISTIVEIS } from '../../engine/danoRecetor.js';
 import InputNumeroScroll from '../InputNumeroScroll.jsx';
+import AvatarAjustavel from '../AvatarAjustavel.jsx';
+import ModalEditarAvatar from '../ModalEditarAvatar.jsx';
 import RegrasOpcionais from './RegrasOpcionais.jsx';
 import Alteracoes from './Alteracoes.jsx';
 import GuiaCombate from './GuiaCombate.jsx';
 import { ajustarRecursos } from '../../engine/character.js';
-import { lerImagem } from '../../engine/armazenamento.js';
 import { rolarTeste } from '../../engine/dados.js';
 import { atributosEfetivos, reducaoDanoTrilhaAtiva, aplicarPresencaPendente } from '../../engine/monstruoso.js';
 import {
@@ -57,7 +58,6 @@ const ABAS = [
 
 export default function Ficha({ personagem, setPersonagem, onRolar }) {
   const [aba, setAba] = useState('combate');
-  const [erroFoto, setErroFoto] = useState(null);
   const [verRegras, setVerRegras] = useState(false);
   const [verAlteracoes, setVerAlteracoes] = useState(false);
   const [verGuiaCombate, setVerGuiaCombate] = useState(false);
@@ -67,7 +67,7 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
   const [abertaProtecao, setAbertaProtecao] = useState(false);
   const [abertaResistencias, setAbertaResistencias] = useState(false);
   const [abertaProficiencias, setAbertaProficiencias] = useState(false);
-  const [menuAvatarAberto, setMenuAvatarAberto] = useState(false);
+  const [modalAvatarAberto, setModalAvatarAberto] = useState(false);
   const [layoutFicha, setLayoutFicha] = useState(lerLayoutFicha);
   const [modoEdicaoLayout, setModoEdicaoLayout] = useState(false);
   const [arrastandoId, setArrastandoId] = useState(null);
@@ -77,31 +77,18 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
   const [widgetParaEditar, setWidgetParaEditar] = useState(null);
   const [avisoLayout, setAvisoLayout] = useState(null);
 
-  const fileInputRef = useRef(null);
-  const containerAvatarRef = useRef(null);
-
   useEffect(() => {
-    function cliqueFora(e) {
-      if (containerAvatarRef.current && !containerAvatarRef.current.contains(e.target)) {
-        setMenuAvatarAberto(false);
-      }
-    }
     function limparDragGlobal() {
       setArrastandoId(null);
     }
 
     window.addEventListener('dragend', limparDragGlobal);
     window.addEventListener('drop', limparDragGlobal);
-
-    if (menuAvatarAberto) {
-      document.addEventListener('mousedown', cliqueFora);
-    }
     return () => {
       window.removeEventListener('dragend', limparDragGlobal);
       window.removeEventListener('drop', limparDragGlobal);
-      document.removeEventListener('mousedown', cliqueFora);
     };
-  }, [menuAvatarAberto]);
+  }, []);
 
   // Auto-scroll durante o arrasto de widgets na reorganização do layout (US #168)
   useEffect(() => {
@@ -210,18 +197,6 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
   const nomeOrigem = personagem.origemId === '__custom__'
     ? personagem.origemCustom?.nome || 'Personalizada'
     : ORIGENS.find((o) => o.id === personagem.origemId)?.nome || '';
-
-  async function escolherFoto(e) {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setErroFoto(null);
-    try {
-      set({ imagem: await lerImagem(f) });
-    } catch (err) {
-      setErroFoto(err.message);
-    }
-    e.target.value = '';
-  }
 
   function mudarLayout(novo) {
     setArrastandoId(null);
@@ -854,35 +829,28 @@ export default function Ficha({ personagem, setPersonagem, onRolar }) {
       </div>
 
       <div className="cabecalho-ficha">
-        <div ref={containerAvatarRef} style={{ position: 'relative' }}>
-          <div
+        <div style={{ position: 'relative' }}>
+          <AvatarAjustavel
             className="retrato"
-            style={personagem.imagem ? { backgroundImage: `url(${personagem.imagem})` } : undefined}
-            onClick={() => {
-              if (personagem.imagem) setMenuAvatarAberto((v) => !v);
-              else fileInputRef.current?.click();
-            }}
+            imagem={personagem.imagem}
+            posX={personagem.imagemPosX ?? 50}
+            posY={personagem.imagemPosY ?? 50}
+            zoom={personagem.imagemZoom ?? 1}
+            editavel={false}
+            onClick={() => setModalAvatarAberto(true)}
           >
-            {!personagem.imagem && 'Avatar'}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*,image/gif"
-              style={{ display: 'none' }}
-              onChange={escolherFoto}
+            Avatar
+          </AvatarAjustavel>
+          {modalAvatarAberto && (
+            <ModalEditarAvatar
+              imagem={personagem.imagem}
+              posX={personagem.imagemPosX ?? 50}
+              posY={personagem.imagemPosY ?? 50}
+              zoom={personagem.imagemZoom ?? 1}
+              aoAplicar={(patch) => { set(patch); setModalAvatarAberto(false); }}
+              aoCancelar={() => setModalAvatarAberto(false)}
             />
-          </div>
-          {menuAvatarAberto && personagem.imagem && (
-            <div className="menu-avatar">
-              <button type="button" onClick={() => { setMenuAvatarAberto(false); fileInputRef.current?.click(); }}>
-                Trocar imagem
-              </button>
-              <button type="button" className="remover" onClick={() => { setMenuAvatarAberto(false); set({ imagem: null }); }}>
-                Remover imagem
-              </button>
-            </div>
           )}
-          {erroFoto && <div className="aviso" style={{ maxWidth: 200, fontSize: 11 }}>{erroFoto}</div>}
         </div>
 
         <div>

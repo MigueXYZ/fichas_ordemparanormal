@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { gerarOcultistaInimigo, vdParaGrupo, ELEMENTOS_CULTISTAS, PATENTES_CULTISTAS } from '../src/engine/geradores.js';
+import { dtRitualNpc } from '../src/engine/fichaLivre.js';
 
 console.log('Testes de Ocultistas Inimigos e Cálculo de VD de Encontros\n');
 
@@ -9,23 +10,56 @@ function teste(nome, fn) {
   catch (e) { console.error('  FALHOU  ' + nome + '\n    ' + e.message); process.exitCode = 1; }
 }
 
-teste('Geração de Ocultista Inimigo não-agente com VD, rituais, poderes e elemento', () => {
+teste('Ocultista gerado é uma pessoa como as do livro: sem classe/trilha, com Conjurador e rituais do livro', () => {
   const o = gerarOcultistaInimigo({ vd: 60, elemento: 'Sangue' });
 
-  assert.equal(o.tipo, 'ameaca');
-  assert.equal(o.subtipo, 'ocultista');
-  assert.equal(o.elemento, 'Sangue');
+  assert.equal(o.tipo, 'npc', 'ocultistas vão para o Elenco, não para o Bestiário');
+  assert.equal(o.fichaLivre, true);
+  assert.equal(o.classe, '', 'sem classe');
+  assert.equal(o.trilha, '', 'sem trilha');
+  assert.equal(o.nex, '', 'sem NEX');
+  assert.equal(o.elementoPrincipal, 'Sangue');
   assert.equal(o.vd, 60);
+  assert.equal('sentidos' in o, false, 'NPCs não têm sentidos/presença/enigma');
 
-  // Rituais e Poderes
-  assert.ok(o.rituais.length >= 2, 'Ocultista VD 60 deve ter rituais preparados');
-  assert.ok(o.habilidades.length >= 1, 'Ocultista VD 60 deve ter poderes paranormais');
-  assert.ok(o.dt >= 15, 'DT de rituais deve ser escalada com o VD');
+  // Conjurador (livro: Investido — 2 rituais de 1º e 2 de 2º, limite 5 PE)
+  const conj = o.habilidades.find((h) => h.nome === 'Conjurador');
+  const dt = dtRitualNpc(o);
+  assert.equal(o.limitePe, 5);
+  assert.equal(dt.total, 10 + 5 + o.atributos.pre, 'DT de ritual = 10 + limite de PE + Presença (regra do livro)');
+  assert.ok(conj && /limite de 5 PE/.test(conj.descricao) && conj.descricao.includes(`DT para resistir aos seus rituais é ${dt.total}`));
+  assert.equal(o.rituais.length, 4, '2 rituais por círculo, até ao 2º');
+  assert.deepEqual(o.rituais.map((r) => r.circulo), ['1', '1', '2', '2']);
+  assert.ok(o.rituais.every((r) => r.nome && r.dt === ''), 'a DT de cada ritual vem da ficha');
+  assert.ok(o.acoes.every((a) => a.teste && a.dano), 'em Ataques só ataques; o resto vai para Habilidades');
+  assert.ok(/^\d+d20\+\d+$/.test(o.acoes[0].teste), 'ataque com teste Nd20+B');
+  assert.ok(o.pericias.some((p) => p.nome === 'Ocultismo'));
+  assert.ok(o.equipamento.length >= 2);
 
-  // Interpretação e Detalhes do Culto
-  assert.ok(o.culto && o.culto.length > 3, 'Deve pertencer a um culto paranormal');
-  assert.ok(o.comportamento && o.comportamento.length > 5, 'Deve possuir comportamento fanático');
-  assert.ok(o.dicaRp && o.dicaRp.length > 5, 'Deve possuir dica de interpretação para o Mestre');
+  // Culto e interpretação: motivação, informação e notas do Mestre em branco (dependem da campanha)
+  assert.ok(o.culto && o.culto.length > 3);
+  assert.ok(o.afiliacao.startsWith(o.culto));
+  assert.ok(o.papelCulto && o.breveDescricao.includes('·'));
+  for (const k of ['aparencia', 'traco', 'personalidade', 'maneirismos']) assert.ok(o.roleplay[k]?.length > 5, `roleplay.${k} preenchido`);
+  for (const k of ['motivacao', 'informacao', 'notasMestre']) assert.equal(o.roleplay[k], '', `roleplay.${k} em branco`);
+});
+
+teste('Ocultista: rituais e limite de PE sobem com a patente, como no livro', () => {
+  const iniciado = gerarOcultistaInimigo({ vd: 20 });
+  assert.equal(iniciado.rituais.length, 2);
+  assert.ok(iniciado.rituais.every((r) => r.circulo === '1'));
+  assert.ok(/limite de 3 PE/.test(iniciado.habilidades[0].descricao));
+  assert.equal(dtRitualNpc(iniciado).total, 13 + iniciado.atributos.pre, 'Iniciado do livro: 10 + 3 + PRE 2 = 15');
+  const lider = gerarOcultistaInimigo({ vd: 140 });
+  assert.equal(lider.rituais.length, 6);
+  assert.ok(/limite de 10 PE/.test(lider.habilidades[0].descricao));
+  assert.equal(dtRitualNpc(lider).total, 20 + lider.atributos.pre, 'Líder: 10 + 10 + PRE');
+});
+
+teste('DT de ritual de um NPC: automática, ou fixada à mão', () => {
+  assert.equal(dtRitualNpc({ atributos: { pre: 2 } }), null, 'sem limite de PE não há conta');
+  assert.equal(dtRitualNpc({ limitePe: 3, atributos: { pre: 2 } }).total, 15);
+  assert.equal(dtRitualNpc({ limitePe: 3, dtRitual: 21, atributos: { pre: 2 } }).total, 21);
 });
 
 teste('Cálculo de VD para múltiplos agentes e múltiplos inimigos', () => {

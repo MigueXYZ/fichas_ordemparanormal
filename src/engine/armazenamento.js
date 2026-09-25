@@ -268,7 +268,9 @@ function redimensionar(ficheiro, lado = 320) {
         canvas.width = l;
         canvas.height = a;
         canvas.getContext('2d').drawImage(img, 0, 0, l, a);
-        resolve(canvas.toDataURL('image/jpeg', 0.85));
+        // PNG/SVG podem ter fundo transparente — em JPEG esse fundo ficava preto.
+        const podeTerTransparencia = /png|svg/i.test(ficheiro.type);
+        resolve(podeTerTransparencia ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', 0.85));
       };
       img.onerror = () => reject(new Error('Imagem inválida.'));
       img.src = leitor.result;
@@ -282,10 +284,12 @@ function redimensionar(ficheiro, lado = 320) {
  * Token do agente: a imagem fica em pé sobre o pedestal, por isso vale a pena
  * (1) cortar as margens lisas — as barras pretas de screenshots de telemóvel, o
  * branco à volta de um desenho a traço — e (2) tirar o fundo chapado, para a
- * figura não ficar num retângulo colado à pedra.
+ * figura não ficar num retângulo colado à pedra. `tirarFundo: false` salta o
+ * passo (2) — o editor de token das fichas de NPC/ameaça deixa escolher.
+ * Sai sempre em PNG, por isso um fundo já transparente continua transparente.
  * GIFs ficam intactos, para não perderem a animação.
  */
-export function lerToken(ficheiro, lado = 900) {
+export function lerToken(ficheiro, lado = 900, { tirarFundo = true } = {}) {
   const animado = /gif|apng/i.test(ficheiro.type);
   if (animado) return lerImagem(ficheiro, lado);
 
@@ -310,7 +314,7 @@ export function lerToken(ficheiro, lado = 900) {
           saida.height = a;
           const sctx = saida.getContext('2d', { willReadFrequently: true });
           sctx.drawImage(img, caixa.x, caixa.y, caixa.largura, caixa.altura, 0, 0, l, a);
-          recortarFundo(sctx, l, a);
+          if (tirarFundo) recortarFundo(sctx, l, a);
           resolve(saida.toDataURL('image/png'));
         } catch {
           // canvas "sujo" ou imagem estranha: fica como está

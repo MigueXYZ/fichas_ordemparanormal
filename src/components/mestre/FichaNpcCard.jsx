@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { CLASSES } from '../../data/classes.js';
 import { ORIGENS } from '../../data/origens.js';
 import { PERICIAS, GRAUS_TREINO } from '../../data/pericias.js';
@@ -7,6 +7,7 @@ import { quantidadeDados } from '../../engine/dados.js';
 import tokenPlaceholder from '../../assets/token-placeholder.png';
 import CabecalhoSeta from '../ficha/CabecalhoSeta.jsx';
 import InputNumeroScroll from '../InputNumeroScroll.jsx';
+import TokenFicha from './TokenFicha.jsx';
 import { TIPOS_DANO_RESISTIVEIS, estadoResistencia, definirResistencia } from '../../engine/danoRecetor.js';
 import { ROTULO_GRAU, BlocoStat, TabelaLinha, CampoRoleplay } from './FichaCardBlocos.jsx';
 
@@ -31,7 +32,6 @@ const GRAUS_ATRIBUIVEIS = GRAUS_TREINO.filter((g) => g.id !== 'destreinado');
  * "extra" / manuais ao lado.
  */
 export default function FichaNpcCard({ p, aoVerDetalhe, editando, onAtualizarCampo, aoUploadImagem }) {
-  const fileInputRef = useRef(null);
   const [abertaResistencias, setAbertaResistencias] = useState(false);
   const classe = CLASSES.find((c) => c.id === p.classeId);
   const origem = ORIGENS.find((o) => o.id === p.origemId);
@@ -46,14 +46,6 @@ export default function FichaNpcCard({ p, aoVerDetalhe, editando, onAtualizarCam
   const habilidades = p.habilidades || [];
   const poderes = p.poderes || [];
   const rp = p.comoInterpretar || {};
-
-  function handleFileChange(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => aoUploadImagem(reader.result);
-    reader.readAsDataURL(file);
-  }
 
   // --------------------------------------------------- perícias do livro (oficiais)
   function definirGrauPericiaOficial(id, grau) {
@@ -560,27 +552,16 @@ export default function FichaNpcCard({ p, aoVerDetalhe, editando, onAtualizarCam
           </div>
 
           {/* Espaço do token — fora da moldura do roleplay, sem moldura própria.
-              Mostra a imagem se houver, senão um template vazio. A imagem em si é
-              o botão: em modo de editar, clicar nela abre o seletor de ficheiro
-              — não há um botão à parte por cima. */}
-          <div className="ficha-npc-token">
-            <div
-              className={'ficha-npc-token-caixa' + (editando ? ' editavel' : '')}
-              role={editando ? 'button' : undefined}
-              tabIndex={editando ? 0 : undefined}
-              title={editando ? (p.imagem ? 'Clica para trocar o token' : 'Clica para adicionares um token') : undefined}
-              onClick={editando ? () => fileInputRef.current?.click() : undefined}
-              onKeyDown={editando ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click(); } } : undefined}
-            >
-              {p.imagem ? (
-                <img src={p.imagem} alt={p.nome} />
-              ) : (
-                <div className="ficha-npc-token-vazio">
-                  <img src={tokenPlaceholder} alt="" className="ficha-npc-token-placeholder" />
-                </div>
-              )}
-              <input type="file" accept="image/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
-            </div>
+              A figura inteira, sem recorte; em modo de editar, clicar nela abre
+              o editor de token (com pré-visualização e fundo transparente). */}
+          <div className="ficha-npc-token ficha-token-fixo">
+            <TokenFicha
+              imagem={p.imagem}
+              nome={p.nome}
+              editavel={editando}
+              vazio={<img src={tokenPlaceholder} alt="" className="ficha-npc-token-placeholder" />}
+              aoMudar={aoUploadImagem}
+            />
           </div>
         </div>
       </div>

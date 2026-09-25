@@ -2,6 +2,7 @@ import React from 'react';
 import { quantidadeDados } from '../../engine/dados.js';
 import { acoesDeAmeaca } from '../../engine/combateAtaques.js';
 import tokenPlaceholder from '../../assets/token-placeholder.png';
+import AvatarAjustavel from '../AvatarAjustavel.jsx';
 import { BlocoStat, TabelaLinha, CampoRoleplay } from './FichaCardBlocos.jsx';
 
 /**
@@ -227,15 +228,19 @@ export default function FichaAmeacaCard({ a, aoVerDetalhe }) {
           </div>
 
           <div className="ficha-npc-token">
-            <div className="ficha-npc-token-caixa">
-              {a.imagem ? (
-                <img src={a.imagem} alt={a.nome} />
-              ) : (
-                <div className="ficha-npc-token-vazio">
-                  <img src={tokenPlaceholder} alt="" className="ficha-npc-token-placeholder" />
-                </div>
-              )}
-            </div>
+            <AvatarAjustavel
+              className="ficha-npc-token-caixa"
+              imagem={a.imagem}
+              alt={a.nome}
+              posX={a.imagemPosX ?? 50}
+              posY={a.imagemPosY ?? 50}
+              zoom={a.imagemZoom ?? 1}
+              editavel={false}
+            >
+              <div className="ficha-npc-token-vazio">
+                <img src={tokenPlaceholder} alt="" className="ficha-npc-token-placeholder" />
+              </div>
+            </AvatarAjustavel>
           </div>
         </div>
       </div>

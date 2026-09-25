@@ -2,7 +2,7 @@
 // Combate e nos Cartões de Batalha — para não repetir a mesma coisa nos dois
 // sítios. Lê os ataques de um agente (armas do inventário) ou de uma ameaça
 // (ações do esquema do Livro Base) e devolve-os já prontos a rolar.
-import { rolarTeste, rolarDano, rolarAtaqueCompleto } from './dados.js';
+import { rolarAtaque, rolarDano, rolarAtaqueCompleto } from './dados.js';
 import { estatisticasArma } from './armas.js';
 
 /** Lê "3d20+10" (o "Teste" de uma ação de ameaça) e devolve {dados,bonus}, ou null. */
@@ -17,6 +17,14 @@ export function parseDanoTexto(txt) {
   const m = String(txt || '').trim().match(/^(\d*d\d+(?:[+-]\d+)?)\s*(.*)$/i);
   if (!m) return null;
   return { dano: m[1], tipoDano: m[2] || null };
+}
+
+/** Lê "19/x3", "x3" ou "18" (o "Crítico" de uma ação) → { margem, multiplicador }. */
+export function parseCriticoTexto(txt) {
+  const t = String(txt || '').replace(/\s/g, '').toLowerCase();
+  const margem = t.match(/^(\d+)/);
+  const mult = t.match(/x(\d+)/);
+  return { margem: margem ? Number(margem[1]) : 20, multiplicador: mult ? Number(mult[1]) : 2 };
 }
 
 /** As ações de uma ameaça — já migradas do esquema antigo (`ataque` único) para
@@ -48,23 +56,32 @@ export function prepararAtaques(unidade) {
   if (!ficha) return [];
   const nomeUnidade = unidade.nome || ficha.nome || '';
 
-  if (unidade.tipo === 'ameaca' || (unidade.tipo === 'npc' && unidade.subtipo === 'ocultista')) {
-    return acoesDeAmeaca(ficha).map((acao, i) => ({
-      id: acao.nome ? `${acao.nome}-${i}` : `acao-${i}`,
-      nome: acao.nome || 'Ação',
-      detalhe: acao.detalhe || '',
-      rolar: () => {
-        const testeParsed = parseTesteTexto(acao.teste);
-        const acerto = testeParsed
-          ? rolarTeste({ nome: `${nomeUnidade} — ${acao.nome}`, dados: testeParsed.dados, bonus: testeParsed.bonus })
-          : null;
-        const danoParsed = parseDanoTexto(acao.dano);
-        const dano = danoParsed
-          ? rolarDano({ nome: `${nomeUnidade} — ${acao.nome} — dano`, dano: danoParsed.dano, tipoDano: danoParsed.tipoDano, critico: acerto?.critico })
-          : null;
-        return { acerto, dano };
-      },
-    }));
+  // Ameaças, ocultistas gerados e NPCs de ficha livre (ver engine/fichaLivre.js)
+  // atacam pelas ações escritas na ficha, não por armas de inventário.
+  if (unidade.tipo === 'ameaca' || ficha.fichaLivre === true || (unidade.tipo === 'npc' && unidade.subtipo === 'ocultista')) {
+    // só as ações que se rolam (teste e/ou dano); as outras são regras escritas
+    return acoesDeAmeaca(ficha)
+      .filter((acao) => String(acao.teste || '').trim() || String(acao.dano || '').trim())
+      .map((acao, i) => {
+        const crit = parseCriticoTexto(acao.critico);
+        return {
+          id: acao.nome ? `${acao.nome}-${i}` : `acao-${i}`,
+          nome: acao.nome || 'Ação',
+          detalhe: [acao.detalhe, acao.teste && `Teste ${acao.teste}`, acao.dano && `Dano ${acao.dano}`].filter(Boolean).join(' · '),
+          temTeste: Boolean(parseTesteTexto(acao.teste)),
+          rolar: () => {
+            const testeParsed = parseTesteTexto(acao.teste);
+            const acerto = testeParsed
+              ? rolarAtaque({ nome: `${nomeUnidade} — ${acao.nome}`, dados: testeParsed.dados, bonus: testeParsed.bonus, margem: crit.margem })
+              : null;
+            const danoParsed = parseDanoTexto(acao.dano);
+            const dano = danoParsed
+              ? rolarDano({ nome: `${nomeUnidade} — ${acao.nome} — dano`, dano: danoParsed.dano, tipoDano: danoParsed.tipoDano, critico: acerto?.critico, multiplicador: crit.multiplicador })
+              : null;
+            return { acerto, dano };
+          },
+        };
+      });
   }
 
   // Agente / NPC de agente: armas do inventário, com os números finais já
